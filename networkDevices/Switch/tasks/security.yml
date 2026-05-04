@@ -1,0 +1,9 @@
+- name: Seguridad básica
+  cisco.ios.ios_config:
+    lines:
+      - spanning-tree mode rapid-pvst
+      - service password-encryption
+      - no ip http server
+      - no ip http secure-server
+      #- no icmp
+      

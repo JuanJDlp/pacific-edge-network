@@ -1,0 +1,7 @@
+- name: Puerto clientes
+  ansible.netcommon.cli_config:
+    parents: interface gigabitethernet 1/1/10
+    lines:
+      - switchport mode access
+      - switchport access vlan 100
+      - spanning-tree portfast

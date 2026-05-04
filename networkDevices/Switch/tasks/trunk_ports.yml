@@ -1,0 +1,8 @@
+- name: Configurar trunk uplink
+  ansible.netcommon.cli_config:
+    parents: interface gigabitethernet 1/1/24
+    lines:
+      - switchport mode trunk
+      # Ojo: Algunos Raisecom no requieren encapsulation dot1q porque es el default
+      # - switchport trunk encapsulation dot1q 
+      - switchport trunk allowed vlan 10,20,30,40,50,100

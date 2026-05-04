@@ -1,0 +1,11 @@
+- name: Interface Deployment
+  hosts: core_switches
+  gather_facts: no
+
+  tasks:
+
+    - include_tasks: ../tasks/trunk_ports.yml
+
+    - include_tasks: ../tasks/access_ports.yml
+
+    - include_tasks: ../tasks/security.yml

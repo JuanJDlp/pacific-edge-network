@@ -1,0 +1,21 @@
+- name: Backup switches Raisecom
+  hosts: core_switches
+  gather_facts: no
+
+  tasks:
+    - name: Asegurar que el directorio existe
+      delegate_to: localhost
+      ansible.builtin.file:
+        path: backups/
+        state: directory
+
+    - name: Obtener running-config
+      ansible.netcommon.cli_command:
+        command: show running-config
+      register: raisecom_config
+
+    - name: Guardar configuracion localmente
+      delegate_to: localhost
+      ansible.builtin.copy:
+        content: "{{ raisecom_config.stdout }}"
+        dest: "backups/{{ inventory_hostname }}.cfg"

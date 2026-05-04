@@ -1,0 +1,12 @@
+- name: VLAN Deployment
+  hosts: core_switches
+  gather_facts: no
+
+  vars_files:
+    - ../vars/main.yml
+
+  tasks:
+
+    - include_tasks: ../tasks/create_vlans.yml
+
+    - include_tasks: ../tasks/configure_svis.yml
