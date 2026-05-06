@@ -1,8 +1,15 @@
-- name: Configurar trunk uplink
+- name: Trunk Uplink hacia pfSense
   ansible.netcommon.cli_config:
     parents: interface gigabitethernet 1/1/24
     lines:
+      - description Uplink_pfSense
       - switchport mode trunk
-      # Ojo: Algunos Raisecom no requieren encapsulation dot1q porque es el default
-      # - switchport trunk encapsulation dot1q 
       - switchport trunk allowed vlan 10,20,30,40,50,100
+
+- name: Trunk hacia Access Points
+  ansible.netcommon.cli_config:
+    parents: interface gigabitethernet 1/1/4
+    lines:
+      - description AP_Pacific_Edge
+      - switchport mode trunk
+      - switchport trunk allowed vlan 20,100  # VLAN 20 para gestión del AP, 100 para Clientes
