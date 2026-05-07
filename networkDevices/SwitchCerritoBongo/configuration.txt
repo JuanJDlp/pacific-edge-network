@@ -1,5 +1,5 @@
-!El usuario es cisco 
-!La contraseña es cisco
+! El usuario es cisco 
+! La contraseña es cisco
 
 configure terminal
 
@@ -24,7 +24,7 @@ exit
 ! Se crean primero para que el switch las reconozca
 vlan 10,20,30,40
 exit
-
+configure terminal
 ! ==================== DIRECCIONAMIENTO (SVIs) ====================
 interface vlan 10
  ip address 192.168.10.2 255.255.255.0
