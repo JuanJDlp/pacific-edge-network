@@ -1,0 +1,92 @@
+enable
+config terminal
+
+! ==================== CONFIGURACIÓN BÁSICA ====================
+hostname SW-CORE-COCALITO
+
+enable secret tu-enable-secret-fuerte
+username admin privilege 15 secret tu-password-fuerte
+
+service password-encryption
+no ip http server
+no ip http secure-server
+
+line vty 0 15
+ login local
+ transport input ssh
+ exec-timeout 30 0
+
+! ==================== VLANs ====================
+vlan 10
+ name Gestion
+vlan 20
+ name Servidores
+vlan 30
+ name Clientes_Cerrito_Bongo
+vlan 40
+ name Enlace_Cocalito
+vlan 50
+ name Services_RPi
+vlan 100
+ name Wireless_Clients
+
+! ==================== Interfaces VLAN (SVIs) ====================
+interface Vlan10
+ description Gestion
+ ip address 192.168.10.3 255.255.255.0
+ ipv6 address 2001:db8:0:10::3/64
+ no shutdown
+
+interface Vlan20
+ description Servidores
+ ip address 192.168.20.3 255.255.255.0
+ ipv6 address 2001:db8:0:20::3/64
+ no shutdown
+
+interface Vlan40
+ description Enlace_Cocalito
+ ip address 192.168.40.3 255.255.255.0
+ ipv6 address 2001:db8:0:40::3/64
+ no shutdown
+
+! ==================== Configuración Global ====================
+spanning-tree mode rapid-pvst
+ipv6 unicast-routing
+
+! ==================== PUERTOS ====================
+
+! --- Trunk hacia Radio Enlace (conexión al Raisecom) ---
+interface GigabitEthernet1/0/24
+ description Radio_Enlace_a_Raisecom_Bongo
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,40,50,100
+ no shutdown
+
+! --- Access Points (Trunk) ---
+interface GigabitEthernet1/0/1
+ description AP-Cocalito-1
+ switchport mode trunk
+ switchport trunk allowed vlan 20,100
+ no shutdown
+
+interface GigabitEthernet1/0/2
+ description AP-Cocalito-2
+ switchport mode trunk
+ switchport trunk allowed vlan 20,100
+ no shutdown
+
+interface GigabitEthernet1/0/3
+ description AP-Cocalito-3
+ switchport mode trunk
+ switchport trunk allowed vlan 20,100
+ no shutdown
+
+interface GigabitEthernet1/0/4
+ description AP-Cocalito-4
+ switchport mode trunk
+ switchport trunk allowed vlan 20,100
+ no shutdown
+
+! ==================== FINAL ====================
+end
+write memory

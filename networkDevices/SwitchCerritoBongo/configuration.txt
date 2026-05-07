@@ -1,21 +1,20 @@
 enable
-config
+config terminal
 
 ! ==================== CONFIGURACIÓN BÁSICA ====================
 hostname SW-CORE-BONGO
 
-! --- Contraseñas y seguridad básica ---
 enable secret tu-enable-secret-fuerte
 username admin privilege 15 secret tu-password-fuerte
+
 service password-encryption
 no ip http server
 no ip http secure-server
 
-! --- Gestión remota ---
 line vty 0 15
  login local
  transport input ssh
-exec-timeout 30 0
+ exec-timeout 30 0
 
 ! ==================== VLANs ====================
 vlan 10
@@ -60,42 +59,45 @@ interface Vlan40
 spanning-tree mode rapid-pvst
 ipv6 unicast-routing
 
-! ==================== Puertos ====================
+! ==================== PUERTOS ====================
 
-! --- Access Ports ---
-interface gigabitethernet 1/1/1
- description Radio_Link_900MHz
- switchport mode access
- switchport access vlan 10
- no shutdown
-
-interface gigabitethernet 1/1/2
- description RPi5_Services
- switchport mode access
- switchport access vlan 50
- spanning-tree portfast
- no shutdown
-
-interface gigabitethernet 1/1/3
+! --- Puerto 1: Mini PC ---
+interface GigabitEthernet1/0/1
  description MiniPC_Core_Services
  switchport mode access
  switchport access vlan 20
  spanning-tree portfast
  no shutdown
 
-! --- Trunk Ports ---
-interface gigabitethernet 1/1/4
+! --- Puerto 2: Raspberry Pi 5 ---
+interface GigabitEthernet1/0/2
+ description RPi5_Services
+ switchport mode access
+ switchport access vlan 50
+ spanning-tree portfast
+ no shutdown
+
+! --- Puerto 3: Radio Enlace ---
+interface GigabitEthernet1/0/3
+ description Radio_Link_900MHz
+ switchport mode access
+ switchport access vlan 10
+ no shutdown
+
+! --- Puerto 4: Access Point ---
+interface GigabitEthernet1/0/4
  description AP_Pacific_Edge
  switchport mode trunk
  switchport trunk allowed vlan 20,100
  no shutdown
 
-interface gigabitethernet 1/1/24
+! --- Puerto 24: Uplink a pfSense ---
+interface GigabitEthernet1/0/24
  description Uplink_pfSense
  switchport mode trunk
  switchport trunk allowed vlan 10,20,30,40,50,100
  no shutdown
 
-! ==================== Finalización ====================
+! ==================== FINAL ====================
 end
 write memory
