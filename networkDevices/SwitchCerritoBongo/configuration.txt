@@ -25,43 +25,34 @@ vlan 30
  name Clientes_Cerrito_Bongo
 vlan 40
  name Enlace_Cocalito
-vlan 50
- name Services_RPi
-vlan 100
- name Wireless_Clients
 
 ! ==================== Interfaces VLAN (SVIs) ====================
 interface Vlan10
  description Gestion
- ip address 192.168.10.1 255.255.255.0
- ipv6 address 2001:db8:0:10::1/64
+ ip address 192.168.10.2 255.255.255.0
  no shutdown
 
 interface Vlan20
  description Servidores
  ip address 192.168.20.1 255.255.255.0
- ipv6 address 2001:db8:0:20::1/64
  no shutdown
 
 interface Vlan30
  description Clientes_Cerrito_Bongo
  ip address 192.168.30.1 255.255.255.0
- ipv6 address 2001:db8:0:30::1/64
  no shutdown
 
 interface Vlan40
  description Enlace_Cocalito
  ip address 192.168.40.1 255.255.255.0
- ipv6 address 2001:db8:0:40::1/64
  no shutdown
 
 ! ==================== Configuración Global ====================
 spanning-tree mode rapid-pvst
-ipv6 unicast-routing
 
 ! ==================== PUERTOS ====================
 
-! --- Puerto 1: Mini PC ---
+! --- Puerto 1: Mini PC (con DHCP) ---
 interface GigabitEthernet1/0/1
  description MiniPC_Core_Services
  switchport mode access
@@ -73,7 +64,7 @@ interface GigabitEthernet1/0/1
 interface GigabitEthernet1/0/2
  description RPi5_Services
  switchport mode access
- switchport access vlan 50
+ switchport access vlan 20
  spanning-tree portfast
  no shutdown
 
@@ -88,14 +79,14 @@ interface GigabitEthernet1/0/3
 interface GigabitEthernet1/0/4
  description AP_Pacific_Edge
  switchport mode trunk
- switchport trunk allowed vlan 20,100
+ switchport trunk allowed vlan 20,30
  no shutdown
 
-! --- Puerto 24: Uplink a pfSense ---
+! --- Puerto 24: Uplink hacia pfSense ---
 interface GigabitEthernet1/0/24
  description Uplink_pfSense
  switchport mode trunk
- switchport trunk allowed vlan 10,20,30,40,50,100
+ switchport trunk allowed vlan 10,20,30,40
  no shutdown
 
 ! ==================== FINAL ====================

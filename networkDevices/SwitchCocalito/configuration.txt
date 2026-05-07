@@ -1,8 +1,8 @@
 enable
-config terminal
+config
 
 ! ==================== CONFIGURACIÓN BÁSICA ====================
-hostname SW-CORE-COCALITO
+hostname SW-CORE-COCALITO-RAISECOM
 
 enable secret tu-enable-secret-fuerte
 username admin privilege 15 secret tu-password-fuerte
@@ -10,11 +10,6 @@ username admin privilege 15 secret tu-password-fuerte
 service password-encryption
 no ip http server
 no ip http secure-server
-
-line vty 0 15
- login local
- transport input ssh
- exec-timeout 30 0
 
 ! ==================== VLANs ====================
 vlan 10
@@ -25,28 +20,26 @@ vlan 30
  name Clientes_Cerrito_Bongo
 vlan 40
  name Enlace_Cocalito
-vlan 50
- name Services_RPi
-vlan 100
- name Wireless_Clients
 
 ! ==================== Interfaces VLAN (SVIs) ====================
 interface Vlan10
  description Gestion
- ip address 192.168.10.3 255.255.255.0
- ipv6 address 2001:db8:0:10::3/64
+ ip address 192.168.10.4 255.255.255.0
  no shutdown
 
 interface Vlan20
  description Servidores
- ip address 192.168.20.3 255.255.255.0
- ipv6 address 2001:db8:0:20::3/64
+ ip address 192.168.20.4 255.255.255.0
+ no shutdown
+
+interface Vlan30
+ description Clientes_Cerrito_Bongo
+ ip address 192.168.30.4 255.255.255.0
  no shutdown
 
 interface Vlan40
  description Enlace_Cocalito
- ip address 192.168.40.3 255.255.255.0
- ipv6 address 2001:db8:0:40::3/64
+ ip address 192.168.40.4 255.255.255.0
  no shutdown
 
 ! ==================== Configuración Global ====================
@@ -55,38 +48,38 @@ ipv6 unicast-routing
 
 ! ==================== PUERTOS ====================
 
-! --- Trunk hacia Radio Enlace (conexión al Raisecom) ---
-interface GigabitEthernet1/0/24
- description Radio_Enlace_a_Raisecom_Bongo
+! --- Puerto Trunk Radio Enlace (hacia Switch Cisco Bongo) ---
+interface gigabitethernet 1/1/24
+ description Radio_Enlace_a_Bongo
  switchport mode trunk
- switchport trunk allowed vlan 10,20,30,40,50,100
+ switchport trunk allowed vlan 10,20,30,40
  no shutdown
 
 ! --- Access Points (Trunk) ---
-interface GigabitEthernet1/0/1
+interface gigabitethernet 1/1/1
  description AP-Cocalito-1
  switchport mode trunk
- switchport trunk allowed vlan 20,100
+ switchport trunk allowed vlan 20,30
  no shutdown
 
-interface GigabitEthernet1/0/2
+interface gigabitethernet 1/1/2
  description AP-Cocalito-2
  switchport mode trunk
- switchport trunk allowed vlan 20,100
+ switchport trunk allowed vlan 20,30
  no shutdown
 
-interface GigabitEthernet1/0/3
+interface gigabitethernet 1/1/3
  description AP-Cocalito-3
  switchport mode trunk
- switchport trunk allowed vlan 20,100
+ switchport trunk allowed vlan 20,30
  no shutdown
 
-interface GigabitEthernet1/0/4
+interface gigabitethernet 1/1/4
  description AP-Cocalito-4
  switchport mode trunk
- switchport trunk allowed vlan 20,100
+ switchport trunk allowed vlan 20,30
  no shutdown
 
 ! ==================== FINAL ====================
 end
-write memory
+write
