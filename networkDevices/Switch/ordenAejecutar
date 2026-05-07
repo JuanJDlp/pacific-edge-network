@@ -1,3 +1,0 @@
-./ansible.sh vlans
-./ansible.sh interfaces
-./ansible.sh all

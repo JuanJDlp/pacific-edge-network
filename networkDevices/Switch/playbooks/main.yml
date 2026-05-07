@@ -1,2 +1,0 @@
-- import_playbook: vlans.yml
-- import_playbook: interfaces.yml

@@ -1,8 +1,0 @@
----
-- name: Seguridad básica
-  ansible.netcommon.cli_config:
-    lines:
-      - spanning-tree mode rapid-pvst
-      - service password-encryption
-      - no ip http server
-      - no ip http secure-server
