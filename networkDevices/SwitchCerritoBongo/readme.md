@@ -7,6 +7,8 @@
 - **IP de Gestión:** 192.168.10.2 /24 (VLAN 10)
 - **Rol:** Switch principal del nodo Cerrito Bongo
 
+Por defecto las credenciales son Cisco Cisco
+
 ### VLANs Configuradas
 | VLAN | Nombre                  | Subred IPv4         | Subred IPv6             | Notas |
 |------|-------------------------|---------------------|-------------------------|-------|
@@ -25,7 +27,6 @@
 | Gi1/0/4             | AP_Pacific_Edge                | Trunk    | 20,100* |
 | Gi1/0/24            | Uplink_pfSense                 | Trunk    | 10,20,30,40 |
 
-_*Nota: Si no se usa VLAN 100, se puede ajustar el trunk a solo VLAN 20._
 
 ### Comandos Útiles
 ```bash

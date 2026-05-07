@@ -1,94 +1,86 @@
-enable
-config terminal
+!El usuario es cisco 
+!La contraseña es cisco
+
+configure terminal
 
 ! ==================== CONFIGURACIÓN BÁSICA ====================
 hostname SW-CORE-BONGO
 
-enable secret tu-enable-secret-fuerte
-username admin privilege 15 secret tu-password-fuerte
+! Usuario con privilegios totales
+username admin password Cisco123! privilege 15
+enable password Cisco123!
 
-service password-encryption
+! Desactivar gestión web para mayor seguridad
 no ip http server
 no ip http secure-server
 
-line vty 0 15
- login local
- transport input ssh
- exec-timeout 30 0
+! ==================== ACCESO REMOTO (TELNET) ====================
+ip telnet server
+line telnet
+ exec-timeout 30
+exit
 
-! ==================== VLANs ====================
-vlan 10
- name Gestion
-vlan 20
- name Servidores
-vlan 30
- name Clientes_Cerrito_Bongo
-vlan 40
- name Enlace_Cocalito
+! ==================== CREACIÓN DE VLANS ====================
+! Se crean primero para que el switch las reconozca
+vlan 10,20,30,40
+exit
 
-! ==================== Interfaces VLAN (SVIs) ====================
-interface Vlan10
- description Gestion
+! ==================== DIRECCIONAMIENTO (SVIs) ====================
+interface vlan 10
  ip address 192.168.10.2 255.255.255.0
  no shutdown
+exit
 
-interface Vlan20
- description Servidores
+interface vlan 20
  ip address 192.168.20.1 255.255.255.0
  no shutdown
+exit
 
-interface Vlan30
- description Clientes_Cerrito_Bongo
+interface vlan 30
  ip address 192.168.30.1 255.255.255.0
  no shutdown
+exit
 
-interface Vlan40
- description Enlace_Cocalito
+interface vlan 40
  ip address 192.168.40.1 255.255.255.0
  no shutdown
+exit
 
-! ==================== Configuración Global ====================
-spanning-tree mode rapid-pvst
+! ==================== RUTEO Y GATEWAY ====================
+ip routing
+! El gateway ahora sí funcionará porque la VLAN 10 ya tiene IP
+ip route 0.0.0.0 0.0.0.0 192.168.10.1
 
-! ==================== PUERTOS ====================
+! ==================== CONFIGURACIÓN DE PUERTOS ====================
+spanning-tree mode rstp
 
-! --- Puerto 1: Mini PC (con DHCP) ---
-interface GigabitEthernet1/0/1
- description MiniPC_Core_Services
+! Puertos 1 y 2: Servidores (MiniPC / RPi5)
+interface range gi1/0/1-2
  switchport mode access
  switchport access vlan 20
  spanning-tree portfast
- no shutdown
+exit
 
-! --- Puerto 2: Raspberry Pi 5 ---
-interface GigabitEthernet1/0/2
- description RPi5_Services
- switchport mode access
- switchport access vlan 20
- spanning-tree portfast
- no shutdown
-
-! --- Puerto 3: Radio Enlace ---
-interface GigabitEthernet1/0/3
- description Radio_Link_900MHz
+! Puerto 3: Radio Enlace 900MHz
+interface gi1/0/3
  switchport mode access
  switchport access vlan 10
- no shutdown
+exit
 
-! --- Puerto 4: Access Point ---
-interface GigabitEthernet1/0/4
- description AP_Pacific_Edge
+! Puerto 4: Access Point (Trunk)
+interface gi1/0/4
  switchport mode trunk
- switchport trunk allowed vlan 20,30
- no shutdown
+ switchport trunk allowed vlan add 20,30
+exit
 
-! --- Puerto 24: Uplink hacia pfSense ---
-interface GigabitEthernet1/0/24
- description Uplink_pfSense
+! Puerto 24: Uplink a pfSense
+interface gi1/0/24
  switchport mode trunk
- switchport trunk allowed vlan 10,20,30,40
- no shutdown
+ switchport trunk allowed vlan add 10,20,30,40
+exit
 
-! ==================== FINAL ====================
+! ==================== HORA Y FINALIZAR ====================
+clock timezone "COT" -5
 end
+
 write memory
