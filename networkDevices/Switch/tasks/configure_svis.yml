@@ -1,3 +1,4 @@
+---
 - name: Activar IPv6 routing
   ansible.netcommon.cli_config:
     lines:
@@ -7,7 +8,7 @@
   ansible.netcommon.cli_config:
     parents: "interface Vlan{{ item.id }}"
     lines:
-      - description {{ item.name }}
+      - description "{{ item.name }}"
       - ip address {{ item.ipv4 }} {{ item.mask }}
       - ipv6 address {{ item.ipv6 }}
       - no shutdown
