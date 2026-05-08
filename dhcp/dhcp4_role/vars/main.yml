@@ -1,0 +1,46 @@
+---
+# ============================================================
+#  vars/main.yml
+#  Variables de red del proyecto comunitario
+#  Proyecto: Red Comunitaria Cerrito Bongo & Cocalito
+#  Curso:    Administración de Plataformas I — Universidad ICESI
+# ============================================================
+
+# --- Interfaz de escucha del Mini PC hacia el switch core ---
+kea_listen_interface: "eth0"
+
+# --- Parámetros globales de arrendamiento (en segundos) ---
+kea_valid_lifetime: 4000    # Tiempo total del lease  (~1h 6m)
+kea_renew_timer: 1000       # T1: cliente pide renovación (~16m)
+kea_rebind_timer: 2000      # T2: cliente hace broadcast (~33m)
+
+# --- Limpieza del archivo de leases ---
+kea_lfc_interval: 3600      # Cada 1 hora
+
+# --- Subredes gestionadas ---
+kea_subnets:
+
+  - id: 30
+    description: "Clientes Cerrito Bongo — VLAN 30"
+    subnet: "192.168.30.0/24"
+    pool_start: "192.168.30.100"
+    pool_end: "192.168.30.200"
+    gateway: "192.168.30.1"      # VLAN 30 (relay hacia Mini PC)
+
+  - id: 40
+    description: "Clientes Cocalito — VLAN 40"
+    subnet: "192.168.40.0/24"
+    pool_start: "192.168.40.100"
+    pool_end: "192.168.40.200"
+    gateway: "192.168.40.1"      # CPE Cocalito (relay vía radioenlace)
+
+# --- DNS —  en el Mini PC (único servidor visible para clientes) ---
+kea_dns_servers: "192.168.20.1"
+
+# --- Dominio de búsqueda interno (cambiar por el dominio de GoDaddy) ---
+kea_domain_search: "comunitaria.local"
+
+# --- Logging ---
+kea_log_maxsize: 1048576    # 1 MB por archivo
+kea_log_maxver: 3           # Mantener 3 rotaciones
+kea_log_severity: "INFO"

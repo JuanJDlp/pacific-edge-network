@@ -1,0 +1,15 @@
+---
+# ============================================================
+#  tasks/install.yml
+#  Instalación de paquetes Kea
+# ============================================================
+
+- name: Actualizar repositorios del sistema
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Instalar todos los paquetes de Kea
+  ansible.builtin.apt:
+    name: "{{ kea_package }}"
+    state: present

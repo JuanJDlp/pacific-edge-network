@@ -1,0 +1,35 @@
+---
+# ============================================================
+#  provision/setup_ssh.yml
+#  Copia tu llave pública al Mini PC (se ejecuta UNA sola vez)
+#  Después de esto ya no necesitas contraseña nunca más
+# ============================================================
+
+- name: Copiar llave SSH al Mini PC
+  hosts: minipc
+  become: false    # no necesita sudo para esto
+
+  tasks:
+
+    - name: Copiar llave pública al authorized_keys del Mini PC
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user }}"
+        state: present
+        key: "{{ lookup('file', '/home/jjarias/.ssh/id_rsa.pub') }}"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

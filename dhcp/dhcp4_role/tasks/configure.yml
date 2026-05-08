@@ -1,0 +1,15 @@
+---
+# ============================================================
+#  tasks/configure.yml
+#  Renderizar y desplegar kea-dhcp4.conf desde el template J2
+# ============================================================
+
+- name: Desplegar kea-dhcp4.conf desde template
+  ansible.builtin.template:
+    src: kea-dhcp4.conf.j2
+    dest: "{{ kea_config_file }}"
+    owner: "{{ kea_user }}"
+    group: "{{ kea_group }}"
+    mode: "0640"
+    validate: "kea-dhcp4 -t %s"   # valida la sintaxis antes de aplicar
+  notify: Reiniciar Kea DHCPv4

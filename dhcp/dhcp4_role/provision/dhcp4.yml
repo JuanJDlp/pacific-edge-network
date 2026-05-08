@@ -1,0 +1,30 @@
+---
+# ============================================================
+#  provision/dhcp4.yml
+#  Playbook principal — aplica el rol kea_dhcp4 al Mini PC
+#
+#  Uso:
+#    ansible-playbook -i inventory.yml provision/dhcp4.yml
+#
+#  Solo configurar (sin reinstalar):
+#    ansible-playbook -i inventory.yml provision/dhcp4.yml --tags config
+#
+#  Solo verificar:
+#    ansible-playbook -i inventory.yml provision/dhcp4.yml --tags verify
+# ============================================================
+
+- name: Configurar Kea DHCPv4 — Red Comunitaria Cerrito Bongo/Cocalito
+  hosts: minipc
+  become: true
+
+  vars_files:
+    - ../vars/main.yml
+
+  roles:
+    - role: kea_dhcp4
+
+  handlers:
+    - name: Reiniciar Kea DHCPv4
+      ansible.builtin.systemd:
+        name: "{{ kea_service }}"
+        state: restarted

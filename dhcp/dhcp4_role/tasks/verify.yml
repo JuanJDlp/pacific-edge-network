@@ -1,0 +1,28 @@
+---
+# ============================================================
+#  tasks/verify.yml
+#  Verificar que Kea esté escuchando en el puerto 67 (UDP)
+#  Equivalente al comando: ss -tuln | grep 67
+# ============================================================
+
+- name: Consultar puertos activos
+  ansible.builtin.command:
+    cmd: "ss -tuln"
+  register: ss_output
+  changed_when: false
+
+- name: Confirmar que el puerto 67 está activo
+  ansible.builtin.assert:
+    that: "':67' in ss_output.stdout"
+    success_msg: "Puerto 67 ACTIVO — Kea está escuchando correctamente."
+    fail_msg: "FALLO: Puerto 67 no encontrado. Revisar logs en {{ kea_log_file }}"
+
+- name: Mostrar estado del servicio Kea
+  ansible.builtin.command:
+    cmd: "systemctl status {{ kea_service }} --no-pager"
+  register: kea_status
+  changed_when: false
+
+- name: Imprimir estado del servicio
+  ansible.builtin.debug:
+    var: kea_status.stdout_lines

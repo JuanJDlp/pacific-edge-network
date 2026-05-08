@@ -1,0 +1,30 @@
+---
+# ============================================================
+#  tasks/directories.yml
+#  Crear directorios y establecer permisos correctos
+#  Requisito del lab: el propietario del config debe ser _kea
+# ============================================================
+
+- name: Crear directorio de leases
+  ansible.builtin.file:
+    path: "{{ kea_leases_dir }}"
+    state: directory
+    owner: "{{ kea_user }}"
+    group: "{{ kea_group }}"
+    mode: "0750"
+
+- name: Asegurar que el archivo de leases exista
+  ansible.builtin.file:
+    path: "{{ kea_leases_file }}"
+    state: touch
+    owner: "{{ kea_user }}"
+    group: "{{ kea_group }}"
+    mode: "0640"
+
+- name: Crear directorio de logs de Kea
+  ansible.builtin.file:
+    path: "{{ kea_log_dir }}"
+    state: directory
+    owner: "{{ kea_user }}"
+    group: "{{ kea_group }}"
+    mode: "0750"
