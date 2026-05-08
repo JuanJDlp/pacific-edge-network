@@ -1,0 +1,75 @@
+enable
+configure terminal
+
+! ==================== CONFIGURACIÓN BÁSICA ====================
+hostname SW-CORE-BONGO
+
+enable secret password
+
+no ip http server
+no ip http secure-server
+
+! ==================== ACCESO REMOTO (TELNET) ====================
+line vty 0 15
+ login local
+ transport input telnet
+ exec-timeout 30 0
+exit
+
+! ==================== CREACIÓN DE VLANS ====================
+vlan 10
+exit
+vlan 20
+exit
+vlan 30
+exit
+vlan 40
+exit
+
+! ==================== DIRECCIONAMIENTO (SVIs) ====================
+interface vlan 10
+ ip address 192.168.10.2 255.255.255.0
+ no shutdown
+exit
+
+! ==================== GATEWAY DE GESTIÓN ====================
+ip default-gateway 192.168.10.1
+
+! ==================== SPANNING-TREE ====================
+spanning-tree mode rapid-pvst
+
+! ==================== CONFIGURACIÓN DE PUERTOS ====================
+
+! Puertos 1-2: VLAN 20 (access)
+interface range FastEthernet0/1 - 2
+ switchport mode access
+ switchport access vlan 20
+ spanning-tree portfast
+exit
+
+! Puerto 3: Radio Enlace 900MHz — VLAN 10 (access)
+interface FastEthernet0/3
+ switchport mode access
+ switchport access vlan 10
+exit
+
+! Puerto 4: Access Point (trunk)
+interface FastEthernet0/4
+ switchport mode trunk
+ switchport trunk allowed vlan 20,30
+ switchport trunk native vlan 1
+exit
+
+! Puerto 24: Uplink al Mini PC (trunk)
+interface FastEthernet0/24
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30,40
+ switchport trunk native vlan 1
+exit
+
+! ==================== HORA ====================
+clock timezone COT -5
+
+end
+
+write memory
