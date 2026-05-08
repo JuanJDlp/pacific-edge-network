@@ -5,8 +5,8 @@
 #  Se cargan automáticamente según el ansible_os_family
 # ============================================================
 
-kea_package: "isc-kea*"
-kea_service: "isc-kea-dhcp4-server.service"
+kea_package: "kea-dhcp4-server"
+kea_service: "kea-dhcp4-server.service"
 kea_user: "_kea"
 kea_group: "_kea"
 kea_config_dir: "/etc/kea"

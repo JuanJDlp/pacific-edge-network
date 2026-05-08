@@ -1,0 +1,22 @@
+# Managed by Ansible — do not edit manually
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    {{ wan_interface }}:
+      dhcp4: true
+      dhcp6: false
+    {{ lan_interface }}:
+      dhcp4: false
+      dhcp6: false
+  vlans:
+{% for vlan in vlans %}
+    {{ lan_interface }}.{{ vlan.id }}:
+      id: {{ vlan.id }}
+      link: {{ lan_interface }}
+      addresses:
+        - {{ vlan.ipv4_address }}/{{ vlan.ipv4_prefix }}
+        - {{ vlan.ipv6_address }}/{{ vlan.ipv6_prefix }}
+      dhcp4: false
+      dhcp6: false
+{% endfor %}

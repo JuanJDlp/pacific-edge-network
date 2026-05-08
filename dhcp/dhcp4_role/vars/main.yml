@@ -7,7 +7,8 @@
 # ============================================================
 
 # --- Interfaz de escucha del Mini PC hacia el switch core ---
-kea_listen_interface: "eth0"
+# Usar * para escuchar en todas las interfaces (VLANs enp171s0.10/20/30)
+kea_listen_interface: "*"
 
 # --- Parámetros globales de arrendamiento (en segundos) ---
 kea_valid_lifetime: 4000    # Tiempo total del lease  (~1h 6m)
@@ -20,22 +21,29 @@ kea_lfc_interval: 3600      # Cada 1 hora
 # --- Subredes gestionadas ---
 kea_subnets:
 
+  - id: 10
+    description: "Gestión — VLAN 10"
+    subnet: "192.168.10.0/24"
+    pool_start: "192.168.10.50"
+    pool_end: "192.168.10.99"
+    gateway: "192.168.10.1"
+
+  - id: 20
+    description: "Servidores / Raspberry Pi — VLAN 20"
+    subnet: "192.168.20.0/24"
+    pool_start: "192.168.20.50"
+    pool_end: "192.168.20.99"
+    gateway: "192.168.20.1"
+
   - id: 30
     description: "Clientes Cerrito Bongo — VLAN 30"
     subnet: "192.168.30.0/24"
     pool_start: "192.168.30.100"
     pool_end: "192.168.30.200"
-    gateway: "192.168.30.1"      # VLAN 30 (relay hacia Mini PC)
+    gateway: "192.168.30.1"
 
-  - id: 40
-    description: "Clientes Cocalito — VLAN 40"
-    subnet: "192.168.40.0/24"
-    pool_start: "192.168.40.100"
-    pool_end: "192.168.40.200"
-    gateway: "192.168.40.1"      # CPE Cocalito (relay vía radioenlace)
-
-# --- DNS —  en el Mini PC (único servidor visible para clientes) ---
-kea_dns_servers: "192.168.20.1"
+# --- DNS — apunta a Pi-hole cuando esté instalado en VLAN10 ---
+kea_dns_servers: "192.168.10.1"
 
 # --- Dominio de búsqueda interno (cambiar por el dominio de GoDaddy) ---
 kea_domain_search: "comunitaria.local"

@@ -22,29 +22,15 @@ vlan 40
  name Enlace_Cocalito
 
 ! ==================== Interfaces VLAN (SVIs) ====================
+! Solo VLAN 10 tiene SVI — únicamente para gestión del switch
+! Las demás VLANs NO tienen IP: el Mini PC (192.168.X.1) es el gateway de cada una
 interface Vlan10
  description Gestion
  ip address 192.168.10.4 255.255.255.0
  no shutdown
 
-interface Vlan20
- description Servidores
- ip address 192.168.20.4 255.255.255.0
- no shutdown
-
-interface Vlan30
- description Clientes_Cerrito_Bongo
- ip address 192.168.30.4 255.255.255.0
- no shutdown
-
-interface Vlan40
- description Enlace_Cocalito
- ip address 192.168.40.4 255.255.255.0
- no shutdown
-
 ! ==================== Configuración Global ====================
 spanning-tree mode rapid-pvst
-ipv6 unicast-routing
 
 ! ==================== PUERTOS ====================
 

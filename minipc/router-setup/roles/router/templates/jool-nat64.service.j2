@@ -1,0 +1,12 @@
+[Unit]
+Description=Jool NAT64 instance
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/jool instance add {{ jool_instance_name }} --netfilter --pool6 {{ nat64_prefix }}
+ExecStop=/usr/bin/jool instance remove {{ jool_instance_name }}
+
+[Install]
+WantedBy=multi-user.target

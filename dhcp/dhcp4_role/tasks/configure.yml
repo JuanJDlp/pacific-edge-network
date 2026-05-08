@@ -11,5 +11,11 @@
     owner: "{{ kea_user }}"
     group: "{{ kea_group }}"
     mode: "0640"
-    validate: "kea-dhcp4 -t %s"   # valida la sintaxis antes de aplicar
   notify: Reiniciar Kea DHCPv4
+
+- name: Validar sintaxis del config de Kea
+  ansible.builtin.shell:
+    cmd: "sudo -u {{ kea_user }} /usr/sbin/kea-dhcp4 -t {{ kea_config_file }} 2>&1 | tail -3"
+  changed_when: false
+  register: kea_syntax_check
+  failed_when: kea_syntax_check.rc != 0

@@ -1,0 +1,82 @@
+#!/usr/sbin/nft -f
+# Managed by Ansible — do not edit manually
+
+flush ruleset
+
+{% set vlan_ifaces = [] %}
+{% for vlan in vlans %}
+{% set _ = vlan_ifaces.append(lan_interface ~ '.' ~ vlan.id) %}
+{% endfor %}
+
+# ─── IPv4/IPv6 filter ────────────────────────────────────────────────────────
+
+table inet filter {
+
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Allow loopback unconditionally
+        iif lo accept
+
+        # Allow management interface (Tailscale VPN) unconditionally
+        iif {{ mgmt_interface }} accept
+
+        # Allow established and related traffic
+        ct state established,related accept
+
+        # Drop invalid state
+        ct state invalid drop
+
+        # Allow ICMP / ICMPv6 (ping, NDP, etc.)
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # Allow from LAN VLANs: SSH, DNS, HTTP, HTTPS
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport { 22, 53, 80, 443 } accept
+
+        # Allow from LAN VLANs: DNS, DHCP, NTP (UDP)
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport { 53, 67, 68, 123 } accept
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+
+        # Allow established and related traffic
+        ct state established,related accept
+
+        # Drop invalid state
+        ct state invalid drop
+
+        # Allow any VLAN to WAN (outbound internet)
+        iif { {{ vlan_ifaces | join(', ') }} } oif {{ wan_interface }} accept
+
+        # Allow VLAN30 (clients) → VLAN20 (servers) new connections
+        iif {{ lan_interface }}.30 oif {{ lan_interface }}.20 accept
+
+        # VLAN20 → VLAN30 is implicitly blocked by policy drop
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}
+
+# ─── IPv4 NAT ─────────────────────────────────────────────────────────────────
+
+table ip nat {
+
+    chain prerouting {
+        type nat hook prerouting priority -100;
+
+        # Redirect all DNS queries from LAN to internal DNS server (Pi-hole)
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 dnat to {{ dns_redirect_ip }}:53
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 dnat to {{ dns_redirect_ip }}:53
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority 100;
+
+        # NAT44 masquerade for all LAN traffic leaving via WAN
+        oif {{ wan_interface }} masquerade
+    }
+}

@@ -1,0 +1,35 @@
+---
+# Network interfaces (adjust if different on target host)
+wan_interface: enp170s0
+lan_interface: enp171s0
+mgmt_interface: wt0   # Tailscale VPN - must not be blocked
+
+# VLAN definitions
+vlans:
+  - id: 10
+    name: Gestion
+    ipv4_address: "192.168.10.1"
+    ipv4_prefix: 24
+    ipv6_address: "fd00:0:0:10::1"
+    ipv6_prefix: 64
+  - id: 20
+    name: Servidores
+    ipv4_address: "192.168.20.1"
+    ipv4_prefix: 24
+    ipv6_address: "fd00:0:0:20::1"
+    ipv6_prefix: 64
+  - id: 30
+    name: Clientes
+    ipv4_address: "192.168.30.1"
+    ipv4_prefix: 24
+    ipv6_address: "fd00:0:0:30::1"
+    ipv6_prefix: 64
+
+# Forced internal DNS redirect destination (Pi-hole will listen here)
+dns_redirect_ip: "192.168.10.1"
+
+# NAT64 pool6 prefix
+nat64_prefix: "64:ff9b::/96"
+
+# Jool instance name
+jool_instance_name: "default"

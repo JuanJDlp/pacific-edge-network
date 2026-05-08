@@ -21,7 +21,7 @@
     - ../vars/main.yml
 
   roles:
-    - role: kea_dhcp4
+    - role: dhcp4_role
 
   handlers:
     - name: Reiniciar Kea DHCPv4

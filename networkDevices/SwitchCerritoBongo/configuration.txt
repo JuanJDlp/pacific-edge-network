@@ -1,4 +1,4 @@
-! El usuario es cisco 
+! El usuario es cisco
 ! La contraseña es cisco
 
 configure terminal
@@ -26,35 +26,21 @@ vlan 10,20,30,40
 exit
 configure terminal
 ! ==================== DIRECCIONAMIENTO (SVIs) ====================
+! Solo VLAN 10 tiene SVI — únicamente para gestión del switch
+! Las demás VLANs NO tienen IP: el Mini PC (192.168.X.1) es el gateway de cada una
 interface vlan 10
  ip address 192.168.10.2 255.255.255.0
  no shutdown
 exit
 
-interface vlan 20
- ip address 192.168.20.1 255.255.255.0
- no shutdown
-exit
-
-interface vlan 30
- ip address 192.168.30.1 255.255.255.0
- no shutdown
-exit
-
-interface vlan 40
- ip address 192.168.40.1 255.255.255.0
- no shutdown
-exit
-
-! ==================== RUTEO Y GATEWAY ====================
-ip routing
-! El gateway ahora sí funcionará porque la VLAN 10 ya tiene IP
-ip route 0.0.0.0 0.0.0.0 192.168.10.1
+! ==================== GATEWAY DE GESTIÓN ====================
+! Apunta al Mini PC para que el switch pueda ser alcanzado desde otras redes
+ip default-gateway 192.168.10.1
 
 ! ==================== CONFIGURACIÓN DE PUERTOS ====================
 spanning-tree mode rstp
 
-! Puertos 1 y 2: Servidores (MiniPC / RPi5)
+! Puerto 1: libre (el Mini PC conecta como router por el puerto 24)
 interface range gi1/0/1-2
  switchport mode access
  switchport access vlan 20
@@ -73,7 +59,7 @@ interface gi1/0/4
  switchport trunk allowed vlan add 20,30
 exit
 
-! Puerto 24: Uplink a pfSense
+! Puerto 24: Uplink al Mini PC (router)
 interface gi1/0/24
  switchport mode trunk
  switchport trunk allowed vlan add 10,20,30,40

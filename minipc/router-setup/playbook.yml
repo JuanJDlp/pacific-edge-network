@@ -1,0 +1,134 @@
+---
+# ─── Play 1: Configure Mini PC as router ─────────────────────────────────────
+
+- name: Configure Mini PC as network router
+  hosts: minipc
+  gather_facts: true
+  roles:
+    - router
+
+# ─── Play 2: Verification ─────────────────────────────────────────────────────
+
+- name: Verify router configuration
+  hosts: minipc
+  gather_facts: false
+  tags: verify
+
+  tasks:
+
+    # --- Network basics ---
+
+    - name: Ping external router (gateway)
+      ansible.builtin.command:
+        cmd: ping -c 3 -W 2 192.168.0.1
+      register: ping_gateway
+      changed_when: false
+      failed_when: false
+
+    - name: Report ping to external router
+      ansible.builtin.debug:
+        msg: "{{ 'OK — reached external router' if ping_gateway.rc == 0 else 'FAIL — cannot reach 192.168.0.1' }}"
+
+    - name: Ping 8.8.8.8 (internet)
+      ansible.builtin.command:
+        cmd: ping -c 3 -W 2 8.8.8.8
+      register: ping_internet
+      changed_when: false
+      failed_when: false
+
+    - name: Report ping to internet
+      ansible.builtin.debug:
+        msg: "{{ 'OK — internet reachable' if ping_internet.rc == 0 else 'FAIL — cannot reach 8.8.8.8' }}"
+
+    - name: Ping VLAN20 gateway from VLAN30 perspective (inter-VLAN)
+      ansible.builtin.command:
+        cmd: ping -c 3 -W 2 -I {{ lan_interface }}.30 192.168.20.1
+      register: ping_inter_vlan
+      changed_when: false
+      failed_when: false
+      vars:
+        lan_interface: enp171s0
+
+    - name: Report inter-VLAN ping result
+      ansible.builtin.debug:
+        msg: "{{ 'OK — inter-VLAN reachable (VLAN30→VLAN20)' if ping_inter_vlan.rc == 0 else 'FAIL — cannot reach 192.168.20.1 via VLAN30' }}"
+
+    # --- Forwarding ---
+
+    - name: Read ip_forward value
+      ansible.builtin.slurp:
+        src: /proc/sys/net/ipv4/ip_forward
+      register: ip_forward_val
+
+    - name: Assert ip_forward is enabled
+      ansible.builtin.assert:
+        that: ip_forward_val.content | b64decode | trim == '1'
+        fail_msg: "ip_forward is not 1"
+        success_msg: "OK — ip_forward = 1"
+
+    - name: Check VLAN routes in routing table
+      ansible.builtin.command:
+        cmd: ip route show
+      register: route_table
+      changed_when: false
+
+    - name: Assert VLAN routes are present
+      ansible.builtin.assert:
+        that:
+          - "'192.168.10.0/24' in route_table.stdout"
+          - "'192.168.20.0/24' in route_table.stdout"
+          - "'192.168.30.0/24' in route_table.stdout"
+        fail_msg: "One or more VLAN routes missing from routing table"
+        success_msg: "OK — all VLAN routes present"
+
+    - name: Check nftables forward rules
+      ansible.builtin.command:
+        cmd: nft list chain inet filter forward
+      register: nft_forward
+      changed_when: false
+
+    - name: Assert nftables forward chain has rules
+      ansible.builtin.assert:
+        that: nft_forward.stdout | length > 0
+        fail_msg: "nftables forward chain appears empty"
+        success_msg: "OK — nftables forward chain has rules"
+
+    # --- NAT64 ---
+
+    - name: Check Jool kernel module is loaded
+      ansible.builtin.command:
+        cmd: lsmod
+      register: lsmod_output
+      changed_when: false
+
+    - name: Assert Jool module is loaded
+      ansible.builtin.assert:
+        that: "'jool' in lsmod_output.stdout"
+        fail_msg: "Jool kernel module is NOT loaded — reboot may be required"
+        success_msg: "OK — Jool module is loaded"
+
+    - name: Check Jool instance display
+      ansible.builtin.command:
+        cmd: jool instance display
+      register: jool_instances
+      changed_when: false
+      failed_when: false
+
+    - name: Assert Jool NAT64 instance exists
+      ansible.builtin.assert:
+        that: jool_instances.rc == 0 and jool_instances.stdout | length > 0
+        fail_msg: "No Jool NAT64 instance found"
+        success_msg: "OK — Jool instance active"
+
+    - name: Check Jool pool6 prefix
+      ansible.builtin.command:
+        cmd: jool global display
+      register: jool_global
+      changed_when: false
+      failed_when: false
+
+    - name: Assert NAT64 prefix 64:ff9b::/96 is configured
+      ansible.builtin.assert:
+        that: "'64:ff9b::/96' in jool_global.stdout"
+        fail_msg: "NAT64 prefix 64:ff9b::/96 not found in Jool config"
+        success_msg: "OK — NAT64 prefix 64:ff9b::/96 is configured"
