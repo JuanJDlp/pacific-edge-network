@@ -33,3 +33,6 @@ nat64_prefix: "64:ff9b::/96"
 
 # Jool instance name
 jool_instance_name: "default"
+
+# Captive portal
+captive_portal_port: 2050

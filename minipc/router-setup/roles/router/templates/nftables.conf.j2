@@ -7,53 +7,65 @@ flush ruleset
 {% for vlan in vlans %}
 {% set _ = vlan_ifaces.append(lan_interface ~ '.' ~ vlan.id) %}
 {% endfor %}
+{% set client_iface = lan_interface ~ '.30' %}
+{% set client_vlan_ip = (vlans | selectattr('id', 'equalto', 30) | first).ipv4_address %}
 
-# ─── IPv4/IPv6 filter ────────────────────────────────────────────────────────
+# ─── IPv4/IPv6 filter + captive portal ───────────────────────────────────────
 
 table inet filter {
+
+    # IPs de clientes VLAN30 que aceptaron el portal cautivo (timeout 8h)
+    set captive_allowed {
+        type ipv4_addr
+        flags dynamic, timeout
+        timeout 8h
+        comment "Clientes VLAN30 autenticados via portal cautivo"
+    }
+
+    # Mangle prerouting: marca (0x1) paquetes de clientes ya autenticados.
+    # Prioridad mangle (-150) corre antes del DNAT (-100) en ip nat.
+    chain captive_mangle {
+        type filter hook prerouting priority mangle; policy accept;
+        iif "{{ client_iface }}" ip saddr @captive_allowed meta mark set 0x1
+    }
 
     chain input {
         type filter hook input priority 0; policy drop;
 
-        # Allow loopback unconditionally
         iif lo accept
-
-        # Allow management interface (Tailscale VPN) unconditionally
         iif {{ mgmt_interface }} accept
-
-        # Allow established and related traffic
         ct state established,related accept
-
-        # Drop invalid state
         ct state invalid drop
-
-        # Allow ICMP / ICMPv6 (ping, NDP, etc.)
         ip protocol icmp accept
         ip6 nexthdr icmpv6 accept
 
-        # Allow from LAN VLANs: SSH, DNS, HTTP, HTTPS
+        # SSH, DNS, HTTP, HTTPS desde VLANs LAN
         iif { {{ vlan_ifaces | join(', ') }} } tcp dport { 22, 53, 80, 443 } accept
 
-        # Allow from LAN VLANs: DNS, DHCP, NTP (UDP)
+        # DNS, DHCP, NTP (UDP) desde VLANs LAN
         iif { {{ vlan_ifaces | join(', ') }} } udp dport { 53, 67, 68, 123 } accept
+
+        # Puerto del servidor del portal cautivo — solo VLAN30
+        iif "{{ client_iface }}" tcp dport {{ captive_portal_port }} accept
     }
 
     chain forward {
         type filter hook forward priority 0; policy drop;
 
-        # Allow established and related traffic
         ct state established,related accept
-
-        # Drop invalid state
         ct state invalid drop
 
-        # Allow any VLAN to WAN (outbound internet)
-        iif { {{ vlan_ifaces | join(', ') }} } oif {{ wan_interface }} accept
+        # VLAN10 (gestión) y VLAN20 (servidores) → WAN: siempre permitido
+        iif { {{ lan_interface }}.10, {{ lan_interface }}.20 } oif {{ wan_interface }} accept
 
-        # Allow VLAN30 (clients) → VLAN20 (servers) new connections
-        iif {{ lan_interface }}.30 oif {{ lan_interface }}.20 accept
+        # VLAN30 (clientes) → WAN: solo clientes autenticados en portal
+        iif "{{ client_iface }}" oif {{ wan_interface }} ip saddr @captive_allowed accept
 
-        # VLAN20 → VLAN30 is implicitly blocked by policy drop
+        # VLAN30 → VLAN20 (servidores, path etiquetado): solo autenticados
+        iif "{{ client_iface }}" oif {{ lan_interface }}.20 ip saddr @captive_allowed accept
+
+        # VLAN30 → servidores (path sin etiqueta, workaround switch): solo autenticados
+        iif "{{ client_iface }}" oif {{ lan_interface }} ip saddr @captive_allowed accept
     }
 
     chain output {
@@ -68,15 +80,17 @@ table ip nat {
     chain prerouting {
         type nat hook prerouting priority -100;
 
-        # Redirect all DNS queries from LAN to internal DNS server (Pi-hole)
+        # Redirigir DNS de todas las VLANs al servidor DNS interno (Pi-hole)
         iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 dnat to {{ dns_redirect_ip }}:53
         iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 dnat to {{ dns_redirect_ip }}:53
+
+        # Portal cautivo: interceptar HTTP de clientes VLAN30 NO autenticados.
+        # mark 0x1 = ya autenticado (puesto por captive_mangle).
+        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 80 dnat to {{ client_vlan_ip }}:{{ captive_portal_port }}
     }
 
     chain postrouting {
         type nat hook postrouting priority 100;
-
-        # NAT44 masquerade for all LAN traffic leaving via WAN
         oif {{ wan_interface }} masquerade
     }
 }
