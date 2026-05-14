@@ -1,0 +1,87 @@
+---
+# ========================================
+# CONFIGURACIÓN DEL DOMINIO
+# ========================================
+dns_domain: "plataformas.tel"
+dns_reverse_zone: "20.168.192"  # Para red 192.168.20.0/24
+
+# ========================================
+# SERVIDOR DNS PRIMARIO (Mini PC)
+# ========================================
+dns_primary_ns: "ns1"
+dns_primary_ip: "192.168.20.10"  # Mini PC
+
+# ========================================
+# RED PERMITIDA
+# ========================================
+dns_network: "192.168.20.0"
+dns_netmask: "24"
+
+# ========================================
+# SERVIDORES DNS SECUNDARIOS
+# ========================================
+dns_slaves: []
+
+# ========================================
+# HOSTS A REGISTRAR EN DNS
+# ========================================
+dns_hosts:
+  # --- Infraestructura Core ---
+  - name: "minipc"
+    ip: "192.168.20.10"
+  
+  - name: "ns1"
+    ip: "192.168.20.10"
+  
+  - name: "gateway"
+    ip: "192.168.20.1"
+  
+  # --- Raspberry Pi (Servidor de Servicios) ---
+  - name: "rpi"
+    ip: "192.168.20.11"
+  
+  - name: "services"
+    ip: "192.168.20.11"
+  
+  # --- Servicios en RPi (todos apuntan a 192.168.20.?) ---
+  - name: "matrix"
+    ip: "192.168.20.11"
+  
+  - name: "kiwix"
+    ip: "192.168.20.11"
+  
+  - name: "squid"
+    ip: "192.168.20.11"
+  
+  - name: "kolibri"
+    ip: "192.168.20.11"
+  
+  - name: "jellyfin"
+    ip: "192.168.20.11"
+  
+  - name: "wiki"
+    ip: "192.168.20.11"
+
+
+# ========================================
+# ALIAS CNAME (para facilidad de uso)
+# ========================================
+dns_aliases:
+  # Alias para servicios
+  - name: "chat"
+    target: "matrix"
+  
+  - name: "mensajeria"
+    target: "matrix"
+  
+  - name: "wikipedia"
+    target: "kiwix"
+  
+  - name: "proxy"
+    target: "squid"
+  
+  - name: "educacion"
+    target: "kolibri"
+  
+  - name: "media"
+    target: "jellyfin"
