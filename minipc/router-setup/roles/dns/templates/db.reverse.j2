@@ -14,7 +14,7 @@ $TTL    3600
 @   IN  NS  {{ dns_primary_ns }}.{{ dns_domain }}.
 
 ; PTR records — solo los hosts de esta subred
-{% set vlan_prefix = reverse_zone.split('.')[-1] %}
+{% set vlan_prefix = reverse_zone.split('.')[0] %}
 {% for host in dns_hosts %}
 {% if host.ip.startswith('192.168.' ~ vlan_prefix ~ '.') %}
 {{ host.ip.split('.')[-1] }}  IN  PTR {{ host.name }}.{{ dns_domain }}.
