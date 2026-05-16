@@ -15,10 +15,9 @@ scrape_configs:
       - target_label: instance
         replacement: minipc
 
-  # RPi — node_exporter debe estar instalado en la RPi en el futuro
-  # - job_name: 'rpi_node'
-  #   static_configs:
-  #     - targets: ['{{ rpi_ip }}:9100']
-  #   relabel_configs:
-  #     - target_label: instance
-  #       replacement: rpi5-servicios
+  - job_name: 'rpi_node'
+    static_configs:
+      - targets: ['192.168.20.10:9100']
+    relabel_configs:
+      - target_label: instance
+        replacement: rpi-servicios

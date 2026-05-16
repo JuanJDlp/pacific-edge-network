@@ -1,0 +1,54 @@
+---
+- name: Asegurar nginx instalado
+  apt:
+    name: nginx
+    state: present
+  become: true
+
+- name: Desplegar vhost biblioteca
+  template:
+    src: biblioteca.nginx.j2
+    dest: /etc/nginx/sites-available/biblioteca
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload nginx
+
+- name: Habilitar vhost biblioteca
+  file:
+    src: /etc/nginx/sites-available/biblioteca
+    dest: /etc/nginx/sites-enabled/biblioteca
+    state: link
+  become: true
+  notify: reload nginx
+
+- name: Desplegar snippet kiwix-proxy
+  template:
+    src: kiwix-proxy.conf.j2
+    dest: /etc/nginx/snippets/kiwix-proxy.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload nginx
+
+- name: Deshabilitar vhost default de nginx
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: true
+  notify: reload nginx
+
+- name: Validar configuración nginx
+  command: nginx -t
+  become: true
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Habilitar e iniciar nginx
+  systemd:
+    name: nginx
+    enabled: true
+    state: started
+  become: true

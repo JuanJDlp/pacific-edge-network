@@ -7,7 +7,7 @@
 zone "{{ dns_domain }}" {
     type master;
     file "/etc/bind/zones/db.{{ dns_domain }}";
-    allow-transfer { none; };
+    allow-transfer { {{ dns_slave_ip }}; };  // RPi DNS secundario
 };
 
 //
@@ -17,7 +17,7 @@ zone "{{ dns_domain }}" {
 zone "{{ rz }}.in-addr.arpa" {
     type master;
     file "/etc/bind/zones/db.{{ rz }}";
-    allow-transfer { none; };
+    allow-transfer { {{ dns_slave_ip }}; };  // RPi DNS secundario
 };
 
 {% endfor %}

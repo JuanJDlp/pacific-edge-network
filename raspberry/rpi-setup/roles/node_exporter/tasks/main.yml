@@ -1,0 +1,14 @@
+---
+- name: Instalar prometheus-node-exporter
+  apt:
+    name: prometheus-node-exporter
+    state: present
+  become: true
+
+- name: Habilitar e iniciar node_exporter
+  systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"

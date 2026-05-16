@@ -1,0 +1,7 @@
+---
+- name: restart named
+  systemd:
+    name: named
+    state: restarted
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"

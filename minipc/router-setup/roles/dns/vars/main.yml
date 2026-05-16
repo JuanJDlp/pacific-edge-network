@@ -45,6 +45,9 @@ dns_hosts:
   - { name: "biblioteca",  ip: "192.168.20.10", vlan_octet: "20" }
   - { name: "rpi",         ip: "192.168.20.10", vlan_octet: "20" }
 
+# IP del DNS secundario (RPi) para zone transfers
+dns_slave_ip: "192.168.20.10"
+
 # CNAME: servicios educativos → biblioteca (RPi)
 dns_aliases:
   - { name: "wikipedia",  target: "biblioteca" }

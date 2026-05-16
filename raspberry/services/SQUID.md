@@ -1,0 +1,79 @@
+# Squid — Caché web offline + forward proxy
+
+## Rol Ansible
+
+`raspberry/rpi-setup/roles/squid/`
+
+## Descripción
+
+Squid en la RPi cumple dos roles según el puerto:
+
+| Puerto | Modo | Propósito |
+|--------|------|-----------|
+| 3128 | `intercept` | Captura tráfico HTTP local de la RPi |
+| 3129 | `accel vhost allow-direct` | Recibe requests del Mini PC nginx y los sirve con caché |
+
+## Flujo para clientes autenticados (VLAN30)
+
+```
+Cliente VLAN30 (mark=0x1) → tcp dport 80
+    │  nftables DNAT → 192.168.30.1:8888 (nginx intermediario Mini PC)
+    ▼
+nginx Mini PC :8888
+    │  proxy_pass + Host header → 192.168.20.10:3129
+    ▼
+Squid RPi :3129 (accel vhost allow-direct)
+    │  Lee Host header para el destino (no necesita SO_ORIGINAL_DST)
+    ▼
+Internet / caché local
+```
+
+## Por qué `accel vhost allow-direct` en puerto 3129
+
+nginx (Mini PC) reenvía requests con URI relativa (`GET / HTTP/1.0`) y `Host: example.com`. Un forward proxy estándar espera URI absoluta (`GET http://example.com/ HTTP/1.0`). El modo `accel vhost` hace que Squid extraiga el destino del header `Host`, aceptando URIs relativas. `allow-direct` le permite conectarse directamente al origen.
+
+### El problema original (SO_ORIGINAL_DST)
+
+Sin el intermediario nginx, el flujo era `Cliente → DNAT → 192.168.20.10:3128 (intercept)`. Squid intercept en RPi llama `SO_ORIGINAL_DST` al kernel de la RPi, pero el DNAT ocurrió en el Mini PC — el kernel de la RPi devuelve `192.168.20.10:3128` (el propio Squid). Squid detecta un loop → **403 Access Denied**.
+
+La solución fue usar el puerto 3129 en modo `accel vhost` + nginx intermediario en el Mini PC que construye el `Host` header correctamente.
+
+## Configuración de caché
+
+```
+cache_dir aufs /var/lib/biblioteca/squid-cache 10240 16 256
+cache_mem 512 MB
+maximum_object_size 128 MB
+```
+
+- **10 GB** en disco para contenido cacheado
+- **512 MB** en RAM para objetos frecuentes
+- `refresh_pattern . 43200 90% 525600` — retención muy larga (offline-first)
+
+## ACLs
+
+```squid
+acl localnet src 192.168.0.0/16  # Todos los VLANs
+acl localnet src 100.64.0.0/10   # Netbird CGNAT
+```
+
+## Archivos desplegados
+
+| Template Ansible | Destino en RPi |
+|---|---|
+| `templates/squid.conf.j2` | `/etc/squid/squid.conf` |
+
+## Verificación
+
+```bash
+# Squid escuchando en ambos puertos
+ss -tlnp | grep squid
+
+# Test forward proxy desde Mini PC
+curl --proxy http://192.168.20.10:3129 http://example.com
+# Primera vez: TCP_MISS; segunda vez: TCP_HIT
+
+# Logs
+tail -f /var/log/squid/access.log
+tail -f /var/log/squid/cache.log
+```

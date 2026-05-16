@@ -1,0 +1,8 @@
+---
+- name: Habilitar e iniciar Jellyfin
+  systemd:
+    name: jellyfin
+    enabled: true
+    state: started
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"

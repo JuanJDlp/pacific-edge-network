@@ -1,0 +1,11 @@
+---
+- name: reload systemd
+  systemd:
+    daemon_reload: true
+  become: true
+
+- name: restart kiwix-serve
+  systemd:
+    name: kiwix-serve
+    state: restarted
+  become: true

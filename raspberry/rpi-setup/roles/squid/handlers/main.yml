@@ -1,0 +1,6 @@
+---
+- name: reload squid
+  systemd:
+    name: squid
+    state: reloaded
+  become: true

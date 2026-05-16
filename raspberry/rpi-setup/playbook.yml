@@ -1,0 +1,13 @@
+---
+- name: RPi — Servicios educativos biblioteca digital
+  hosts: rpi
+  become: true
+
+  roles:
+    - nginx
+    - squid
+    - kiwix
+    - kolibri
+    - jellyfin
+    - node_exporter
+    - dns_secondary

@@ -1,0 +1,46 @@
+# =============================================================================
+# /etc/squid/squid.conf — Biblioteca offline web cache
+# Managed by Ansible — do not edit manually
+# =============================================================================
+
+# Puerto 3129: forward proxy acelerado (Mini PC nginx le envía requests con Host header)
+# Puerto 3128: intercept (tráfico local de la RPi)
+http_port 3129 accel vhost allow-direct
+http_port 3128 intercept
+
+# --- ACL: quién puede usar el proxy -----------------------------------------
+acl localnet src 10.0.0.0/8           # RFC1918
+acl localnet src 172.16.0.0/12        # RFC1918
+acl localnet src 192.168.0.0/16       # RFC1918
+acl localnet src 100.64.0.0/10        # RFC6598 CGNAT (Netbird/Tailscale)
+acl SSL_ports port 443
+acl Safe_ports port 80
+acl Safe_ports port 443
+acl Safe_ports port 1025-65535
+acl CONNECT method CONNECT
+
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access allow localhost
+http_access allow localnet
+http_access deny all
+always_direct allow all
+
+# --- Cache storage -----------------------------------------------------------
+cache_dir aufs /var/lib/biblioteca/squid-cache 10240 16 256
+cache_mem 512 MB
+maximum_object_size 128 MB
+maximum_object_size_in_memory 4 MB
+
+# --- Logs -------------------------------------------------------------------
+access_log /var/log/squid/access.log squid
+cache_log  /var/log/squid/cache.log
+coredump_dir /var/spool/squid
+
+# --- Refresh patterns: retención larga para offline -------------------------
+refresh_pattern ^ftp:           1440    20%     10080
+refresh_pattern ^gopher:        1440    0%      1440
+refresh_pattern -i (/cgi-bin/|\?) 0     0%      0
+refresh_pattern .               43200   90%     525600
+
+visible_hostname {{ dns_domain }}
