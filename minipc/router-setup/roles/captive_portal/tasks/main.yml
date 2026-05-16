@@ -1,0 +1,131 @@
+---
+- name: Instalar nginx
+  apt:
+    name: nginx
+    state: present
+    update_cache: true
+  become: true
+
+- name: Crear directorio del portal cautivo
+  file:
+    path: /etc/captive-portal
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+  become: true
+
+- name: Copiar splash.html
+  copy:
+    src: splash.html
+    dest: /etc/captive-portal/splash.html
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+  notify: reload nginx
+
+- name: Copiar captive-accept.py
+  copy:
+    src: captive-accept.py
+    dest: /usr/local/bin/captive-accept.py
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  notify: restart captive-accept
+
+# ── nginx: desactivar sitio default ──────────────────────────────────────────
+- name: Eliminar sitio default de nginx
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: true
+  notify: reload nginx
+
+# ── nginx: splash page (puerto captive_portal_port) ─────────────────────────
+- name: Desplegar config nginx — portal cautivo (splash)
+  template:
+    src: captive-portal.nginx.j2
+    dest: /etc/nginx/sites-available/captive-portal
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload nginx
+
+- name: Habilitar sitio captive-portal en nginx
+  file:
+    src: /etc/nginx/sites-available/captive-portal
+    dest: /etc/nginx/sites-enabled/captive-portal
+    state: link
+  become: true
+  notify: reload nginx
+
+# ── nginx: http proxy intermediario (puerto http_proxy_port) ─────────────────
+- name: Desplegar config nginx — HTTP proxy intermediario para Squid
+  template:
+    src: http-proxy.nginx.j2
+    dest: /etc/nginx/sites-available/http-proxy
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload nginx
+
+- name: Habilitar sitio http-proxy en nginx
+  file:
+    src: /etc/nginx/sites-available/http-proxy
+    dest: /etc/nginx/sites-enabled/http-proxy
+    state: link
+  become: true
+  notify: reload nginx
+
+# ── Systemd units ─────────────────────────────────────────────────────────────
+- name: Desplegar unit captive-portal.service
+  template:
+    src: captive-portal.service.j2
+    dest: /etc/systemd/system/captive-portal.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify:
+    - reload systemd
+    - restart captive-portal
+
+- name: Desplegar unit captive-accept.service
+  template:
+    src: captive-accept.service.j2
+    dest: /etc/systemd/system/captive-accept.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify:
+    - reload systemd
+    - restart captive-accept
+
+- name: Habilitar e iniciar captive-accept
+  systemd:
+    name: captive-accept
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Habilitar e iniciar captive-portal (nginx)
+  systemd:
+    name: captive-portal
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Validar config nginx
+  command: nginx -t
+  become: true
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"

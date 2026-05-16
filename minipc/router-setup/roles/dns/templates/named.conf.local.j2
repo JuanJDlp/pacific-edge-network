@@ -1,0 +1,23 @@
+// Managed by Ansible — do not edit manually
+// Zonas locales para {{ dns_domain }}
+
+//
+// Zona directa
+//
+zone "{{ dns_domain }}" {
+    type master;
+    file "/etc/bind/zones/db.{{ dns_domain }}";
+    allow-transfer { none; };
+};
+
+//
+// Zonas inversas por VLAN
+//
+{% for rz in dns_reverse_zones %}
+zone "{{ rz }}.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zones/db.{{ rz }}";
+    allow-transfer { none; };
+};
+
+{% endfor %}

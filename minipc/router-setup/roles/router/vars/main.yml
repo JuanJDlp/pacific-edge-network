@@ -36,3 +36,13 @@ jool_instance_name: "default"
 
 # Captive portal
 captive_portal_port: 2050
+
+# HTTP proxy intermediario (nginx en Mini PC → Squid en RPi)
+# Soluciona el problema SO_ORIGINAL_DST en DNAT cross-machine
+http_proxy_port: 8888
+
+# IP de la RPi (excluida del DNAT de proxy para acceso directo a biblioteca.local)
+rpi_ip: "192.168.20.10"
+
+# Puerto forward proxy de Squid en la RPi (no intercept, evita loop detection)
+squid_forward_port: 3129

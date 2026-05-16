@@ -1,0 +1,29 @@
+---
+- name: reload nginx
+  systemd:
+    name: captive-portal
+    state: restarted
+  become: true
+
+- name: restart captive-portal
+  systemd:
+    name: captive-portal
+    state: restarted
+  become: true
+
+- name: restart captive-accept
+  systemd:
+    name: captive-accept
+    state: restarted
+  become: true
+
+- name: reload systemd
+  systemd:
+    daemon_reload: true
+  become: true
+
+- name: restart systemd-resolved
+  systemd:
+    name: systemd-resolved
+    state: restarted
+  become: true

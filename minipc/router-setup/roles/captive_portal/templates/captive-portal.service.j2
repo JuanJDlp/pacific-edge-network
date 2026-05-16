@@ -1,0 +1,22 @@
+# Managed by Ansible — do not edit manually
+[Unit]
+Description=Captive Portal — Pacific Edge Network (nginx)
+After=network-online.target nftables.service captive-accept.service
+Wants=network-online.target
+Requires=captive-accept.service
+
+[Service]
+Type=forking
+PIDFile=/run/nginx.pid
+ExecStartPre=/usr/sbin/nginx -t
+ExecStart=/usr/sbin/nginx
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s QUIT $MAINPID
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=captive-portal
+
+[Install]
+WantedBy=multi-user.target

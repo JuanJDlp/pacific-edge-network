@@ -1,0 +1,6 @@
+---
+- name: restart chrony
+  systemd:
+    name: chrony
+    state: restarted
+  become: true

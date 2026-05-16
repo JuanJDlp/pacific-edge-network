@@ -1,0 +1,36 @@
+---
+- name: Instalar chrony
+  apt:
+    name: chrony
+    state: present
+    update_cache: true
+  become: true
+
+- name: Desplegar configuración chrony
+  template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: restart chrony
+
+- name: Habilitar e iniciar chrony
+  systemd:
+    name: chrony
+    enabled: true
+    state: started
+  become: true
+
+- name: Verificar sincronización NTP
+  command: chronyc tracking
+  become: true
+  changed_when: false
+  register: chrony_tracking
+  ignore_errors: true
+
+- name: Mostrar estado de sincronización NTP
+  debug:
+    var: chrony_tracking.stdout_lines
+  when: chrony_tracking.rc == 0

@@ -1,0 +1,22 @@
+;
+; Zona inversa: {{ reverse_zone }}.in-addr.arpa
+; Managed by Ansible — do not edit manually
+;
+$TTL    3600
+@   IN  SOA {{ dns_primary_ns }}.{{ dns_domain }}. admin.{{ dns_domain }}. (
+            {{ ansible_date_time.epoch }} ; Serial (epoch)
+            3600                         ; Refresh
+            900                          ; Retry
+            604800                       ; Expire
+            300 )                        ; Negative TTL
+
+; Name server
+@   IN  NS  {{ dns_primary_ns }}.{{ dns_domain }}.
+
+; PTR records — solo los hosts de esta subred
+{% set vlan_prefix = reverse_zone.split('.')[-1] %}
+{% for host in dns_hosts %}
+{% if host.ip.startswith('192.168.' ~ vlan_prefix ~ '.') %}
+{{ host.ip.split('.')[-1] }}  IN  PTR {{ host.name }}.{{ dns_domain }}.
+{% endif %}
+{% endfor %}

@@ -1,0 +1,35 @@
+---
+- name: Instalar Kea DHCP4
+  apt:
+    name:
+      - kea-dhcp4-server
+    state: present
+    update_cache: true
+  become: true
+
+- name: Desplegar configuración Kea DHCP4
+  template:
+    src: kea-dhcp4.conf.j2
+    dest: /etc/kea/kea-dhcp4.conf
+    owner: _kea
+    group: _kea
+    mode: "0640"
+  become: true
+  notify: restart kea-dhcp4
+
+
+- name: Crear directorio de leases si no existe
+  file:
+    path: /var/lib/kea
+    state: directory
+    owner: _kea
+    group: _kea
+    mode: "0750"
+  become: true
+
+- name: Habilitar e iniciar Kea DHCP4
+  systemd:
+    name: kea-dhcp4-server
+    enabled: true
+    state: started
+  become: true

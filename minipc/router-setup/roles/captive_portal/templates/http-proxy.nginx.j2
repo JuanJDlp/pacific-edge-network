@@ -1,0 +1,43 @@
+# Managed by Ansible — do not edit manually
+# HTTP intermediario hacia Squid (RPi)
+#
+# Contexto: El DNAT cross-machine (Mini PC → RPi) hace que SO_ORIGINAL_DST en
+# la RPi devuelva 192.168.20.10:3128 (el propio Squid), disparando loop detection → 403.
+# Este nginx recibe el HTTP del cliente, reconstruye la petición con Host header
+# y la envía a Squid en modo forward proxy (puerto {{ squid_forward_port }}),
+# evitando el problema de intercept/SO_ORIGINAL_DST.
+#
+# Flujo:
+#   Cliente autenticado (mark=0x1) → HTTP → DNAT → Mini PC:{{ http_proxy_port }}
+#   → nginx (este server) → Squid RPi:{{ squid_forward_port }} (forward proxy)
+#   → Squid usa Host header para conectar al destino real
+
+server {
+    listen {{ http_proxy_port }};
+    server_name _;
+
+    # Resolver DNS interno para que nginx pueda resolver $http_host
+    resolver {{ dns_redirect_ip }} valid=30s ipv6=off;
+
+    # Tamaño máximo de buffer para headers grandes (Kolibri, etc.)
+    proxy_buffer_size       16k;
+    proxy_buffers           8 16k;
+    proxy_busy_buffers_size 32k;
+
+    location / {
+        # Squid actúa como forward proxy explícito: recibe Host header y conecta al destino.
+        # http_version 1.0 + Connection: "" evita chunked transfer encoding que
+        # Squid en forward proxy puede no manejar bien.
+        proxy_pass         http://{{ rpi_ip }}:{{ squid_forward_port }};
+        proxy_http_version 1.0;
+        proxy_set_header   Host       $http_host;
+        proxy_set_header   X-Real-IP  $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   Connection "";
+
+        # Timeouts generosos para contenido pesado (videos, ZIM files)
+        proxy_connect_timeout 10s;
+        proxy_read_timeout    120s;
+        proxy_send_timeout    120s;
+    }
+}

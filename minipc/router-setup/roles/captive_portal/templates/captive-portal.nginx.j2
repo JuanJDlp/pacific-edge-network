@@ -1,0 +1,47 @@
+# Managed by Ansible — do not edit manually
+# Portal cautivo — Splash page + OS probes
+# Puerto {{ captive_portal_port }}: sirve splash.html, maneja probes de OS, delega /accept al handler Python
+
+server {
+    listen {{ captive_portal_port }} default_server;
+    server_name _;
+
+    root /etc/captive-portal;
+    charset utf-8;
+
+    # ── OS Captive Portal Probes ─────────────────────────────────────────────
+    # Redirigir a la IP directa del Mini PC (no usar $host — apuntaría a
+    # dominios externos inaccesibles en el puerto {{ captive_portal_port }}).
+
+    # Android (connectivitycheck.gstatic.com/generate_204)
+    location = /generate_204 {
+        return 302 http://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    }
+
+    # macOS / iOS (captive.apple.com/hotspot-detect.html)
+    location = /hotspot-detect.html {
+        return 302 http://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    }
+
+    # Windows NCSI (/connecttest.txt, /ncsi.txt)
+    location = /connecttest.txt {
+        return 302 http://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    }
+    location = /ncsi.txt {
+        return 302 http://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    }
+
+    # ── Aceptar portal: delegar al handler Python (necesita root para nft) ───
+    location = /accept {
+        proxy_pass         http://127.0.0.1:{{ captive_accept_port }};
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_read_timeout 5s;
+    }
+
+    # ── Splash page ──────────────────────────────────────────────────────────
+    location / {
+        try_files /splash.html =503;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma        no-cache;
+    }
+}

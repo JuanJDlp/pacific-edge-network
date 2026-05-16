@@ -211,14 +211,6 @@
 
 # ─── Verification assertions ──────────────────────────────────────────────────
 
-- name: Assert IPv4 forwarding is active
-  ansible.builtin.assert:
-    that: ansible_sysctl['net.ipv4.ip_forward'] == '1'
-    fail_msg: "net.ipv4.ip_forward is not set to 1"
-  vars:
-    ansible_sysctl: "{{ lookup('ansible.builtin.pipe', 'sysctl -a 2>/dev/null') | split('\n') | select | map('split', ' = ') | selectattr('1') | items2dict(key_name=0, value_name=1) }}"
-  tags: networking
-
 - name: Read ip_forward value from proc
   ansible.builtin.slurp:
     src: /proc/sys/net/ipv4/ip_forward

@@ -1,0 +1,97 @@
+---
+- name: Instalar bind9 y utilidades
+  apt:
+    name:
+      - bind9
+      - bind9utils
+      - bind9-doc
+    state: present
+    update_cache: true
+  become: true
+
+- name: Crear directorio de zonas
+  file:
+    path: /etc/bind/zones
+    state: directory
+    owner: bind
+    group: bind
+    mode: "0755"
+  become: true
+
+# ── Deshabilitar systemd-resolved en interfaces LAN ──────────────────────────
+# Bind9 necesita escuchar en 192.168.10.1/20.1/30.1.
+# systemd-resolved solo debe quedarse en 127.0.0.53 (stub para el Mini PC).
+- name: Configurar systemd-resolved para no interferir con Bind9
+  lineinfile:
+    path: /etc/systemd/resolved.conf
+    regexp: "^#?DNSStubListener="
+    line: "DNSStubListener=yes"   # Solo escucha en 127.0.0.53, no en IPs de VLAN
+  become: true
+  notify: restart systemd-resolved
+
+# ── Configuración Bind9 ───────────────────────────────────────────────────────
+- name: Desplegar named.conf.options
+  template:
+    src: named.conf.options.j2
+    dest: /etc/bind/named.conf.options
+    owner: bind
+    group: bind
+    mode: "0644"
+    validate: "named-checkconf %s"
+  become: true
+  notify: reload bind9
+
+- name: Desplegar named.conf.local (declaración de zonas)
+  template:
+    src: named.conf.local.j2
+    dest: /etc/bind/named.conf.local
+    owner: bind
+    group: bind
+    mode: "0644"
+  become: true
+  notify: reload bind9
+
+- name: Desplegar zona directa biblioteca.local
+  template:
+    src: db.forward.j2
+    dest: "/etc/bind/zones/db.{{ dns_domain }}"
+    owner: bind
+    group: bind
+    mode: "0644"
+  become: true
+  notify: reload bind9
+
+- name: Desplegar zonas inversas por VLAN
+  template:
+    src: db.reverse.j2
+    dest: "/etc/bind/zones/db.{{ reverse_zone }}"
+    owner: bind
+    group: bind
+    mode: "0644"
+  loop: "{{ dns_reverse_zones }}"
+  loop_control:
+    loop_var: reverse_zone
+  become: true
+  notify: reload bind9
+
+- name: Validar zona directa con named-checkzone
+  command: "named-checkzone {{ dns_domain }} /etc/bind/zones/db.{{ dns_domain }}"
+  become: true
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Habilitar e iniciar bind9
+  systemd:
+    name: named
+    enabled: true
+    state: started
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Verificar que Bind9 escucha en puerto 53
+  wait_for:
+    host: "{{ dns_primary_ip }}"
+    port: 53
+    timeout: 15
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"
