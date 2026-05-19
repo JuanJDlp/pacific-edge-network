@@ -1,0 +1,21 @@
+zone "{{ dns_domain }}" {
+    type master;
+    file "/etc/bind/zones/db.{{ dns_domain }}";
+    
+    // Configuración para DNSSEC automático
+    key-directory "/etc/bind/zones";
+    inline-signing yes;
+    dnssec-policy default;
+    
+    allow-transfer { 
+        {% for slave in dns_slaves | default([]) %}{{ slave }}; {% endfor %}
+    };
+};
+
+zone "{{ dns_reverse_zone }}.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zones/db.{{ dns_reverse_zone }}";
+    allow-transfer { 
+        {% for slave in dns_slaves | default([]) %}{{ slave }}; {% endfor %}
+    };
+};

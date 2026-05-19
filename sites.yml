@@ -1,0 +1,6 @@
+---
+- name: Desplegar servicios Core (DNS y DHCP) en el núcleo de red
+  hosts: minipc
+  roles:
+    - dns
+    - dhcp/dhcp4_role
