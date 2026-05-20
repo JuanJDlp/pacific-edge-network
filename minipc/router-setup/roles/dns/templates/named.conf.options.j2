@@ -1,0 +1,48 @@
+// Managed by Ansible — do not edit manually
+// Bind9 options para Mini PC — Biblioteca Digital Ladrilleros
+
+options {
+    directory "/var/cache/bind";
+
+    // Reenviar queries externas al ISP / DNS público
+    forwarders {
+{% for fw in dns_forwarders %}
+        {{ fw }};
+{% endfor %}
+    };
+    forward only;
+
+    // DNSSEC: auto (valida cuando sea posible)
+    dnssec-validation auto;
+
+    // Escuchar solo en interfaces LAN y loopback (no en WAN)
+    listen-on port 53 {
+{% for ip in dns_listen_ips %}
+        {{ ip }};
+{% endfor %}
+    };
+
+    // IPv6: solo loopback (no hay IPv6 en LAN por ahora)
+    listen-on-v6 port 53 { ::1; };
+
+    // Recursión habilitada solo para redes internas
+    recursion yes;
+
+    allow-recursion {
+{% for net in dns_allow_query %}
+        {{ net }};
+{% endfor %}
+    };
+
+    allow-query {
+{% for net in dns_allow_query %}
+        {{ net }};
+{% endfor %}
+    };
+
+    // Permitir zone transfers al DNS secundario (RPi) — la RPi conecta desde 192.168.20.10
+    allow-transfer { {{ dns_slave_ip }}; 192.168.20.1; 127.0.0.1; };
+
+    // Minimizar información en respuestas de error
+    auth-nxdomain no;
+};

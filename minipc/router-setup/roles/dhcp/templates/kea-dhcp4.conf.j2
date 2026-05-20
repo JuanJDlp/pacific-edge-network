@@ -1,0 +1,68 @@
+{
+  "Dhcp4": {
+    "interfaces-config": {
+      "interfaces": [
+        "{{ lan_interface }}.10",
+        "{{ lan_interface }}.20",
+        "{{ lan_interface }}.30"
+      ],
+      "dhcp-socket-type": "raw"
+    },
+
+    "valid-lifetime": {{ dhcp_valid_lifetime }},
+    "renew-timer": {{ dhcp_renew_timer }},
+    "rebind-timer": {{ dhcp_rebind_timer }},
+
+    "lease-database": {
+      "type": "memfile",
+      "persist": true,
+      "name": "/var/lib/kea/kea-leases4.csv",
+      "lfc-interval": 3600
+    },
+
+    "subnet4": [
+{% for subnet in dhcp_subnets %}
+      {
+        "id": {{ subnet.id }},
+        "subnet": "{{ subnet.subnet }}",
+        "pools": [
+          { "pool": "{{ subnet.pool_start }} - {{ subnet.pool_end }}" }
+        ],
+        "option-data": [
+          { "name": "routers",            "data": "{{ subnet.router }}" },
+          { "name": "domain-name-servers","data": "{{ dhcp_dns_server }}" },
+          { "name": "domain-search",      "data": "{{ dhcp_domain_search }}" }
+        ]{% if dhcp_reservations | selectattr('subnet_id', 'equalto', subnet.id) | list | length > 0 %},
+        "reservations": [
+{% for r in dhcp_reservations | selectattr('subnet_id', 'equalto', subnet.id) %}
+          {
+            "hw-address": "{{ r.hw_address }}",
+            "ip-address": "{{ r.ip_address }}",
+            "hostname":   "{{ r.hostname }}"
+          }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+        ]
+{% endif %}
+
+      }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+    ],
+
+    "loggers": [
+      {
+        "name": "kea-dhcp4",
+        "output_options": [
+          {
+            "output": "/var/log/kea/kea-dhcp4.log",
+            "maxsize": 1048576,
+            "maxver": 3
+          }
+        ],
+        "severity": "INFO",
+        "debuglevel": 0
+      }
+    ]
+  }
+}

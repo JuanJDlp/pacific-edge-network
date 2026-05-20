@@ -1,0 +1,18 @@
+# Managed by Ansible — do not edit manually
+[Unit]
+Description=Captive Portal Accept Handler — Pacific Edge Network
+After=network-online.target nftables.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/captive-accept.py
+Restart=on-failure
+RestartSec=5
+User=root
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=captive-accept
+
+[Install]
+WantedBy=multi-user.target

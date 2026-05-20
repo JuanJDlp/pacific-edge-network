@@ -1,0 +1,32 @@
+---
+- name: Asegurar Squid instalado
+  apt:
+    name: squid
+    state: present
+  become: true
+
+- name: Crear directorio de caché Squid
+  file:
+    path: /var/lib/biblioteca/squid-cache
+    state: directory
+    owner: proxy
+    group: proxy
+    mode: "0750"
+  become: true
+
+- name: Desplegar configuración Squid
+  template:
+    src: squid.conf.j2
+    dest: /etc/squid/squid.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload squid
+
+- name: Habilitar e iniciar Squid
+  systemd:
+    name: squid
+    enabled: true
+    state: started
+  become: true

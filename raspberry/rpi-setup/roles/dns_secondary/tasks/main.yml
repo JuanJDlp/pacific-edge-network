@@ -1,0 +1,44 @@
+---
+- name: Instalar Bind9
+  apt:
+    name:
+      - bind9
+      - bind9-utils
+    state: present
+  become: true
+
+- name: Desplegar named.conf.options (slave)
+  template:
+    src: named.conf.options.j2
+    dest: /etc/bind/named.conf.options
+    owner: root
+    group: bind
+    mode: "0644"
+  become: true
+  notify: restart named
+
+- name: Desplegar named.conf.local (slave zones)
+  template:
+    src: named.conf.local.j2
+    dest: /etc/bind/named.conf.local
+    owner: root
+    group: bind
+    mode: "0644"
+  become: true
+  notify: restart named
+
+- name: Habilitar e iniciar named
+  systemd:
+    name: named
+    enabled: true
+    state: started
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Verificar que Bind9 escucha en puerto 53
+  wait_for:
+    host: 127.0.0.1
+    port: 53
+    timeout: 10
+  become: false
+  ignore_errors: "{{ ansible_check_mode }}"

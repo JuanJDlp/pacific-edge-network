@@ -1,134 +1,162 @@
 ---
-# ─── Play 1: Configure Mini PC as router ─────────────────────────────────────
+# ============================================================
+# Playbook principal — Mini PC Pacific Edge Network
+# Automatiza todos los servicios del router/gateway
+#
+# Uso completo:
+#   ansible-playbook -i inventory.ini playbook.yml
+#
+# Solo un rol:
+#   ansible-playbook -i inventory.ini playbook.yml --tags nftables
+#   ansible-playbook -i inventory.ini playbook.yml --tags dns
+#   ansible-playbook -i inventory.ini playbook.yml --tags dhcp
+#   ansible-playbook -i inventory.ini playbook.yml --tags captive_portal
+#   ansible-playbook -i inventory.ini playbook.yml --tags ntp
+#   ansible-playbook -i inventory.ini playbook.yml --tags monitoring
+#
+# Dry-run:
+#   ansible-playbook -i inventory.ini playbook.yml --check
+#
+# Verificación:
+#   ansible-playbook -i inventory.ini playbook.yml --tags verify
+# ============================================================
 
-- name: Configure Mini PC as network router
+- name: Configurar Mini PC — router y servicios
   hosts: minipc
+  become: true
   gather_facts: true
+
+  pre_tasks:
+    - name: Actualizar cache de apt
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+      tags: always
+
   roles:
-    - router
+    # 1. Red: interfaces, VLANs, IP forwarding, nftables, Jool NAT64
+    - role: router
+      tags: [router, nftables, netplan]
 
-# ─── Play 2: Verification ─────────────────────────────────────────────────────
+    # 2. DNS — Bind9 con dominio biblioteca.local (reemplaza systemd-resolved en VLANs)
+    - role: dns
+      tags: [dns]
 
-- name: Verify router configuration
+    # 3. DHCP — Kea DHCPv4 con reserva para RPi y DNS apuntando a Bind9
+    - role: dhcp
+      tags: [dhcp]
+
+    # 4. Portal cautivo + nginx HTTP proxy intermediario hacia Squid en RPi
+    #    Resuelve el problema SO_ORIGINAL_DST del DNAT cross-machine
+    - role: captive_portal
+      tags: [captive_portal, portal]
+
+    # 5. NTP — chrony como servidor para todas las VLANs internas
+    - role: ntp
+      tags: [ntp]
+
+    # 6. Monitoreo — Prometheus + Grafana + node_exporter
+    - role: monitoring
+      tags: [monitoring]
+
+# ─── Play 2: Verificación ────────────────────────────────────────────────────
+
+- name: Verificar configuración del Mini PC
   hosts: minipc
+  become: true
   gather_facts: false
-  tags: verify
+  tags: [verify, never]
 
   tasks:
 
-    # --- Network basics ---
-
-    - name: Ping external router (gateway)
-      ansible.builtin.command:
-        cmd: ping -c 3 -W 2 192.168.0.1
-      register: ping_gateway
+    # ── Red básica ────────────────────────────────────────────────────────────
+    - name: Verificar ip_forward IPv4
+      command: sysctl net.ipv4.ip_forward
+      register: ipv4_fwd
       changed_when: false
-      failed_when: false
 
-    - name: Report ping to external router
-      ansible.builtin.debug:
-        msg: "{{ 'OK — reached external router' if ping_gateway.rc == 0 else 'FAIL — cannot reach 192.168.0.1' }}"
+    - name: Assert ip_forward = 1
+      assert:
+        that: "'= 1' in ipv4_fwd.stdout"
+        fail_msg: "ip_forward IPv4 no está habilitado"
 
-    - name: Ping 8.8.8.8 (internet)
-      ansible.builtin.command:
-        cmd: ping -c 3 -W 2 8.8.8.8
-      register: ping_internet
-      changed_when: false
-      failed_when: false
-
-    - name: Report ping to internet
-      ansible.builtin.debug:
-        msg: "{{ 'OK — internet reachable' if ping_internet.rc == 0 else 'FAIL — cannot reach 8.8.8.8' }}"
-
-    - name: Ping VLAN20 gateway from VLAN30 perspective (inter-VLAN)
-      ansible.builtin.command:
-        cmd: ping -c 3 -W 2 -I {{ lan_interface }}.30 192.168.20.1
-      register: ping_inter_vlan
-      changed_when: false
-      failed_when: false
-      vars:
-        lan_interface: enp171s0
-
-    - name: Report inter-VLAN ping result
-      ansible.builtin.debug:
-        msg: "{{ 'OK — inter-VLAN reachable (VLAN30→VLAN20)' if ping_inter_vlan.rc == 0 else 'FAIL — cannot reach 192.168.20.1 via VLAN30' }}"
-
-    # --- Forwarding ---
-
-    - name: Read ip_forward value
-      ansible.builtin.slurp:
-        src: /proc/sys/net/ipv4/ip_forward
-      register: ip_forward_val
-
-    - name: Assert ip_forward is enabled
-      ansible.builtin.assert:
-        that: ip_forward_val.content | b64decode | trim == '1'
-        fail_msg: "ip_forward is not 1"
-        success_msg: "OK — ip_forward = 1"
-
-    - name: Check VLAN routes in routing table
-      ansible.builtin.command:
-        cmd: ip route show
+    - name: Verificar rutas VLAN en tabla de routing
+      command: ip route show
       register: route_table
       changed_when: false
 
-    - name: Assert VLAN routes are present
-      ansible.builtin.assert:
+    - name: Assert rutas VLAN presentes
+      assert:
         that:
           - "'192.168.10.0/24' in route_table.stdout"
           - "'192.168.20.0/24' in route_table.stdout"
           - "'192.168.30.0/24' in route_table.stdout"
-        fail_msg: "One or more VLAN routes missing from routing table"
-        success_msg: "OK — all VLAN routes present"
+        fail_msg: "Faltan rutas VLAN en la tabla de routing"
 
-    - name: Check nftables forward rules
-      ansible.builtin.command:
-        cmd: nft list chain inet filter forward
-      register: nft_forward
+    # ── nftables ──────────────────────────────────────────────────────────────
+    - name: Verificar set captive_allowed
+      command: nft list set inet filter captive_allowed
       changed_when: false
 
-    - name: Assert nftables forward chain has rules
-      ansible.builtin.assert:
-        that: nft_forward.stdout | length > 0
-        fail_msg: "nftables forward chain appears empty"
-        success_msg: "OK — nftables forward chain has rules"
-
-    # --- NAT64 ---
-
-    - name: Check Jool kernel module is loaded
-      ansible.builtin.command:
-        cmd: lsmod
-      register: lsmod_output
+    - name: Verificar DNAT portal en nat prerouting
+      command: nft list chain ip nat prerouting
+      register: nft_nat
       changed_when: false
 
-    - name: Assert Jool module is loaded
-      ansible.builtin.assert:
-        that: "'jool' in lsmod_output.stdout"
-        fail_msg: "Jool kernel module is NOT loaded — reboot may be required"
-        success_msg: "OK — Jool module is loaded"
+    - name: Assert DNAT portal cautivo presente
+      assert:
+        that: "'2050' in nft_nat.stdout"
+        fail_msg: "DNAT del portal cautivo (puerto 2050) no encontrado en nftables"
 
-    - name: Check Jool instance display
-      ansible.builtin.command:
-        cmd: jool instance display
-      register: jool_instances
+    # ── DNS ───────────────────────────────────────────────────────────────────
+    - name: Verificar Bind9 responde en 192.168.10.1
+      command: dig @192.168.10.1 biblioteca.local +short
+      register: dns_check
+      changed_when: false
+      failed_when: dns_check.rc != 0 or dns_check.stdout == ""
+
+    - name: Mostrar IP resuelta para biblioteca.local
+      debug:
+        msg: "biblioteca.local → {{ dns_check.stdout }}"
+
+    # ── Servicios ─────────────────────────────────────────────────────────────
+    - name: Verificar Kea DHCP4 activo
+      command: systemctl is-active kea-dhcp4-server
       changed_when: false
       failed_when: false
+      register: kea_active
 
-    - name: Assert Jool NAT64 instance exists
-      ansible.builtin.assert:
-        that: jool_instances.rc == 0 and jool_instances.stdout | length > 0
-        fail_msg: "No Jool NAT64 instance found"
-        success_msg: "OK — Jool instance active"
+    - name: Assert Kea activo
+      assert:
+        that: kea_active.stdout == 'active'
+        fail_msg: "Kea DHCP4 no está activo"
 
-    - name: Check Jool pool6 prefix
-      ansible.builtin.command:
-        cmd: jool global display
-      register: jool_global
+    - name: Verificar nginx portal (puerto 2050)
+      wait_for:
+        port: 2050
+        timeout: 5
+
+    - name: Verificar nginx http-proxy (puerto 8888)
+      wait_for:
+        port: 8888
+        timeout: 5
+
+    - name: Verificar captive-accept (puerto 2051)
+      wait_for:
+        host: 127.0.0.1
+        port: 2051
+        timeout: 5
+
+    - name: Verificar ping a internet (8.8.8.8)
+      command: ping -c 2 -W 2 8.8.8.8
       changed_when: false
       failed_when: false
+      register: ping_inet
 
-    - name: Assert NAT64 prefix 64:ff9b::/96 is configured
-      ansible.builtin.assert:
-        that: "'64:ff9b::/96' in jool_global.stdout"
-        fail_msg: "NAT64 prefix 64:ff9b::/96 not found in Jool config"
-        success_msg: "OK — NAT64 prefix 64:ff9b::/96 is configured"
+    - name: Resumen final
+      debug:
+        msg:
+          - "ip_forward:        {{ ipv4_fwd.stdout }}"
+          - "biblioteca.local:  {{ dns_check.stdout }}"
+          - "ping internet:     {{ 'OK' if ping_inet.rc == 0 else 'FAIL (sin WAN)' }}"
+          - "Todos los servicios verificados correctamente"

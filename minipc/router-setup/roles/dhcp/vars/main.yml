@@ -1,0 +1,38 @@
+---
+# ============================================================
+# DHCP — Kea DHCPv4 para Mini PC
+# ============================================================
+
+dhcp_valid_lifetime: 4000
+dhcp_renew_timer: 1000
+dhcp_rebind_timer: 2000
+
+# Servidor DNS para clientes (Bind9 en Mini PC)
+dhcp_dns_server: "192.168.10.1"
+dhcp_domain_search: "biblioteca.local"
+
+dhcp_subnets:
+  - id: 10
+    subnet: "192.168.10.0/24"
+    pool_start: "192.168.10.50"
+    pool_end: "192.168.10.99"
+    router: "192.168.10.1"
+
+  - id: 20
+    subnet: "192.168.20.0/24"
+    pool_start: "192.168.20.50"
+    pool_end: "192.168.20.99"
+    router: "192.168.20.1"
+
+  - id: 30
+    subnet: "192.168.30.0/24"
+    pool_start: "192.168.30.100"
+    pool_end: "192.168.30.200"
+    router: "192.168.30.1"
+
+# Reservas estáticas (MAC → IP)
+dhcp_reservations:
+  - subnet_id: 20
+    hw_address: "2c:cf:67:d2:f0:98"
+    ip_address: "192.168.20.10"
+    hostname: "rpi5-servicios"

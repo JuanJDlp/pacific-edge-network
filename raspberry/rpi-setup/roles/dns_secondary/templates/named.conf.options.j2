@@ -1,0 +1,44 @@
+// Managed by Ansible — do not edit manually
+// Bind9 options para RPi — DNS secundario de {{ dns_domain }}
+
+options {
+    directory "/var/cache/bind";
+
+    // Reenviar queries externas al DNS primario del Mini PC
+    forwarders {
+        {{ dns_primary_ip }};
+        8.8.8.8;
+        8.8.4.4;
+    };
+    forward first;
+
+    dnssec-validation auto;
+
+    // Escuchar solo en loopback e interfaz LAN (no en wlan0/wt0)
+    listen-on port 53 {
+{% for ip in dns_slave_listen_ips %}
+        {{ ip }};
+{% endfor %}
+    };
+
+    listen-on-v6 port 53 { ::1; };
+
+    recursion yes;
+
+    allow-recursion {
+        127.0.0.1;
+        192.168.0.0/16;
+        100.64.0.0/10;  // Netbird CGNAT
+    };
+
+    allow-query {
+        127.0.0.1;
+        192.168.0.0/16;
+        100.64.0.0/10;
+    };
+
+    // Solo acepta zone transfers del primario
+    allow-transfer { none; };
+
+    auth-nxdomain no;
+};

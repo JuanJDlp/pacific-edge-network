@@ -1,0 +1,31 @@
+;
+; Zona directa: {{ dns_domain }}
+; Managed by Ansible — do not edit manually
+;
+$TTL    3600
+@   IN  SOA {{ dns_primary_ns }}.{{ dns_domain }}. admin.{{ dns_domain }}. (
+            {{ ansible_date_time.epoch }} ; Serial (epoch)
+            3600                         ; Refresh
+            900                          ; Retry
+            604800                       ; Expire
+            300 )                        ; Negative TTL
+
+; Name server
+@   IN  NS  {{ dns_primary_ns }}.{{ dns_domain }}.
+
+; Registro del NS
+{{ dns_primary_ns }}    IN  A   {{ dns_primary_ip }}
+
+; Apex: biblioteca.local → RPi (para que http://biblioteca.local resuelva)
+{% set rpi_host = dns_hosts | selectattr('name', 'equalto', 'biblioteca') | first %}
+@               IN  A   {{ rpi_host.ip }}
+
+; Hosts
+{% for host in dns_hosts %}
+{{ host.name.ljust(16) }}IN  A   {{ host.ip }}
+{% endfor %}
+
+; CNAME — alias de servicios educativos → biblioteca (RPi)
+{% for alias in dns_aliases %}
+{{ alias.name.ljust(16) }}IN  CNAME   {{ alias.target }}.{{ dns_domain }}.
+{% endfor %}

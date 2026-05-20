@@ -1,0 +1,32 @@
+// Managed by Ansible — do not edit manually
+// Zonas slave para {{ dns_domain }} — RPi DNS secundario
+
+//
+// Zona directa — slave de Mini PC ({{ dns_primary_ip }})
+//
+zone "{{ dns_domain }}" {
+    type slave;
+    masters { 192.168.20.1; };  // Mini PC VLAN20 gateway — misma VLAN que la RPi
+    file "/var/cache/bind/db.{{ dns_domain }}";
+};
+
+//
+// Zonas inversas — slave de los tres VLANs
+//
+zone "10.168.192.in-addr.arpa" {
+    type slave;
+    masters { 192.168.20.1; };  // Mini PC VLAN20 gateway — misma VLAN que la RPi
+    file "/var/cache/bind/db.10.168.192";
+};
+
+zone "20.168.192.in-addr.arpa" {
+    type slave;
+    masters { 192.168.20.1; };  // Mini PC VLAN20 gateway — misma VLAN que la RPi
+    file "/var/cache/bind/db.20.168.192";
+};
+
+zone "30.168.192.in-addr.arpa" {
+    type slave;
+    masters { 192.168.20.1; };  // Mini PC VLAN20 gateway — misma VLAN que la RPi
+    file "/var/cache/bind/db.30.168.192";
+};

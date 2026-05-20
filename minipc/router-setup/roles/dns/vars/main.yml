@@ -1,0 +1,60 @@
+---
+# ============================================================
+# DNS — Bind9 para Mini PC
+# Dominio local: biblioteca.local
+# Escucha en todas las interfaces LAN del Mini PC
+# ============================================================
+
+dns_domain: "biblioteca.local"
+
+# IP del NS primario (Mini PC, VLAN10)
+dns_primary_ns: "ns1"
+dns_primary_ip: "192.168.10.1"
+
+# Interfaces donde escucha Bind9
+dns_listen_ips:
+  - "127.0.0.1"
+  - "192.168.10.1"
+  - "192.168.20.1"
+  - "192.168.30.1"
+
+# Forwarders externos (ISP vía WAN del Mini PC)
+dns_forwarders:
+  - "8.8.8.8"
+  - "8.8.4.4"
+  - "1.1.1.1"
+
+# Redes permitidas para queries recursivas
+dns_allow_query:
+  - "127.0.0.1"
+  - "192.168.10.0/24"
+  - "192.168.20.0/24"
+  - "192.168.30.0/24"
+
+# Zonas inversas (una por VLAN)
+dns_reverse_zones:
+  - "10.168.192"    # VLAN10
+  - "20.168.192"    # VLAN20
+  - "30.168.192"    # VLAN30
+
+# Hosts del dominio biblioteca.local
+dns_hosts:
+  - { name: "minipc",      ip: "192.168.10.1", vlan_octet: "10" }
+  - { name: "ns1",         ip: "192.168.10.1", vlan_octet: "10" }
+  - { name: "switch",      ip: "192.168.10.2", vlan_octet: "10" }
+  - { name: "biblioteca",  ip: "192.168.20.10", vlan_octet: "20" }
+  - { name: "rpi",         ip: "192.168.20.10", vlan_octet: "20" }
+
+# IP del DNS secundario (RPi) para zone transfers
+dns_slave_ip: "192.168.20.10"
+
+# CNAME: servicios educativos → biblioteca (RPi)
+dns_aliases:
+  - { name: "wikipedia",  target: "biblioteca" }
+  - { name: "educacion",  target: "biblioteca" }
+  - { name: "videos",     target: "biblioteca" }
+  - { name: "squid",      target: "biblioteca" }
+  - { name: "kolibri",    target: "biblioteca" }
+  - { name: "jellyfin",   target: "biblioteca" }
+  - { name: "wiki",       target: "biblioteca" }
+  - { name: "media",      target: "biblioteca" }

@@ -1,0 +1,15 @@
+---
+# Variables definidas en roles/router/vars/main.yml:
+#   captive_portal_port: 2050
+#   http_proxy_port:     8888
+#   rpi_ip:              192.168.20.10
+#   squid_forward_port:  3129
+#   dns_redirect_ip:     192.168.10.1
+#
+# Variables adicionales del portal cautivo:
+
+# IP donde escucha el nginx del portal (VLAN30 del Mini PC)
+captive_portal_ip: "192.168.30.1"
+
+# Puerto interno del handler Python de aceptación
+captive_accept_port: 2051

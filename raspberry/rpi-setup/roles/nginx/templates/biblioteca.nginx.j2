@@ -1,0 +1,154 @@
+# =============================================================================
+# /etc/nginx/sites-available/biblioteca
+# Managed by Ansible — do not edit manually
+# =============================================================================
+
+upstream kiwix_backend {
+    server 127.0.0.1:{{ kiwix_port }};
+    keepalive 16;
+}
+
+upstream kolibri_backend {
+    server 127.0.0.1:{{ kolibri_port }};
+    keepalive 16;
+}
+
+upstream jellyfin_backend {
+    server 127.0.0.1:{{ jellyfin_port }};
+    keepalive 16;
+}
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    root /var/www/html;
+    index index.html;
+    client_max_body_size 200M;
+
+    access_log /var/log/nginx/biblioteca-access.log;
+    error_log  /var/log/nginx/biblioteca-error.log warn;
+
+    # ---- Captive-portal probe redirects -----------------------------------
+    # OS probes (Android, macOS, Windows, iOS) son redirigidos al portal cautivo
+    # del Mini PC en lugar de responder directamente.
+    location = /generate_204         { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
+    location = /gen_204              { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
+    location = /hotspot-detect.html  { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
+    location = /library/test/success.html { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
+    location = /ncsi.txt             { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
+    location = /connecttest.txt      { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
+    location = /success.txt          { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
+    location = /canonical.html       { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
+
+    # ---- Splash + accept (legacy, portal está en Mini PC) -----------------
+    location = /splash {
+        alias /var/www/html/splash.html;
+        default_type text/html;
+        add_header Cache-Control "no-store";
+    }
+    location = /accept {
+        proxy_pass http://127.0.0.1:8088/accept;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+    }
+
+    # ---- Static portal ----------------------------------------------------
+    location = / {
+        try_files /index.html =404;
+    }
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # =====================================================================
+    # KIWIX — proxy transparente (sin reescritura de path)
+    # =====================================================================
+
+    location /wikipedia/ {
+        rewrite ^/wikipedia/(.*)$ /$1 break;
+        proxy_pass http://kiwix_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header Connection        "";
+        proxy_buffering off;
+        proxy_read_timeout 60s;
+        error_page 502 504 = @kiwix_unavailable;
+    }
+
+    location /content/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /catalog/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /viewer     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /skin/      { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /search     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /suggest    { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /random     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /catch/     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+
+    location @kiwix_unavailable {
+        default_type text/html;
+        return 503 '<!doctype html><html lang="es"><meta charset="utf-8">
+<title>Wikipedia no disponible</title>
+<body style="font-family:sans-serif;max-width:560px;margin:80px auto;padding:0 1rem">
+<h1 style="color:#1f6f43">Wikipedia aun no esta lista</h1>
+<p>El servicio Kiwix no esta corriendo.</p>
+<p><a href="/">&larr; Volver al portal</a></p>
+</body></html>';
+    }
+
+    # ---- Videos / Jellyfin -------------------------------------------------
+    location /videos/ {
+        proxy_pass http://jellyfin_backend/;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+        proxy_buffering off;
+        proxy_read_timeout 6h;
+        proxy_send_timeout 6h;
+    }
+
+    # ---- Health endpoint ---------------------------------------------------
+    location = /status {
+        alias /var/www/html/status.json;
+        default_type application/json;
+        add_header Cache-Control "no-store";
+    }
+
+    # ---- Kolibri -----------------------------------------------------------
+    location /kolibri/ {
+        proxy_pass http://kolibri_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+        proxy_buffering    off;
+        proxy_read_timeout 600s;
+        proxy_buffer_size       16k;
+        proxy_buffers           8 16k;
+        proxy_busy_buffers_size 32k;
+        client_max_body_size    1G;
+    }
+
+    # ---- Static portal assets ---------------------------------------------
+    location ~ ^/(css|js|images)/.*\.(css|js|png|jpe?g|gif|svg|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+}

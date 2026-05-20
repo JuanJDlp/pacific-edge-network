@@ -1,0 +1,43 @@
+# =============================================================================
+# /etc/systemd/system/kiwix-serve.service
+# Managed by Ansible — do not edit manually
+# =============================================================================
+# Sirve el catálogo ZIM en localhost:{{ kiwix_port }}.
+# nginx proxea /wikipedia/ y /content/ hacia aquí.
+# Vinculado a 127.0.0.1 para que los clientes siempre pasen por nginx.
+# =============================================================================
+
+[Unit]
+Description=Kiwix offline content server (Biblioteca)
+Documentation=https://kiwix.org/
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists={{ kiwix_library }}
+
+[Service]
+Type=simple
+User={{ kiwix_user }}
+Group={{ kiwix_user }}
+
+ExecStart=/usr/local/bin/kiwix-serve \
+    --address=127.0.0.1 \
+    --port={{ kiwix_port }} \
+    --library {{ kiwix_library }}
+
+Restart=on-failure
+RestartSec=10s
+
+# --- Hardening ---------------------------------------------------------------
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths={{ kiwix_library | dirname }}
+ReadWritePaths=/var/log/biblioteca
+
+# --- Resource limits ---------------------------------------------------------
+MemoryMax=1G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target
