@@ -1,4 +1,6 @@
-# Portal Cautivo — Pacific Edge Network
+# Portal Cautivo — Arquitectura Legacy (2026-05-10)
+
+> ⚠️ **DOCUMENTO HISTÓRICO** — Esta arquitectura fue reemplazada. La implementación actual usa **nginx** (`:2050`) + **captive-accept.py** (`:2051`). Ver `DOCS/minipc/CAPTIVE-PORTAL.md` para el estado actual.
 
 **Nodo:** Cerrito Bongo
 **Instalado en:** Mini PC (`100.90.95.134`, `ssh minipc`)
@@ -44,8 +46,8 @@ Cliente WiFi (VLAN 30: 192.168.30.x)
         └──────────┬───────────┘
                    │  302 redirect
                    ▼
-        http://192.168.20.10
-        (nginx RPi — Biblioteca Digital Ladrilleros)
+        http://biblioteca.local
+        (Bind9 resuelve → 192.168.20.10 — nginx RPi)
                    │
                    ▼
         Cliente navega libremente

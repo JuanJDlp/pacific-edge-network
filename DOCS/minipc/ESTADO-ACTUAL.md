@@ -1,5 +1,7 @@
 # Estado actual del Mini PC — Router de red comunitaria
 
+> ⚠️ Este documento refleja el estado al **2026-05-08** (solo rol `router` desplegado, VLANs sin cable). El estado completo y actualizado está en `DOCS/red/ESTADO_ACTUAL_RED.md`. El playbook actual despliega 6 roles: `router`, `dns`, `dhcp`, `captive_portal`, `ntp`, `monitoring`.
+
 **Fecha de configuración:** 2026-05-08  
 **Host:** `100.90.95.134` (Netbird/Tailscale VPN)  
 **SO:** Ubuntu Server 24.04.4 LTS  

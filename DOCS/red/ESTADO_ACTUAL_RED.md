@@ -54,9 +54,11 @@ Internet (Starlink)
 |----------|-----------------|--------|-----------------|
 | nginx (captive portal) | TCP `:2050` | ✅ activo | **Nuevo** — reemplaza captive-portal.py |
 | captive-accept | TCP `127.0.0.1:2051` | ✅ activo | **Nuevo** — handler Python mínimo para `nft` |
+| nginx (http-proxy) | TCP `:8888` | ✅ activo | **Nuevo** — intermediario hacia Squid (fix SO_ORIGINAL_DST) |
 | Kea DHCPv4 | UDP `192.168.{10,20,30}.1:67` | ✅ activo | Sin cambios |
-| systemd-resolved (DNS) | UDP/TCP `192.168.{10,20,30}.1:53` | ✅ activo | Sin cambios |
-| nftables | — | ✅ activo | **Modificado** — RST en 443 + DNAT a Squid |
+| Bind9 / named (DNS) | UDP/TCP `192.168.{10,20,30}.1:53` | ✅ activo | **Nuevo** — reemplaza systemd-resolved; dominio `biblioteca.local` |
+| chrony (NTP) | UDP `123` | ✅ activo | **Nuevo** — servidor NTP para VLANs internas |
+| nftables | — | ✅ activo | **Modificado** — RST en 443 + DNAT a nginx:8888 |
 | Netbird VPN | WireGuard `wt0` | ✅ activo | Sin cambios |
 | SSH | TCP `22` | ✅ activo | Sin cambios |
 
@@ -150,8 +152,8 @@ table ip nat {
         iif { "enp171s0.30", "enp171s0.20", "enp171s0.10" } tcp dport 53 dnat to 192.168.10.1:53
         # Portal cautivo: HTTP no autenticado → nginx :2050
         iif "enp171s0.30" meta mark != 0x1 tcp dport 80 dnat to 192.168.30.1:2050
-        # ★ NUEVO: Proxy transparente: HTTP autenticado → Squid en RPi :3128
-        iif "enp171s0.30" meta mark  0x1 tcp dport 80 dnat to 192.168.20.10:3128
+        # ★ HTTP autenticado → nginx intermediario :8888 (→ Squid RPi :3129)
+        iif "enp171s0.30" meta mark  0x1 tcp dport 80 dnat to 192.168.30.1:8888
     }
 
     chain postrouting {
@@ -242,7 +244,7 @@ CLIENTE (192.168.30.100, NO autenticado)
    → REJECT with tcp reset   ← ★ NUEVO: RST inmediato (antes: DROP 30s)
    → Browser falla en < 1ms, intenta HTTP sin esperar
 
-3. DNS: neverssl.com A? → DNAT → systemd-resolved → Starlink (~134ms)
+3. DNS: neverssl.com A? → DNAT → Bind9 (192.168.10.1:53) → forwarder 8.8.8.8 (~134ms)
 
 4. TCP SYN → neverssl.com:80
    → nftables PREROUTING DNAT: mark≠0x1, dport 80 → 192.168.30.1:2050
@@ -254,7 +256,7 @@ CLIENTE (192.168.30.100, NO autenticado)
 6. Usuario hace click "Entrar a la biblioteca":
    → GET /accept → nginx proxy_pass → captive-accept.py :2051
    → nft add element captive_allowed { 192.168.30.100 }   (timeout 8h)
-   → 302 → http://192.168.20.10
+   → 302 → http://biblioteca.local  (Bind9 resuelve → 192.168.20.10)
 
 Tiempo total hasta ver el portal: < 1s (antes: ~30s)
 ```
@@ -269,7 +271,7 @@ CLIENTE iOS/Android/Windows conecta al switch
 │  - Android: GET /generate_204          Host: connectivitycheck.gstatic.com
 │  - Windows: GET /connecttest.txt       Host: www.msftconnecttest.com
 │
-│  DNS: captive.apple.com → cualquier IP (resuelta por systemd-resolved)
+│  DNS: captive.apple.com → cualquier IP (resuelta por Bind9 → forwarding externo)
 │  TCP SYN a esa IP:80
 │  → DNAT: mark≠0x1, dport 80 → 192.168.30.1:2050
 │
@@ -288,7 +290,8 @@ Usuario hace tap → browser abre splash.html → /accept → autenticado
 CLIENTE (192.168.30.100, autenticado, mark=0x1)
 
 HTTP (puerto 80):
-  → DNAT a 192.168.20.10:3128 (Squid intercept)
+  → DNAT a 192.168.30.1:8888 (nginx intermediario Mini PC)
+  → proxy_pass a 192.168.20.10:3129 (Squid forward proxy RPi)
   → Squid: caché HIT → responde local / caché MISS → internet → cachea
 
 HTTPS (puerto 443):
@@ -297,7 +300,7 @@ HTTPS (puerto 443):
   (HTTPS no pasa por Squid — no es interceptable sin MITM)
 
 DNS (puerto 53):
-  → DNAT a 192.168.10.1:53 → systemd-resolved → Starlink
+  → DNAT a 192.168.10.1:53 → Bind9 → forwarders (8.8.8.8 / 8.8.4.4 / 1.1.1.1)
 ```
 
 ---
@@ -320,14 +323,14 @@ DNS (puerto 53):
 |-----------|--------|-------|
 | DHCPv4 | ✅ Implementado | Kea en Mini PC, VLANs 10/20/30 |
 | DHCPv6 | ⬜ Pendiente evaluar | Kea lo soporta |
-| DNS primario + secundario (DNSSEC + TSIG) | ❌ Pendiente | Solo systemd-resolved forwarding; Pi-hole planificado |
-| DNS autoritativo + DNS64 | ❌ Pendiente | Jool NAT64 activo, DNS64 sin configurar |
+| DNS primario + secundario (DNSSEC + TSIG) | ⚠️ Parcial | Bind9 autoritativo (`biblioteca.local`) activo; DNSSEC + TSIG pendientes |
+| DNS autoritativo + DNS64 | ⚠️ Parcial | Bind9 activo; DNS64 sin configurar |
 | Proxy-cache (Squid) | ✅ Implementado | Squid activo en RPi, intercept + internet |
 | Portal cautivo | ✅ Implementado | nginx, probes OS, RST en 443 |
 | CDN local | ⚠️ Parcial | Kiwix/Jellyfin/Kolibri activos en RPi |
 | Servidor Matrix | ❌ Pendiente | No instalado |
-| NTP | ⬜ Sin verificar | systemd-timesyncd por defecto |
-| Monitoreo/observabilidad | ❌ Pendiente | Health-check básico en RPi (/status) |
+| NTP | ✅ Implementado | Chrony configurado como servidor NTP para las VLANs internas |
+| Monitoreo/observabilidad | ✅ Implementado | Prometheus + Grafana + node_exporter en Mini PC y RPi |
 
 ---
 
