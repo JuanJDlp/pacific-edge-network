@@ -73,9 +73,8 @@ table inet filter {
         # VLAN30 → servidores (path sin etiqueta, workaround switch): solo autenticados
         iif "{{ client_iface }}" oif "{{ lan_interface }}" ip saddr @captive_allowed accept
 
-        # HTTPS no autenticado: DROP — browser esperará timeout y reintentará con HTTP
-        # (RST inmediato evitaba que macOS/Chrome reintentara con HTTP)
-        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 drop
+        # HTTPS no autenticado: RST inmediato → browser reintenta con HTTP en < 1ms
+        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 reject with tcp reset
     }
 
     chain output {

@@ -69,15 +69,13 @@ El flujo de autenticación funciona: `captive-accept.py` agrega IPs correctament
 | `GET /generate_204` (Android probe) | HTTP 302 → http://192.168.30.1:2050/ ✓ |
 | `GET /accept` con X-Real-IP (simular auth) | HTTP 302 → http://biblioteca.local/ ✓, IP agregada al set ✓ |
 
-### ⚠️ Bug conocido — nftables regla 443
+### ✅ Fix aplicado — nftables regla 443 (2026-05-20)
 
-La regla actual en el equipo live es:
+Regla corregida a `reject with tcp reset`:
 ```nft
-iif "enp171s0.30" meta mark != 0x1 tcp dport 443 drop
+iif "enp171s0.30" meta mark != 0x00000001 tcp dport 443 reject with tcp reset
 ```
-Debería ser `reject with tcp reset`. Con `drop` el browser espera ~30 s antes de reintentar con HTTP.  
-El template `roles/router/templates/nftables.conf.j2` también tiene `drop` — ambos deben corregirse.  
-**Fix pendiente:** cambiar a `reject with tcp reset` en el template y re-aplicar.
+Template `roles/router/templates/nftables.conf.j2` actualizado. Aplicado vía Ansible.
 
 ---
 
@@ -149,11 +147,16 @@ El Ansible role usa `node_exporter.service` pero el paquete instalado (`promethe
 
 ---
 
+## Issues resueltos (2026-05-20)
+
+| # | Issue | Estado |
+|---|---|---|
+| 1 | nftables 443: `drop` → `reject with tcp reset` | ✅ Corregido en template + vivo |
+| 3 | node_exporter service name — Ansible role ya usa `prometheus-node-exporter` | ✅ Correcto, no requería cambio |
+| 4 | RPi nginx rutas legacy `/accept` y `/splash` | ✅ Eliminadas del template y del vivo |
+
 ## Issues pendientes
 
 | # | Issue | Prioridad | Fix |
 |---|---|---|---|
-| 1 | nftables 443: `drop` → `reject with tcp reset` | 🔴 Alta | Editar template + re-aplicar role router |
-| 2 | DNS zone transfers timeout | 🟡 Media | Verificar config switch VLAN20 puerto RPi |
-| 3 | node_exporter service name en Ansible role | 🟢 Baja | Actualizar task para usar `prometheus-node-exporter` |
-| 4 | RPi nginx rutas legacy `/accept` y `/splash` | 🟢 Baja | Limpiar template nginx RPi |
+| 2 | DNS zone transfers timeout RPi → Mini PC | 🟡 Media | Verificar config switch VLAN20 en puerto de la RPi |
