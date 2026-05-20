@@ -11,7 +11,7 @@
 ### Lo que funcionaba correctamente
 - `named` corriendo desde hace días, escuchando en `192.168.10.1:53`, `192.168.20.1:53`, `192.168.30.1:53`, `127.0.0.1:53`.
 - Todas las interfaces VLAN (`enp171s0.10/20/30`) en estado `UP LOWER_UP`.
-- `dig @192.168.10.1 biblioteca.local` desde el Mini PC respondía correctamente (192.168.20.10).
+- `dig @192.168.10.1 biblioteca.tel` desde el Mini PC respondía correctamente (192.168.20.10).
 - DHCP enviando `192.168.10.1` como servidor DNS a todos los subnets.
 - nftables `inet filter input` aceptando UDP/TCP 53 desde todas las interfaces VLAN.
 
@@ -86,11 +86,11 @@ Resultado: `changed: [minipc]` en la tarea `Disable UFW`.
 # En el Mini PC
 sudo ufw status           # → Status: inactive
 sudo nft list tables      # → ip filter e ip6 filter siguen en memoria pero con policy accept (se limpiarán en próximo reinicio)
-dig @192.168.10.1 biblioteca.local +short   # → 192.168.20.10 ✅
-dig @192.168.30.1 biblioteca.local +short   # → 192.168.20.10 ✅
+dig @192.168.10.1 biblioteca.tel +short   # → 192.168.20.10 ✅
+dig @192.168.30.1 biblioteca.tel +short   # → 192.168.20.10 ✅
 ```
 
-Desde un cliente VLAN30: las queries DNS ahora reciben respuesta. `nslookup biblioteca.local` → `192.168.20.10`.
+Desde un cliente VLAN30: las queries DNS ahora reciben respuesta. `nslookup biblioteca.tel` → `192.168.20.10`.
 
 ---
 

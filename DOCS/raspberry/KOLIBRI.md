@@ -44,13 +44,13 @@ Kolibri almacena su configuración y base de datos en:
 └── logs/
 ```
 
-Para gestionar Kolibri (descargar canales, crear usuarios, etc.) acceder a `http://biblioteca.local/kolibri/` como admin.
+Para gestionar Kolibri (descargar canales, crear usuarios, etc.) acceder a `http://biblioteca.tel/kolibri/` como admin.
 
 ## Agregar canales educativos
 
 ```bash
 # Desde la interfaz web de Kolibri (recomendado)
-# http://biblioteca.local/kolibri/ → Gestionar → Canales
+# http://biblioteca.tel/kolibri/ → Gestionar → Canales
 
 # O desde línea de comandos en RPi
 sudo kolibri manage importchannel --channel-id <ID>

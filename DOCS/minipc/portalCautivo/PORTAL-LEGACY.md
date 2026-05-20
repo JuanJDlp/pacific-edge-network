@@ -46,7 +46,7 @@ Cliente WiFi (VLAN 30: 192.168.30.x)
         └──────────┬───────────┘
                    │  302 redirect
                    ▼
-        http://biblioteca.local
+        http://biblioteca.tel
         (Bind9 resuelve → 192.168.20.10 — nginx RPi)
                    │
                    ▼

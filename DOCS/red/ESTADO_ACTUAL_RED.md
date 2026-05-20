@@ -56,7 +56,7 @@ Internet (Starlink)
 | captive-accept | TCP `127.0.0.1:2051` | ✅ activo | **Nuevo** — handler Python mínimo para `nft` |
 | nginx (http-proxy) | TCP `:8888` | ✅ activo | **Nuevo** — intermediario hacia Squid (fix SO_ORIGINAL_DST) |
 | Kea DHCPv4 | UDP `192.168.{10,20,30}.1:67` | ✅ activo | Sin cambios |
-| Bind9 / named (DNS) | UDP/TCP `192.168.{10,20,30}.1:53` | ✅ activo | **Nuevo** — reemplaza systemd-resolved; dominio `biblioteca.local` |
+| Bind9 / named (DNS) | UDP/TCP `192.168.{10,20,30}.1:53` | ✅ activo | **Nuevo** — reemplaza systemd-resolved; dominio `biblioteca.tel` |
 | chrony (NTP) | UDP `123` | ✅ activo | **Nuevo** — servidor NTP para VLANs internas |
 | nftables | — | ✅ activo | **Modificado** — RST en 443 + DNAT a nginx:8888 |
 | Netbird VPN | WireGuard `wt0` | ✅ activo | Sin cambios |
@@ -256,7 +256,7 @@ CLIENTE (192.168.30.100, NO autenticado)
 6. Usuario hace click "Entrar a la biblioteca":
    → GET /accept → nginx proxy_pass → captive-accept.py :2051
    → nft add element captive_allowed { 192.168.30.100 }   (timeout 8h)
-   → 302 → http://biblioteca.local  (Bind9 resuelve → 192.168.20.10)
+   → 302 → http://biblioteca.tel  (Bind9 resuelve → 192.168.20.10)
 
 Tiempo total hasta ver el portal: < 1s (antes: ~30s)
 ```
@@ -323,7 +323,7 @@ DNS (puerto 53):
 |-----------|--------|-------|
 | DHCPv4 | ✅ Implementado | Kea en Mini PC, VLANs 10/20/30 |
 | DHCPv6 | ⬜ Pendiente evaluar | Kea lo soporta |
-| DNS primario + secundario (DNSSEC + TSIG) | ⚠️ Parcial | Bind9 autoritativo (`biblioteca.local`) activo; DNSSEC + TSIG pendientes |
+| DNS primario + secundario (DNSSEC + TSIG) | ⚠️ Parcial | Bind9 autoritativo (`biblioteca.tel`) activo; DNSSEC + TSIG pendientes |
 | DNS autoritativo + DNS64 | ⚠️ Parcial | Bind9 activo; DNS64 sin configurar |
 | Proxy-cache (Squid) | ✅ Implementado | Squid activo en RPi, intercept + internet |
 | Portal cautivo | ✅ Implementado | nginx, probes OS, RST en 443 |

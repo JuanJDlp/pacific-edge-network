@@ -55,7 +55,7 @@ sudo cp video.mp4 /media/videos/
 sudo chown jellyfin:jellyfin /media/videos/video.mp4
 
 # 2. Desde la interfaz web, agregar la carpeta como nueva biblioteca
-# http://biblioteca.local/videos/ → Dashboard → Bibliotecas → Agregar
+# http://biblioteca.tel/videos/ → Dashboard → Bibliotecas → Agregar
 ```
 
 ## Verificación

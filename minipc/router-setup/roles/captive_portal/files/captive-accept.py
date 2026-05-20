@@ -10,7 +10,7 @@ import logging
 import sys
 import re
 
-REDIRECT         = 'http://biblioteca.local'   # Destino post-autenticación (resuelve via Bind9)
+REDIRECT         = 'http://biblioteca.tel'   # Destino post-autenticación (resuelve via Bind9)
 PORT             = 2051
 NFT_TABLE_FAMILY = 'inet'
 NFT_TABLE_NAME   = 'filter'

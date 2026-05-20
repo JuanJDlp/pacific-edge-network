@@ -16,7 +16,7 @@ $TTL    3600
 ; Registro del NS
 {{ dns_primary_ns }}    IN  A   {{ dns_primary_ip }}
 
-; Apex: biblioteca.local → RPi (para que http://biblioteca.local resuelva)
+; Apex: biblioteca.tel → RPi (para que http://biblioteca.tel resuelva)
 {% set rpi_host = dns_hosts | selectattr('name', 'equalto', 'biblioteca') | first %}
 @               IN  A   {{ rpi_host.ip }}
 

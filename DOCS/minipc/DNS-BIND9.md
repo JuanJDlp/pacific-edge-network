@@ -1,4 +1,4 @@
-# DNS — Bind9 (`biblioteca.local`)
+# DNS — Bind9 (`biblioteca.tel`)
 
 ## Rol Ansible
 
@@ -6,12 +6,12 @@
 
 ## Descripción
 
-Bind9 actúa como servidor DNS autoritativo para el dominio `biblioteca.local` y como resolver recursivo con forwarding para dominios externos. Reemplaza la resolución DNS en las VLANs internas (el stub de systemd-resolved sigue activo en `127.0.0.53` solo para uso local del Mini PC).
+Bind9 actúa como servidor DNS autoritativo para el dominio `biblioteca.tel` y como resolver recursivo con forwarding para dominios externos. Reemplaza la resolución DNS en las VLANs internas (el stub de systemd-resolved sigue activo en `127.0.0.53` solo para uso local del Mini PC).
 
 ## Por qué Bind9 y no systemd-resolved
 
 systemd-resolved no soporta zonas locales autoritativas con múltiples registros A/CNAME. Bind9 permite:
-- Definir `biblioteca.local` con A records por servicio
+- Definir `biblioteca.tel` con A records por servicio
 - Responder en múltiples interfaces (una IP por VLAN)
 - Forwarding condicional a DNS externos
 
@@ -26,7 +26,7 @@ systemd-resolved no soporta zonas locales autoritativas con múltiples registros
 
 El nftables ya redirige UDP/TCP 53 desde las VLANs hacia `192.168.10.1:53` (Bind9).
 
-## Registros del dominio `biblioteca.local`
+## Registros del dominio `biblioteca.tel`
 
 ### A records
 
@@ -72,7 +72,7 @@ Cuando un cliente pide `google.com` u otro dominio externo, Bind9 hace forwardin
 |---|---|
 | `/etc/bind/named.conf.options` | `templates/named.conf.options.j2` |
 | `/etc/bind/named.conf.local` | `templates/named.conf.local.j2` |
-| `/var/cache/bind/db.biblioteca.local` | `templates/db.forward.j2` |
+| `/var/cache/bind/db.biblioteca.tel` | `templates/db.forward.j2` |
 | `/var/cache/bind/db.10.168.192` | `templates/db.reverse.j2` (VLAN10) |
 | `/var/cache/bind/db.20.168.192` | `templates/db.reverse.j2` (VLAN20) |
 | `/var/cache/bind/db.30.168.192` | `templates/db.reverse.j2` (VLAN30) |
@@ -80,7 +80,7 @@ Cuando un cliente pide `google.com` u otro dominio externo, Bind9 hace forwardin
 ## Variables (`roles/dns/vars/main.yml`)
 
 ```yaml
-dns_domain: "biblioteca.local"
+dns_domain: "biblioteca.tel"
 dns_primary_ip: "192.168.10.1"
 dns_listen_ips: [127.0.0.1, 192.168.10.1, 192.168.20.1, 192.168.30.1]
 dns_forwarders: [8.8.8.8, 8.8.4.4, 1.1.1.1]
@@ -90,16 +90,16 @@ dns_forwarders: [8.8.8.8, 8.8.4.4, 1.1.1.1]
 
 ```bash
 # Desde cualquier cliente en VLAN30
-dig @192.168.10.1 biblioteca.local +short
+dig @192.168.10.1 biblioteca.tel +short
 # → 192.168.20.10
 
-dig @192.168.10.1 wikipedia.biblioteca.local +short
-# → biblioteca.biblioteca.local. (CNAME) → 192.168.20.10
+dig @192.168.10.1 wikipedia.biblioteca.tel +short
+# → biblioteca.biblioteca.tel. (CNAME) → 192.168.20.10
 
 # Estado del servicio en Mini PC
 systemctl status named
 named-checkconf /etc/bind/named.conf
-named-checkzone biblioteca.local /var/cache/bind/db.biblioteca.local
+named-checkzone biblioteca.tel /var/cache/bind/db.biblioteca.tel
 ```
 
 ## Coexistencia con systemd-resolved

@@ -1,11 +1,11 @@
 ---
 # ============================================================
 # DNS — Bind9 para Mini PC
-# Dominio local: biblioteca.local
+# Dominio local: biblioteca.tel
 # Escucha en todas las interfaces LAN del Mini PC
 # ============================================================
 
-dns_domain: "biblioteca.local"
+dns_domain: "biblioteca.tel"
 
 # IP del NS primario (Mini PC, VLAN10)
 dns_primary_ns: "ns1"
@@ -37,7 +37,7 @@ dns_reverse_zones:
   - "20.168.192"    # VLAN20
   - "30.168.192"    # VLAN30
 
-# Hosts del dominio biblioteca.local
+# Hosts del dominio biblioteca.tel
 dns_hosts:
   - { name: "minipc",      ip: "192.168.10.1", vlan_octet: "10" }
   - { name: "ns1",         ip: "192.168.10.1", vlan_octet: "10" }

@@ -95,7 +95,7 @@ table ip nat {
         iif "{{ client_iface }}" meta mark != 0x1 tcp dport 80 dnat to {{ client_vlan_ip }}:{{ captive_portal_port }}
 
         # Proxy transparente: HTTP de clientes autenticados (mark 0x1) → nginx intermediario.
-        # Se excluye la RPi ({{ rpi_ip }}) para que el acceso directo a biblioteca.local no pase por el proxy.
+        # Se excluye la RPi ({{ rpi_ip }}) para que el acceso directo a biblioteca.tel no pase por el proxy.
         # El nginx intermediario reenvía a Squid en RPi (puerto {{ squid_forward_port }}) como forward proxy,
         # evitando el problema de SO_ORIGINAL_DST en DNAT cross-machine.
         iif "{{ client_iface }}" meta mark 0x1 ip daddr != {{ rpi_ip }} tcp dport 80 dnat to {{ client_vlan_ip }}:{{ http_proxy_port }}

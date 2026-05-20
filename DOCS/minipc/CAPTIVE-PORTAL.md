@@ -27,7 +27,7 @@ El portal cautivo intercepta el tráfico HTTP de clientes no autenticados en VLA
             [captive-accept.py :2051]
                     │  nft add element inet filter captive_allowed {IP}
                     ▼
-            302 → http://biblioteca.local
+            302 → http://biblioteca.tel
 ```
 
 ## Componentes
@@ -54,10 +54,10 @@ Script Python que recibe el POST del botón "Entrar" y agrega la IP del cliente 
 # Acción principal al recibir POST /accept
 nft add element inet filter captive_allowed { CLIENT_IP }
 # Luego redirige a:
-http://biblioteca.local
+http://biblioteca.tel
 ```
 
-El redirect post-autenticación apunta a `http://biblioteca.local` (no a `http://192.168.20.10`). Bind9 resuelve este dominio a `192.168.20.10` (RPi).
+El redirect post-autenticación apunta a `http://biblioteca.tel` (no a `http://192.168.20.10`). Bind9 resuelve este dominio a `192.168.20.10` (RPi).
 
 **Archivo:** `files/captive-accept.py`
 **Systemd unit:** `templates/captive-accept.service.j2`
@@ -93,7 +93,7 @@ Página de bienvenida del portal cautivo.
 5. Usuario hace clic en "Entrar" → POST a `http://192.168.30.1:2050/accept`
 6. nginx hace proxy del POST a captive-accept.py en :2051
 7. captive-accept.py ejecuta `nft add element inet filter captive_allowed { 192.168.30.x }`
-8. captive-accept.py responde 302 → `http://biblioteca.local`
+8. captive-accept.py responde 302 → `http://biblioteca.tel`
 9. Próximo paquete HTTP del cliente: nftables verifica `captive_allowed` → mark=0x1 → DNAT a 192.168.30.1:8888 (nginx intermediario → Squid)
 
 ## Limpiar autorizaciones

@@ -38,7 +38,7 @@
     - role: router
       tags: [router, nftables, netplan]
 
-    # 2. DNS — Bind9 con dominio biblioteca.local (reemplaza systemd-resolved en VLANs)
+    # 2. DNS — Bind9 con dominio biblioteca.tel (reemplaza systemd-resolved en VLANs)
     - role: dns
       tags: [dns]
 
@@ -110,14 +110,14 @@
 
     # ── DNS ───────────────────────────────────────────────────────────────────
     - name: Verificar Bind9 responde en 192.168.10.1
-      command: dig @192.168.10.1 biblioteca.local +short
+      command: dig @192.168.10.1 biblioteca.tel +short
       register: dns_check
       changed_when: false
       failed_when: dns_check.rc != 0 or dns_check.stdout == ""
 
-    - name: Mostrar IP resuelta para biblioteca.local
+    - name: Mostrar IP resuelta para biblioteca.tel
       debug:
-        msg: "biblioteca.local → {{ dns_check.stdout }}"
+        msg: "biblioteca.tel → {{ dns_check.stdout }}"
 
     # ── Servicios ─────────────────────────────────────────────────────────────
     - name: Verificar Kea DHCP4 activo
@@ -157,6 +157,6 @@
       debug:
         msg:
           - "ip_forward:        {{ ipv4_fwd.stdout }}"
-          - "biblioteca.local:  {{ dns_check.stdout }}"
+          - "biblioteca.tel:  {{ dns_check.stdout }}"
           - "ping internet:     {{ 'OK' if ping_inet.rc == 0 else 'FAIL (sin WAN)' }}"
           - "Todos los servicios verificados correctamente"

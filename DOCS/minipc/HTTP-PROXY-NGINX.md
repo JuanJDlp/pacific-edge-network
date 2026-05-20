@@ -74,7 +74,7 @@ iif "enp171s0.30" meta mark 0x1 ip daddr != 192.168.20.10 tcp dport 80 \
 tcp dport 8888 accept
 ```
 
-La excepción `ip daddr != 192.168.20.10` evita que el acceso directo a la RPi (`http://biblioteca.local/`) pase por el intermediario — va directo al nginx de la RPi.
+La excepción `ip daddr != 192.168.20.10` evita que el acceso directo a la RPi (`http://biblioteca.tel/`) pase por el intermediario — va directo al nginx de la RPi.
 
 ## Squid en RPi — cambio requerido
 

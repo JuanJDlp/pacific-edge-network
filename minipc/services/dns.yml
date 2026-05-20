@@ -1,5 +1,5 @@
 ---
-- name: Deploy DNS Bind9 (biblioteca.local) en Mini PC
+- name: Deploy DNS Bind9 (biblioteca.tel) en Mini PC
   hosts: minipc
   become: true
   gather_facts: true

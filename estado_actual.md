@@ -32,7 +32,7 @@ La clave `plats_mini_pc` está copiada en ambos equipos. Los inventarios de Ansi
 
 | Servicio | Estado | Puerto | Notas |
 |---|---|---|---|
-| `named` (Bind9) | ✅ activo | 192.168.{10,20,30}.1:53 | Zona biblioteca.local autoritativa |
+| `named` (Bind9) | ✅ activo | 192.168.{10,20,30}.1:53 | Zona biblioteca.tel autoritativa |
 | `kea-dhcp4-server` | ✅ activo | 192.168.{10,20,30}.1:67 | Raw sockets, fix macOS APIPA |
 | `captive-portal` (nginx) | ✅ activo | 0.0.0.0:2050 | Splash + OS probes |
 | `captive-accept` (python) | ✅ activo | 127.0.0.1:2051 | Agrega IPs a nft set |
@@ -46,9 +46,9 @@ La clave `plats_mini_pc` está copiada en ambos equipos. Los inventarios de Ansi
 ### DNS — validación
 
 ```
-biblioteca.local        → 192.168.20.10 ✓
-wikipedia.biblioteca.local → CNAME → biblioteca.biblioteca.local. → 192.168.20.10 ✓
-kolibri.biblioteca.local   → CNAME → biblioteca.biblioteca.local. → 192.168.20.10 ✓
+biblioteca.tel        → 192.168.20.10 ✓
+wikipedia.biblioteca.tel → CNAME → biblioteca.biblioteca.tel. → 192.168.20.10 ✓
+kolibri.biblioteca.tel   → CNAME → biblioteca.biblioteca.tel. → 192.168.20.10 ✓
 google.com             → 172.217.162.110 ✓  (internet activo)
 ```
 
@@ -58,7 +58,7 @@ Al momento de la validación había un cliente real autenticado:
 ```
 192.168.30.101  (expires ~7h42m)
 ```
-El flujo de autenticación funciona: `captive-accept.py` agrega IPs correctamente y redirige a `http://biblioteca.local`.
+El flujo de autenticación funciona: `captive-accept.py` agrega IPs correctamente y redirige a `http://biblioteca.tel`.
 
 ### Portal cautivo — pruebas
 
@@ -67,7 +67,7 @@ El flujo de autenticación funciona: `captive-accept.py` agrega IPs correctament
 | `GET /` splash page | HTTP 200 ✓ |
 | `GET /hotspot-detect.html` (iOS probe) | HTTP 302 → http://192.168.30.1:2050/ ✓ |
 | `GET /generate_204` (Android probe) | HTTP 302 → http://192.168.30.1:2050/ ✓ |
-| `GET /accept` con X-Real-IP (simular auth) | HTTP 302 → http://biblioteca.local/ ✓, IP agregada al set ✓ |
+| `GET /accept` con X-Real-IP (simular auth) | HTTP 302 → http://biblioteca.tel/ ✓, IP agregada al set ✓ |
 
 ### ✅ Fix aplicado — nftables regla 443 (2026-05-20)
 
@@ -114,10 +114,10 @@ El modo `accel vhost allow-direct` en el puerto 3129 es compatible con el nginx 
 
 ### ⚠️ DNS secundario — zone transfers fallando
 
-El Bind9 de la RPi tiene los datos de la zona `biblioteca.local` (responde correctamente a queries locales), pero los refreshes periódicos desde el primario (`192.168.20.1:53`) están fallando con timeout.
+El Bind9 de la RPi tiene los datos de la zona `biblioteca.tel` (responde correctamente a queries locales), pero los refreshes periódicos desde el primario (`192.168.20.1:53`) están fallando con timeout.
 
 ```
-zone biblioteca.local/IN: refresh: retry limit for primary 192.168.20.1#53 exceeded
+zone biblioteca.tel/IN: refresh: retry limit for primary 192.168.20.1#53 exceeded
 zone 20.168.192.in-addr.arpa/IN: Transfer started.
 transfer from 192.168.20.1#53: failed to connect: timed out
 ```
@@ -140,7 +140,7 @@ El Ansible role usa `node_exporter.service` pero el paquete instalado (`promethe
 | 3. Splash page servida | ✅ Funcional | nginx 200 |
 | 4. OS probes (iOS/Android) | ✅ Funcional | 302 correcto a IP directa |
 | 5. Clic Entrar → /accept → IP en set | ✅ Funcional | captive-accept agrega IP |
-| 6. Redirect a biblioteca.local | ✅ Funcional | DNS resuelve → 192.168.20.10 |
+| 6. Redirect a biblioteca.tel | ✅ Funcional | DNS resuelve → 192.168.20.10 |
 | 7. Con internet: navegar normal | ✅ Funcional | HTTPS directo, HTTP vía Squid |
 | 8. Sin internet: acceder servicios RPi | ✅ Funcional | DNS interno + nginx RPi OK |
 | 9. HTTPS sin autenticar | ⚠️ Subóptimo | `drop` en vez de `reject` → delay 30s |

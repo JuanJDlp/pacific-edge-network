@@ -1,4 +1,4 @@
-# DNS Secundario — Bind9 slave de biblioteca.local en RPi
+# DNS Secundario — Bind9 slave de biblioteca.tel en RPi
 
 ## Rol Ansible
 
@@ -6,14 +6,14 @@
 
 ## Descripción
 
-Bind9 en la RPi actúa como DNS secundario (slave) del dominio `biblioteca.local`. El DNS primario (master) está en el Mini PC (192.168.10.1). La RPi recibe las zonas vía zone transfer automático y puede responder queries localmente sin depender del Mini PC.
+Bind9 en la RPi actúa como DNS secundario (slave) del dominio `biblioteca.tel`. El DNS primario (master) está en el Mini PC (192.168.10.1). La RPi recibe las zonas vía zone transfer automático y puede responder queries localmente sin depender del Mini PC.
 
 ## Arquitectura DNS
 
 ```
 [Mini PC — 192.168.10.1]         [RPi — 192.168.20.10]
   Bind9 master                      Bind9 slave
-  zona: biblioteca.local    ──→     zona: biblioteca.local (copia)
+  zona: biblioteca.tel    ──→     zona: biblioteca.tel (copia)
   zonas inversas VLAN10/20/30 ──→  zonas inversas (copia)
 
   AXFR zone transfer
@@ -25,7 +25,7 @@ Bind9 en la RPi actúa como DNS secundario (slave) del dominio `biblioteca.local
 El Mini PC fue actualizado para permitir transfers a la RPi en `named.conf.local.j2`:
 
 ```bind
-zone "biblioteca.local" {
+zone "biblioteca.tel" {
     type master;
     allow-transfer { 192.168.20.10; };  // RPi DNS secundario
 };
@@ -34,10 +34,10 @@ zone "biblioteca.local" {
 La RPi declara las zonas como slave:
 
 ```bind
-zone "biblioteca.local" {
+zone "biblioteca.tel" {
     type slave;
     masters { 192.168.10.1; };
-    file "/var/cache/bind/db.biblioteca.local";
+    file "/var/cache/bind/db.biblioteca.tel";
 };
 ```
 
@@ -45,7 +45,7 @@ zone "biblioteca.local" {
 
 | Zona | Tipo |
 |------|------|
-| `biblioteca.local` | Forward (A + CNAME) |
+| `biblioteca.tel` | Forward (A + CNAME) |
 | `10.168.192.in-addr.arpa` | Reverse VLAN10 |
 | `20.168.192.in-addr.arpa` | Reverse VLAN20 |
 | `30.168.192.in-addr.arpa` | Reverse VLAN30 |
@@ -74,17 +74,17 @@ El rol `dns_secondary` **no modifica** ningún archivo de red (`/etc/netplan/`, 
 
 ```bash
 # DNS secundario responde
-dig @192.168.20.10 biblioteca.local
+dig @192.168.20.10 biblioteca.tel
 # → 192.168.20.10
 
-dig @192.168.20.10 wikipedia.biblioteca.local
-# → CNAME biblioteca.biblioteca.local → 192.168.20.10
+dig @192.168.20.10 wikipedia.biblioteca.tel
+# → CNAME biblioteca.biblioteca.tel → 192.168.20.10
 
 # Zone transfer forzado (desde RPi)
-sudo rndc retransfer biblioteca.local
+sudo rndc retransfer biblioteca.tel
 
 # Verificar que la zona fue transferida
-ls -la /var/cache/bind/db.biblioteca.local
+ls -la /var/cache/bind/db.biblioteca.tel
 
 # Estado de Bind9
 systemctl status named

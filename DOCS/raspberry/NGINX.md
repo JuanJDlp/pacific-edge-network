@@ -11,7 +11,7 @@ nginx actúa como la puerta de entrada única a todos los servicios educativos d
 ## Flujo de tráfico
 
 ```
-Clientes VLAN30 → biblioteca.local (192.168.20.10:80)
+Clientes VLAN30 → biblioteca.tel (192.168.20.10:80)
     ├── /wikipedia/   → Kiwix  :8080  (rewrite: strip /wikipedia/)
     ├── /content/     → Kiwix  :8080  (transparente)
     ├── /skin/        → Kiwix  :8080

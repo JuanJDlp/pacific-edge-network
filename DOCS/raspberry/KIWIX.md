@@ -25,11 +25,11 @@ ExecStart=/usr/local/bin/kiwix-serve \
 
 | URL cliente | Comportamiento |
 |------------|----------------|
-| `http://biblioteca.local/wikipedia/` | Rewrite a `/` y proxea a Kiwix — URL amigable para usuarios |
-| `http://biblioteca.local/content/` | Proxy transparente (archivos ZIM internos) |
-| `http://biblioteca.local/skin/` | Assets CSS/JS de la interfaz Kiwix |
-| `http://biblioteca.local/search` | Búsqueda de artículos |
-| `http://biblioteca.local/catalog/` | Catálogo de libros |
+| `http://biblioteca.tel/wikipedia/` | Rewrite a `/` y proxea a Kiwix — URL amigable para usuarios |
+| `http://biblioteca.tel/content/` | Proxy transparente (archivos ZIM internos) |
+| `http://biblioteca.tel/skin/` | Assets CSS/JS de la interfaz Kiwix |
+| `http://biblioteca.tel/search` | Búsqueda de artículos |
+| `http://biblioteca.tel/catalog/` | Catálogo de libros |
 
 ## Archivos importantes en RPi
 

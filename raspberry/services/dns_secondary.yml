@@ -1,5 +1,5 @@
 ---
-- name: Deploy DNS secundario (Bind9 slave de biblioteca.local) en RPi
+- name: Deploy DNS secundario (Bind9 slave de biblioteca.tel) en RPi
   hosts: rpi
   become: true
   gather_facts: true

@@ -74,7 +74,7 @@ LAN (Mini PC como router, sub-interfaces 802.1Q sobre `enp171s0`)
 - VLAN 20 — `enp171s0.20` — `192.168.20.0/24`, gw `192.168.20.1` (servidores; RPi en `192.168.20.10`).
 - VLAN 30 — `enp171s0.30` — `192.168.30.0/24`, gw `192.168.30.1` (clientes con portal cautivo).
 
-DNS autoritativo: Bind9 en el Mini PC, dominio `biblioteca.local`, escucha en `192.168.10.1:53`, `192.168.20.1:53`, `192.168.30.1:53`. DNS secundario (zone slave) en la RPi `192.168.20.10`.
+DNS autoritativo: Bind9 en el Mini PC, dominio `biblioteca.tel`, escucha en `192.168.10.1:53`, `192.168.20.1:53`, `192.168.30.1:53`. DNS secundario (zone slave) en la RPi `192.168.20.10`.
 
 Overlay NetBird (`wt0`)
 - Mini PC: `100.90.95.134/16`
@@ -87,7 +87,7 @@ Rol: **router de borde** + DHCP + DNS + NAT + portal cautivo + NTP + monitoreo.
 Acceso: `ssh -i ~/.ssh/plats_mini_pc user@100.90.95.134`
 
 Servicios activos (systemd):
-- `named.service` — DNS Bind9 (`biblioteca.local`), escucha en las tres VLANs (`:53`). Rol Ansible: `minipc/router-setup/roles/dns/`. Docs: `minipc/services/DNS-BIND9.md`.
+- `named.service` — DNS Bind9 (`biblioteca.tel`), escucha en las tres VLANs (`:53`). Rol Ansible: `minipc/router-setup/roles/dns/`. Docs: `minipc/services/DNS-BIND9.md`.
 - `kea-dhcp4-server.service` — DHCP IPv4 (Kea), sirve las 3 VLANs. Config: `/etc/kea/kea-dhcp4.conf`. Rol Ansible: `minipc/router-setup/roles/dhcp/`. Docs: `minipc/services/DHCP-KEA.md`.
 - `captive-portal.service` (nginx en `:2050`) y `captive-accept.service` (handler en `127.0.0.1:2051`) — portal cautivo VLAN 30. Rol: `minipc/router-setup/roles/captive_portal/`. Docs: `minipc/services/CAPTIVE-PORTAL.md`, `minipc/services/portalCautivo/`.
 - `nginx.service` (`:8888`) — proxy HTTP intermediario que reenvía tráfico autorizado de VLAN 30 hacia Squid en la RPi. Rol: `minipc/router-setup/roles/captive_portal/`. Docs: `minipc/services/HTTP-PROXY-NGINX.md`.
@@ -121,7 +121,7 @@ Servicios activos (systemd):
 - `kiwix-serve.service` — Biblioteca offline Kiwix (`127.0.0.1:8080`). Rol: `raspberry/rpi-setup/roles/kiwix/`. Docs: `raspberry/services/KIWIX.md`.
 - `kolibri.service` — plataforma educativa Kolibri (`127.0.0.1:8090`). Rol: `raspberry/rpi-setup/roles/kolibri/`. Docs: `raspberry/services/KOLIBRI.md`.
 - `jellyfin.service` — servidor de medios Jellyfin (`127.0.0.1:8096`). Rol: `raspberry/rpi-setup/roles/jellyfin/`. Docs: `raspberry/services/JELLYFIN.md`.
-- `named.service` — DNS Bind9 secundario (zone slave de `biblioteca.local` desde `192.168.10.1`). Rol: `raspberry/rpi-setup/roles/dns_secondary/`. Docs: `raspberry/services/DNS-SECUNDARIO.md`.
+- `named.service` — DNS Bind9 secundario (zone slave de `biblioteca.tel` desde `192.168.10.1`). Rol: `raspberry/rpi-setup/roles/dns_secondary/`. Docs: `raspberry/services/DNS-SECUNDARIO.md`.
 - `node_exporter.service` — métricas Prometheus. Rol: `raspberry/rpi-setup/roles/node_exporter/`. Docs: `raspberry/services/NODE-EXPORTER.md`.
 - `netbird.service` — cliente NetBird (`100.90.81.168`).
 - `avahi-daemon`, `ssh`, etc.
@@ -169,7 +169,7 @@ Punto de acceso TVWS (Innonet) conectado al **puerto 4** del switch L2. Toda la 
 │   │   ├── inventory.ini             # Inventario (Mini PC vía NetBird)
 │   │   └── roles/
 │   │       ├── router/               # VLANs, nftables, NAT, ip_forward
-│   │       ├── dns/                  # Bind9, dominio biblioteca.local
+│   │       ├── dns/                  # Bind9, dominio biblioteca.tel
 │   │       ├── dhcp/                 # Kea DHCPv4 (README con notas operativas)
 │   │       ├── captive_portal/       # Portal cautivo + nginx HTTP proxy
 │   │       ├── ntp/                  # Chrony como servidor NTP
@@ -194,7 +194,7 @@ Punto de acceso TVWS (Innonet) conectado al **puerto 4** del switch L2. Toda la 
 │   │       ├── kiwix/                # Biblioteca Kiwix (:8080)
 │   │       ├── kolibri/              # Kolibri educativo (:8090)
 │   │       ├── jellyfin/             # Jellyfin medios (:8096)
-│   │       ├── dns_secondary/        # Bind9 slave de biblioteca.local
+│   │       ├── dns_secondary/        # Bind9 slave de biblioteca.tel
 │   │       └── node_exporter/        # Métricas Prometheus
 │   └── services/                     # Playbooks individuales por servicio
 │       ├── nginx.yml                 # cd raspberry/ && ansible-playbook -i rpi-setup/inventory.ini services/nginx.yml

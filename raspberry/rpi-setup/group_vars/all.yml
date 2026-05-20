@@ -10,7 +10,7 @@ minipc_captive_port: 2050
 minipc_dns_ip: "192.168.10.1"
 
 # Dominio local
-dns_domain: "biblioteca.local"
+dns_domain: "biblioteca.tel"
 
 # Puertos de servicios locales (todos en loopback)
 kiwix_port: 8080

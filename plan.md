@@ -47,7 +47,7 @@ Usuario conecta cable/WiFi al switch (puerto VLAN 30)
 [4] Usuario hace clic "Entrar"
     GET /accept → nginx proxy_pass → captive-accept.py :2051
     captive-accept.py: nft add element captive_allowed { IP } (timeout 8h)
-    302 → http://biblioteca.local
+    302 → http://biblioteca.tel
         │
         ├─── CON internet ──────────────────────────────────────────────────────
         │    Bind9 resuelve cualquier dominio → forwarders (8.8.8.8)
@@ -55,8 +55,8 @@ Usuario conecta cable/WiFi al switch (puerto VLAN 30)
         │    HTTPS autenticado → forward directo → MASQUERADE → internet
         │
         └─── SIN internet ───────────────────────────────────────────────────────
-             Bind9 resuelve biblioteca.local → 192.168.20.10 (RPi) ✓
-             CNAMEs: wikipedia/kolibri/jellyfin/wiki → biblioteca.local → RPi ✓
+             Bind9 resuelve biblioteca.tel → 192.168.20.10 (RPi) ✓
+             CNAMEs: wikipedia/kolibri/jellyfin/wiki → biblioteca.tel → RPi ✓
              HTTP a RPi (192.168.20.10): no pasa por proxy (excluido en DNAT) ✓
              Servicios accesibles: Kiwix :8080, Kolibri :8090, Jellyfin :8096
              (todos expuestos vía nginx RPi en puerto 80)
@@ -125,7 +125,7 @@ Si está habilitado, agregarlo al role como `systemd: name=nginx enabled=false s
 
 **Comportamiento:** `forward only` significa que si los forwarders (8.8.8.8 etc.) no están disponibles, Bind9 retorna SERVFAIL para cualquier dominio externo. Esto es correcto — el plan es que sin internet el usuario use solo los servicios internos.
 
-**Consideración:** El splash.html y el portal de la RPi deben orientar al usuario hacia los servicios internos (`biblioteca.local`, `wikipedia.biblioteca.local`, etc.) y no hacia internet, especialmente para el caso sin conectividad.
+**Consideración:** El splash.html y el portal de la RPi deben orientar al usuario hacia los servicios internos (`biblioteca.tel`, `wikipedia.biblioteca.tel`, etc.) y no hacia internet, especialmente para el caso sin conectividad.
 
 **Estado:** ✅ Comportamiento esperado y documentado — no requiere cambio en código
 
@@ -180,8 +180,8 @@ cat /var/lib/kea/kea-leases4.csv
 **DNS — resolución interna:**
 ```bash
 # Desde Mini PC o cliente VLAN30:
-dig @192.168.10.1 biblioteca.local          # → 192.168.20.10
-dig @192.168.10.1 wikipedia.biblioteca.local # → CNAME → 192.168.20.10
+dig @192.168.10.1 biblioteca.tel          # → 192.168.20.10
+dig @192.168.10.1 wikipedia.biblioteca.tel # → CNAME → 192.168.20.10
 dig @192.168.10.1 google.com                 # → IP pública (requiere internet)
 ```
 
@@ -226,8 +226,8 @@ curl -s http://127.0.0.1:8096/health                      # Jellyfin
 1. Conectar dispositivo al puerto del switch asignado a VLAN 30
 2. Verificar que obtiene IP `192.168.30.x`
 3. Abrir `http://neverssl.com` → debe aparecer splash page
-4. Hacer clic en "Entrar" → debe redirigir a `http://biblioteca.local`
-5. Verificar acceso a Kiwix en `http://biblioteca.local/wikipedia/`
+4. Hacer clic en "Entrar" → debe redirigir a `http://biblioteca.tel`
+5. Verificar acceso a Kiwix en `http://biblioteca.tel/wikipedia/`
 6. Con internet: verificar que `http://example.com` carga (vía Squid)
 
 ---

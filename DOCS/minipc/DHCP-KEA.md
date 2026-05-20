@@ -60,7 +60,7 @@ Este hook está definido en `roles/router/templates/nftables.conf.j2` y aplica s
 
 ```yaml
 dhcp_dns_server: "192.168.10.1"      # Bind9
-dhcp_domain_search: "biblioteca.local"
+dhcp_domain_search: "biblioteca.tel"
 dhcp_valid_lifetime: 4000
 ```
 
