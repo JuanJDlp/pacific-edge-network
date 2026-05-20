@@ -133,10 +133,13 @@ Si está habilitado, agregarlo al role como `systemd: name=nginx enabled=false s
 
 ## Tareas por hacer
 
-### Fase 1 — Fixes antes de desplegar
+### Fase 1 — Fixes pendientes (validados en vivo 2026-05-20)
 
-- [ ] **Fix 3.1**: Cambiar `drop` → `reject with tcp reset` en `nftables.conf.j2:75`
-- [ ] **Fix 3.2**: Eliminar rutas legacy `/accept` y `/splash` del nginx de la RPi
+- [x] **Fix 3.1**: `reject with tcp reset` aplicado en vivo — confirmado ✓
+- [x] **Fix 3.2**: Rutas legacy `/accept`/`/splash` eliminadas del nginx RPi — aplicando vía Ansible
+- [x] **Fix 3.3**: `nginx.service` (apt) inactivo — sin conflicto, confirmado ✓
+- [x] **Fix 3.6**: `node_exporter` en Ansible role RPi ya usa `prometheus-node-exporter` — correcto ✓
+- [ ] **Fix 3.5**: DNS zone transfers timeout — investigar conectividad switch VLAN20 ↔ RPi
 
 ### Fase 2 — Despliegue Ansible
 
