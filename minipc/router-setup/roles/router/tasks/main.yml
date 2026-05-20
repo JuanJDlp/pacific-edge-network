@@ -149,6 +149,13 @@
     state: started
   tags: firewall
 
+- name: Disable UFW (conflicts with nftables-based firewall)
+  ansible.builtin.systemd:
+    name: ufw
+    enabled: false
+    state: stopped
+  tags: firewall
+
 # ─── Jool NAT64 ───────────────────────────────────────────────────────────────
 
 - name: Load Jool kernel module
