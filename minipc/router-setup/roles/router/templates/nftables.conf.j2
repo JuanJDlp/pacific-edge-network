@@ -50,6 +50,9 @@ table inet filter {
 
         # HTTP proxy intermediario (reenvía a Squid en RPi) — solo VLAN30 autenticada
         iif "{{ client_iface }}" tcp dport {{ http_proxy_port }} accept
+
+        # Monitoreo: Grafana (3000), Prometheus (9090), node_exporter (9100) — solo VLAN10 gestión
+        iif "{{ lan_interface }}.10" tcp dport { {{ monitoring_tcp_ports | join(', ') }} } accept
     }
 
     chain forward {

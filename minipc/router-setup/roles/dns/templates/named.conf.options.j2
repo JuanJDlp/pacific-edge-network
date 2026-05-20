@@ -12,8 +12,8 @@ options {
     };
     forward only;
 
-    // DNSSEC: auto (valida cuando sea posible)
-    dnssec-validation auto;
+    // DNSSEC: deshabilitado — forward only + validación rompe cadenas de Apple/iCloud (7-10s timeout)
+    dnssec-validation no;
 
     // Escuchar solo en interfaces LAN y loopback (no en WAN)
     listen-on port 53 {

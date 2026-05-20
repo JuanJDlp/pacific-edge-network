@@ -47,6 +47,16 @@ server {
     location = /success.txt          { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
     location = /canonical.html       { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
 
+    # ---- Splash + accept (legacy, portal está en Mini PC) -----------------
+    location = /splash {
+        alias /var/www/html/splash.html;
+        default_type text/html;
+        add_header Cache-Control "no-store";
+    }
+    location = /accept {
+        return 302 http://192.168.30.1:2050/accept;
+    }
+
     # ---- Static portal ----------------------------------------------------
     location = / {
         try_files /index.html =404;
