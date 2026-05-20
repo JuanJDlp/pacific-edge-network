@@ -1,0 +1,9 @@
+---
+# Kolibri debe estar preinstalado en la RPi; este playbook solo habilita y arranca el servicio.
+- name: Habilitar Kolibri (plataforma educativa) en RPi
+  hosts: rpi
+  become: true
+  gather_facts: false
+
+  roles:
+    - kolibri

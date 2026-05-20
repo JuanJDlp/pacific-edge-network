@@ -1,0 +1,16 @@
+---
+- name: Deploy NTP Chrony en Mini PC
+  hosts: minipc
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Actualizar cache apt
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+      tags: always
+
+  roles:
+    - role: ntp
+      tags: [ntp]

@@ -1,0 +1,15 @@
+---
+- name: Deploy node_exporter (métricas Prometheus) en RPi
+  hosts: rpi
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Actualizar cache apt
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+      tags: always
+
+  roles:
+    - node_exporter
