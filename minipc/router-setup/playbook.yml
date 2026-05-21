@@ -94,8 +94,8 @@
         fail_msg: "Faltan rutas VLAN en la tabla de routing"
 
     # ── nftables ──────────────────────────────────────────────────────────────
-    - name: Verificar set captive_allowed
-      command: nft list set inet filter captive_allowed
+    - name: Verificar set captive_allowed_mac
+      command: nft list set inet filter captive_allowed_mac
       changed_when: false
 
     - name: Verificar DNAT portal en nat prerouting

@@ -14,19 +14,21 @@ flush ruleset
 
 table inet filter {
 
-    # IPs de clientes VLAN30 que aceptaron el portal cautivo (timeout 8h)
-    set captive_allowed {
-        type ipv4_addr
+    # MACs de clientes VLAN30 que aceptaron el portal cautivo (timeout 8h)
+    # Usar MAC en lugar de IP evita que un dispositivo herede acceso si el DHCP
+    # le reasigna una IP que ya estaba autorizada para otro dispositivo.
+    set captive_allowed_mac {
+        type ether_addr
         flags dynamic, timeout
         timeout 8h
-        comment "Clientes VLAN30 autenticados via portal cautivo"
+        comment "Clientes VLAN30 autenticados via portal cautivo (MAC)"
     }
 
     # Mangle prerouting: marca (0x1) paquetes de clientes ya autenticados.
     # Prioridad mangle (-150) corre ANTES del DNAT (-100) en ip nat.
     chain captive_mangle {
         type filter hook prerouting priority mangle; policy accept;
-        iif "{{ client_iface }}" ip saddr @captive_allowed meta mark set 0x1
+        iif "{{ client_iface }}" ether saddr @captive_allowed_mac meta mark set 0x1
     }
 
     chain input {
@@ -65,13 +67,13 @@ table inet filter {
         iif { {{ lan_interface }}.10, {{ lan_interface }}.20 } oif "{{ wan_interface }}" accept
 
         # VLAN30 (clientes) → WAN: solo clientes autenticados en portal
-        iif "{{ client_iface }}" oif "{{ wan_interface }}" ip saddr @captive_allowed accept
+        iif "{{ client_iface }}" oif "{{ wan_interface }}" meta mark 0x1 accept
 
         # VLAN30 → VLAN20 (servidores, path etiquetado): solo autenticados
-        iif "{{ client_iface }}" oif "{{ lan_interface }}.20" ip saddr @captive_allowed accept
+        iif "{{ client_iface }}" oif "{{ lan_interface }}.20" meta mark 0x1 accept
 
         # VLAN30 → servidores (path sin etiqueta, workaround switch): solo autenticados
-        iif "{{ client_iface }}" oif "{{ lan_interface }}" ip saddr @captive_allowed accept
+        iif "{{ client_iface }}" oif "{{ lan_interface }}" meta mark 0x1 accept
 
         # HTTPS no autenticado: RST inmediato → browser reintenta con HTTP en < 1ms
         iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 reject with tcp reset
