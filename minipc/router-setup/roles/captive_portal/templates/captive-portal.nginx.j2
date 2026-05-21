@@ -32,10 +32,19 @@ server {
     }
 
     # ── Aceptar portal: delegar al handler Python (necesita root para nft) ───
+    # Connection: close fuerza al browser a cerrar el TCP después de esta respuesta.
+    # Sin esto, el browser reutiliza la conexión HTTP/1.1 keep-alive que estaba
+    # DNAT'd al captive portal (conntrack cachea la decisión DNAT por conexión).
+    # Al cerrar el TCP, la siguiente petición (meta-refresh a biblioteca.tel) abre
+    # una nueva conexión que sí pasa por nftables fresh y recibe mark=0x1.
     location = /accept {
         proxy_pass         http://127.0.0.1:{{ captive_accept_port }};
         proxy_set_header   X-Real-IP $remote_addr;
         proxy_read_timeout 5s;
+        # keepalive_timeout 0 hace que nginx envíe Connection: close en esta
+        # respuesta, cerrando el TCP. El browser abre nueva conexión para el
+        # meta-refresh, que pasa por nftables fresh y recibe mark=0x1 (no DNAT).
+        keepalive_timeout  0;
     }
 
     # ── Splash page ──────────────────────────────────────────────────────────

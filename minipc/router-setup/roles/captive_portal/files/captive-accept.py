@@ -87,6 +87,19 @@ class AcceptHandler(http.server.BaseHTTPRequestHandler):
                     logging.info('Authorized: IP=%s MAC=%s', client_ip, mac)
                 except subprocess.CalledProcessError as e:
                     logging.warning('nft error para %s (%s): %s', client_ip, mac, e.stderr.decode())
+
+                # Eliminar entradas conntrack cacheadas para este cliente.
+                # El DNAT del portal cautivo queda registrado por conexión en conntrack.
+                # Sin este flush, el browser reutiliza la conexión HTTP keep-alive DNAT'd
+                # y sigue llegando al captive portal en lugar de al destino real.
+                try:
+                    subprocess.run(
+                        ['conntrack', '-D', '-s', client_ip],
+                        capture_output=True, timeout=2
+                    )
+                    logging.info('Conntrack flushed for %s', client_ip)
+                except (subprocess.TimeoutExpired, FileNotFoundError):
+                    pass  # degradación graceful si conntrack no está disponible
             else:
                 logging.warning('No se pudo resolver MAC para %s — acceso no concedido', client_ip)
 
