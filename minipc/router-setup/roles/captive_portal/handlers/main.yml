@@ -11,6 +11,26 @@
     state: restarted
   become: true
 
+- name: Crear directorio para certificados SSL
+  file:
+    path: /etc/nginx/ssl
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Generar certificado SSL autofirmado para el portal
+  command: >
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048
+    -keyout /etc/nginx/ssl/captive.key
+    -out /etc/nginx/ssl/captive.crt
+    -subj "/C=CO/ST=Valle del Cauca/L=Buenaventura/O=Pacific Edge/CN=portal.pacificedge.local"
+  args:
+    creates: /etc/nginx/ssl/captive.crt
+  become: true
+  notify: reload nginx
+
 - name: restart captive-accept
   systemd:
     name: captive-accept
