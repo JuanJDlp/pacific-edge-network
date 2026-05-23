@@ -2,34 +2,52 @@
 # Portal cautivo — Splash page + OS probes
 # Puerto {{ captive_portal_port }}: sirve splash.html, maneja probes de OS, delega /accept al handler Python
 
+# ── 1. Interceptor HTTP (Atrapa tráfico en texto plano) ──────────────────────
 server {
-    listen {{ captive_portal_port }} default_server;
+    listen 80 default_server;
+    server_name _;
+
+    # 1.1 Excepción: Permitir descargar el certificado SIN redirigir a HTTPS
+    location = /certificado.crt {
+        alias /etc/nginx/ssl/captive.crt;
+        # Esto le dice al navegador que lo descargue en lugar de intentar leerlo como texto
+        add_header Content-Disposition 'attachment; filename="PacificEdge_Cert.crt"';
+        types { application/x-x509-ca-cert crt; }
+    }
+
+    # 1.2 Redirigir las sondas de los OS al puerto seguro
+    location = /generate_204 {
+        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    }
+    location = /hotspot-detect.html {
+        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    }
+    location = /connecttest.txt {
+        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    }
+    location = /ncsi.txt {
+        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    }
+    
+    # 1.3 Redirigir cualquier otra cosa al HTTPS
+    location / {
+        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}$request_uri;
+    }
+}
+
+# ── 2. Portal Seguro HTTPS (Puerto {{ captive_portal_port }}) ────────────────
+server {
+    listen {{ captive_portal_port }} ssl default_server;
     server_name _;
 
     root /etc/captive-portal;
     charset utf-8;
 
-    # ── OS Captive Portal Probes ─────────────────────────────────────────────
-    # Redirigir a la IP directa del Mini PC (no usar $host — apuntaría a
-    # dominios externos inaccesibles en el puerto {{ captive_portal_port }}).
-
-    # Android (connectivitycheck.gstatic.com/generate_204)
-    location = /generate_204 {
-        return 302 http://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
-    }
-
-    # macOS / iOS (captive.apple.com/hotspot-detect.html)
-    location = /hotspot-detect.html {
-        return 302 http://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
-    }
-
-    # Windows NCSI (/connecttest.txt, /ncsi.txt)
-    location = /connecttest.txt {
-        return 302 http://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
-    }
-    location = /ncsi.txt {
-        return 302 http://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
-    }
+    # ── Configuración SSL ────────────────────────────────────────────────────
+    ssl_certificate /etc/nginx/ssl/captive.crt;
+    ssl_certificate_key /etc/nginx/ssl/captive.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
 
     # ── Aceptar portal: delegar al handler Python (necesita root para nft) ───
     # Connection: close fuerza al browser a cerrar el TCP después de esta respuesta.
