@@ -1,0 +1,212 @@
+---
+# ============================================================
+# Rol: pihole
+# Instala Pi-hole como contenedor Docker en el Mini PC.
+# Pi-hole actúa como DNS resolver con bloqueo de publicidad
+# y contenido no deseado para toda la red local.
+#
+# Arquitectura DNS resultante:
+#   Clientes → nftables DNAT :53 → Pi-hole :53 → Quad9 (internet)
+#                                              → Bind9 :5353 (biblioteca.local)
+# ============================================================
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+
+- name: Instalar dependencias para repositorio Docker
+  apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: true
+  become: true
+  tags: pihole, docker
+
+- name: Crear directorio para clave GPG de Docker
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  become: true
+  tags: pihole, docker
+
+- name: Descargar clave GPG de Docker
+  get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+    force: false
+  become: true
+  tags: pihole, docker
+
+- name: Agregar repositorio oficial de Docker
+  apt_repository:
+    repo: >-
+      deb [arch={{ ansible_architecture | replace('x86_64', 'amd64') }}
+      signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/ubuntu
+      {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker
+    update_cache: true
+  become: true
+  tags: pihole, docker
+
+- name: Instalar Docker Engine y plugin Compose
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+  become: true
+  tags: pihole, docker
+
+- name: Habilitar e iniciar Docker
+  systemd:
+    name: docker
+    enabled: true
+    state: started
+  become: true
+  tags: pihole, docker
+
+# ── Bind9: mover a puerto 5353 para coexistir con Pi-hole ────────────────────
+# Pi-hole necesita el puerto 53. Bind9 se mueve a :5353 y solo responde
+# consultas de Pi-hole para el dominio biblioteca.local.
+
+- name: Crear directorio drop-in para bind9
+  file:
+    path: /etc/systemd/system/named.service.d
+    state: directory
+    mode: "0755"
+  become: true
+  tags: pihole, dns
+
+- name: Configurar Bind9 para escuchar en puerto 5353
+  template:
+    src: named.conf.options.pihole.j2
+    dest: /etc/bind/named.conf.options
+    owner: bind
+    group: bind
+    mode: "0644"
+  become: true
+  notify: reload bind9
+  tags: pihole, dns
+
+# ── Directorios de datos Pi-hole ──────────────────────────────────────────────
+
+- name: Crear directorios persistentes para Pi-hole
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ pihole_data_dir }}"
+    - "{{ pihole_data_dir }}/etc-pihole"
+    - "{{ pihole_data_dir }}/etc-dnsmasq.d"
+  become: true
+  tags: pihole
+
+# ── Docker Compose para Pi-hole ───────────────────────────────────────────────
+
+- name: Desplegar docker-compose.yml de Pi-hole
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ pihole_data_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: restart pihole container
+  tags: pihole
+
+# ── Configuración DNS local (biblioteca.local → Bind9) ───────────────────────
+
+- name: Desplegar configuración dnsmasq para dominio local
+  template:
+    src: 02-local-dns.conf.j2
+    dest: "{{ pihole_data_dir }}/etc-dnsmasq.d/02-local-dns.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: restart pihole container
+  tags: pihole, dns
+
+# ── Systemd unit para gestionar el contenedor ────────────────────────────────
+
+- name: Desplegar systemd unit para Pi-hole
+  template:
+    src: pihole.service.j2
+    dest: /etc/systemd/system/pihole.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  register: pihole_unit
+  tags: pihole
+
+- name: Recargar systemd si cambió el unit
+  systemd:
+    daemon_reload: true
+  when: pihole_unit.changed
+  become: true
+  tags: pihole
+
+- name: Habilitar e iniciar Pi-hole
+  systemd:
+    name: pihole
+    enabled: true
+    state: started
+  become: true
+  tags: pihole
+
+# ── Whitelist de dominios locales ─────────────────────────────────────────────
+
+- name: Esperar a que Pi-hole esté listo (hasta 60s)
+  wait_for:
+    host: "{{ pihole_listen_ip }}"
+    port: "{{ pihole_dns_port }}"
+    timeout: 60
+  become: true
+  tags: pihole
+
+- name: Agregar dominios locales a whitelist de Pi-hole
+  command: >
+    docker exec pihole pihole --white-list {{ item }}
+  loop: "{{ pihole_whitelist }}"
+  become: true
+  changed_when: false
+  ignore_errors: true
+  tags: pihole
+
+# ── Verificación ──────────────────────────────────────────────────────────────
+
+- name: Verificar que Pi-hole responde en puerto 53
+  wait_for:
+    host: "{{ pihole_listen_ip }}"
+    port: "{{ pihole_dns_port }}"
+    timeout: 15
+  become: true
+  tags: pihole
+
+- name: Verificar resolución DNS a través de Pi-hole
+  command: dig @{{ pihole_listen_ip }} google.com +short +time=5
+  register: pihole_dns_check
+  changed_when: false
+  failed_when: pihole_dns_check.rc != 0
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"
+  tags: pihole
+
+- name: Mostrar resultado de resolución DNS
+  debug:
+    msg: "Pi-hole DNS OK — google.com → {{ pihole_dns_check.stdout_lines | first | default('sin respuesta') }}"
+  tags: pihole

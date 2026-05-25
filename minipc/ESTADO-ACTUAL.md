@@ -114,8 +114,27 @@ table ip nat
 | Tarea | Descripción |
 |-------|-------------|
 | Conectar cable al switch | `enp171s0` necesita cable físico para que las VLANs pasen a estado UP |
-| Instalar Pi-hole | En `192.168.10.1` para activar el DNS forzado vía nftables DNAT |
+| ~~Instalar Pi-hole~~ | ✅ Rol `pihole` creado — listo para desplegar con `--tags pihole` |
+| ~~Firewall mejorado~~ | ✅ Rol `firewall` creado — reemplaza nftables básico con rate limiting y aislamiento VLAN |
+| Cambiar contraseña Pi-hole | Editar `roles/pihole/vars/main.yml` → `pihole_web_password` antes del primer despliegue |
 | Verificar conectividad WAN completa | El router externo parece estar en `172.16.0.1`, no `192.168.0.1` — ajustar si es necesario |
+
+---
+
+## Servicios configurados
+
+| Servicio | Puerto | Rol | Estado |
+|----------|--------|-----|--------|
+| Bind9 (DNS local) | 5353 (tras Pi-hole) | Zonas biblioteca.local | Configurado |
+| Pi-hole (DNS + bloqueo) | 53, 8080 (web) | DNS resolver con filtrado | **Listo para desplegar** |
+| Kea DHCPv4 | 67/68 | Asignación IPs en 3 VLANs | Configurado |
+| nginx (Portal Cautivo) | 2050 | Splash page autenticación | Configurado |
+| captive-accept.py | 2051 | Backend portal cautivo | Configurado |
+| nginx (HTTP Proxy) | 8888 | Intermediario → Squid RPi | Configurado |
+| chrony (NTP) | 123 | Servidor de tiempo VLANs | Configurado |
+| Prometheus | 9090 | Métricas (solo VLAN10) | Configurado |
+| Grafana | 3000 | Dashboards (solo VLAN10) | Configurado |
+| nftables (Firewall) | — | Firewall + NAT + rate limiting | **Listo para desplegar** |
 
 ---
 

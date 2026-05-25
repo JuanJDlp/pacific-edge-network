@@ -1,0 +1,36 @@
+# Managed by Ansible — do not edit manually
+# Pi-hole DNS con bloqueo de publicidad y contenido
+# Panel web: http://{{ pihole_listen_ip }}:{{ pihole_web_port }}/admin
+
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:{{ pihole_version }}
+    restart: unless-stopped
+    network_mode: host          # Necesario para escuchar en IPs específicas del host
+    environment:
+      TZ: "America/Bogota"
+      WEBPASSWORD: "{{ pihole_web_password }}"
+      PIHOLE_DNS_1: "{{ pihole_upstream_dns1 }}"
+      PIHOLE_DNS_2: "{{ pihole_upstream_dns2 }}"
+      DNSMASQ_LISTENING: "local"
+      INTERFACE: "{{ lan_interface }}.10"
+      WEB_PORT: "{{ pihole_web_port }}"
+      VIRTUAL_HOST: "pihole.{{ pihole_local_domain }}"
+      # Deshabilitar DNSSEC para compatibilidad con Bind9 local
+      DNSSEC: "false"
+      # No usar resolv.conf del host (evita loops)
+      DNS_BOGUS_PRIV: "true"
+      DNS_FQDN_REQUIRED: "false"
+      # Caché
+      CACHE_SIZE: "10000"
+      # Logging
+      FTLCONF_LOCAL_IPV4: "{{ pihole_listen_ip }}"
+    volumes:
+      - "{{ pihole_data_dir }}/etc-pihole:/etc/pihole"
+      - "{{ pihole_data_dir }}/etc-dnsmasq.d:/etc/dnsmasq.d"
+    cap_add:
+      - NET_ADMIN       # Necesario para dnsmasq
+    dns:
+      - 127.0.0.1       # Pi-hole se resuelve a sí mismo
+      - "{{ pihole_upstream_dns1 }}"

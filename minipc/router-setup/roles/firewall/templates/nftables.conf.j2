@@ -1,0 +1,234 @@
+#!/usr/sbin/nft -f
+# Managed by Ansible — do not edit manually
+# Firewall nftables — Mini PC Pacific Edge Network
+# Generado por el rol 'firewall' (reemplaza el del rol 'router')
+
+flush ruleset
+
+{% set vlan_ifaces = [] %}
+{% for vlan in vlans %}
+{% set _ = vlan_ifaces.append(lan_interface ~ '.' ~ vlan.id) %}
+{% endfor %}
+{% set client_iface = lan_interface ~ '.30' %}
+{% set mgmt_iface   = lan_interface ~ '.10' %}
+{% set srv_iface    = lan_interface ~ '.20' %}
+{% set client_vlan_ip = (vlans | selectattr('id', 'equalto', 30) | first).ipv4_address %}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TABLA PRINCIPAL: inet filter
+# ═══════════════════════════════════════════════════════════════════════════════
+
+table inet filter {
+
+    # ── Sets ──────────────────────────────────────────────────────────────────
+
+    # Clientes VLAN30 autenticados en portal cautivo (timeout 8h)
+    set captive_allowed {
+        type ipv4_addr
+        flags dynamic, timeout
+        timeout 8h
+        comment "Clientes VLAN30 autenticados via portal cautivo"
+    }
+
+    # IPs bloqueadas temporalmente por exceso de intentos SSH (auto-ban 1h)
+    set ssh_bruteforce {
+        type ipv4_addr
+        flags dynamic, timeout
+        timeout 1h
+        comment "IPs baneadas por fuerza bruta SSH"
+    }
+
+    # ── Mangle: marcar clientes autenticados ANTES del DNAT ───────────────────
+    # Prioridad mangle (-150) corre antes que DNAT (-100)
+    chain captive_mangle {
+        type filter hook prerouting priority mangle; policy accept;
+        iif "{{ client_iface }}" ip saddr @captive_allowed meta mark set 0x1
+    }
+
+    # ── INPUT ─────────────────────────────────────────────────────────────────
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        # Loopback siempre permitido
+        iif "lo" accept
+
+        # VPN de gestión (Netbird/Tailscale) — acceso total
+        iif "{{ mgmt_interface }}" accept
+
+        # Conexiones establecidas/relacionadas
+        ct state established,related accept
+        ct state invalid drop
+
+        # ── Protección anti-spoofing: descartar paquetes con IP origen inválida
+        # Paquetes desde WAN con IP privada origen = spoofing
+        iif "{{ wan_interface }}" ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } \
+{% if enable_drop_logging %}
+            log prefix "{{ drop_log_prefix }}SPOOF-WAN: " limit rate {{ drop_log_limit }} \
+{% endif %}
+            drop
+
+        # ── ICMP (ping) con rate limiting ─────────────────────────────────────
+        ip protocol icmp limit rate {{ icmp_rate_limit }} burst {{ icmp_rate_burst }} packets accept
+        ip protocol icmp drop
+        ip6 nexthdr ipv6-icmp accept
+
+        # ── SSH con protección anti-fuerza-bruta ──────────────────────────────
+        # Bloquear IPs ya baneadas
+        tcp dport 22 ip saddr @ssh_bruteforce \
+{% if enable_drop_logging %}
+            log prefix "{{ drop_log_prefix }}SSH-BAN: " limit rate {{ drop_log_limit }} \
+{% endif %}
+            drop
+
+        # Rate limit: si supera el límite, agregar al set de baneados y dropear
+        iif { {{ vlan_ifaces | join(', ') }}, {{ mgmt_interface }} } \
+            tcp dport 22 \
+            ct state new \
+            limit rate over {{ ssh_rate_limit }} burst {{ ssh_rate_burst }} packets \
+            add @ssh_bruteforce { ip saddr timeout 1h } \
+{% if enable_drop_logging %}
+            log prefix "{{ drop_log_prefix }}SSH-RATELIMIT: " limit rate {{ drop_log_limit }} \
+{% endif %}
+            drop
+
+        # SSH permitido desde VLANs internas (dentro del rate limit)
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 22 ct state new accept
+
+        # ── DNS con rate limiting (anti-amplificación) ────────────────────────
+        iif { {{ vlan_ifaces | join(', ') }} } \
+            udp dport 53 \
+            limit rate {{ dns_rate_limit }} burst {{ dns_rate_burst }} packets accept
+        iif { {{ vlan_ifaces | join(', ') }} } \
+            tcp dport 53 accept
+
+        # ── DHCP (solo UDP, solo desde VLANs) ────────────────────────────────
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport { 67, 68 } accept
+
+        # ── NTP (solo desde VLANs internas) ──────────────────────────────────
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport 123 accept
+
+        # ── Portal cautivo (splash page) — solo VLAN30 ───────────────────────
+        iif "{{ client_iface }}" tcp dport {{ captive_portal_port }} accept
+
+        # ── HTTP proxy intermediario — solo VLAN30 autenticada ────────────────
+        iif "{{ client_iface }}" tcp dport {{ http_proxy_port }} accept
+
+        # ── Servicios de gestión — SOLO desde VLAN10 ─────────────────────────
+        # Prometheus, Grafana, Pi-hole web admin
+        iif "{{ mgmt_iface }}" tcp dport { {{ mgmt_ports_tcp | join(', ') }} } accept
+
+        # ── HTTP/HTTPS al propio Mini PC — solo VLANs internas ───────────────
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport { 80, 443 } accept
+
+        # ── Bloquear puertos peligrosos desde WAN ────────────────────────────
+{% for port in blocked_wan_tcp_ports %}
+        iif "{{ wan_interface }}" tcp dport {{ port }} \
+{% if enable_drop_logging %}
+            log prefix "{{ drop_log_prefix }}WAN-BLOCK-{{ port }}: " limit rate {{ drop_log_limit }} \
+{% endif %}
+            drop
+{% endfor %}
+
+        # ── Drop final con log ────────────────────────────────────────────────
+{% if enable_drop_logging %}
+        log prefix "{{ drop_log_prefix }}INPUT: " limit rate {{ drop_log_limit }}
+{% endif %}
+        # policy drop (implícito)
+    }
+
+    # ── FORWARD ───────────────────────────────────────────────────────────────
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+
+        ct state established,related accept
+        ct state invalid drop
+
+        # ── VLAN10 (gestión) → WAN: siempre permitido ────────────────────────
+        iif "{{ mgmt_iface }}" oif "{{ wan_interface }}" accept
+
+        # ── VLAN20 (servidores) → WAN: siempre permitido ─────────────────────
+        iif "{{ srv_iface }}" oif "{{ wan_interface }}" accept
+
+        # ── VLAN30 (clientes) → WAN: solo autenticados en portal ─────────────
+        iif "{{ client_iface }}" oif "{{ wan_interface }}" ip saddr @captive_allowed accept
+
+        # ── VLAN30 → VLAN20 (servidores): solo autenticados ──────────────────
+        iif "{{ client_iface }}" oif "{{ srv_iface }}" ip saddr @captive_allowed accept
+
+        # ── VLAN30 → servidores (workaround switch sin etiqueta) ──────────────
+        iif "{{ client_iface }}" oif "{{ lan_interface }}" ip saddr @captive_allowed accept
+
+        # ── Aislamiento VLAN: VLAN20 NO puede iniciar conexiones a VLAN30 ─────
+        # (solo respuestas a conexiones iniciadas por VLAN30 pasan por ct established)
+        iif "{{ srv_iface }}" oif "{{ client_iface }}" \
+{% if enable_drop_logging %}
+            log prefix "{{ drop_log_prefix }}VLAN20-TO-30: " limit rate {{ drop_log_limit }} \
+{% endif %}
+            drop
+
+        # ── VLAN10 NO puede llegar a VLAN30 directamente ─────────────────────
+        iif "{{ mgmt_iface }}" oif "{{ client_iface }}" \
+{% if enable_drop_logging %}
+            log prefix "{{ drop_log_prefix }}VLAN10-TO-30: " limit rate {{ drop_log_limit }} \
+{% endif %}
+            drop
+
+        # ── HTTPS no autenticado: DROP (no RST — permite retry con HTTP) ──────
+        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 drop
+
+        # ── Drop final con log ────────────────────────────────────────────────
+{% if enable_drop_logging %}
+        log prefix "{{ drop_log_prefix }}FORWARD: " limit rate {{ drop_log_limit }}
+{% endif %}
+    }
+
+    chain output {
+        type filter hook output priority filter; policy accept;
+    }
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TABLA NAT IPv4
+# ═══════════════════════════════════════════════════════════════════════════════
+
+table ip nat {
+
+    chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+
+        # ── DNS forzado → Pi-hole ─────────────────────────────────────────────
+        # Todo el tráfico DNS de las VLANs se redirige a Pi-hole en 192.168.10.1
+        # Esto evita que los clientes usen DNS externos (bypass de Pi-hole)
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 dnat to {{ dns_redirect_ip }}:53
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 dnat to {{ dns_redirect_ip }}:53
+
+        # ── Portal cautivo: interceptar HTTP de VLAN30 no autenticados ────────
+        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 80 \
+            dnat to {{ client_vlan_ip }}:{{ captive_portal_port }}
+
+        # ── Proxy transparente: HTTP de autenticados → nginx intermediario ────
+        # Excluye la RPi para acceso directo a biblioteca.local
+        iif "{{ client_iface }}" meta mark 0x1 ip daddr != {{ rpi_ip }} tcp dport 80 \
+            dnat to {{ client_vlan_ip }}:{{ http_proxy_port }}
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        # NAT masquerade hacia internet
+        oif "{{ wan_interface }}" masquerade
+    }
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TABLA NETDEV: Fix DHCP broadcast para macOS (APIPA)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+table netdev dhcp_fix {
+    chain out_vlan30 {
+        type filter hook egress device "{{ client_iface }}" priority filter;
+        # macOS en APIPA solo acepta DHCP Offers con dst=255.255.255.255
+        # Kea usa AF_PACKET (bypass netfilter) y envía en unicast — corregimos aquí
+        udp sport 67 udp dport 68 ip daddr != 255.255.255.255 \
+            ip daddr set 255.255.255.255 ether daddr set ff:ff:ff:ff:ff:ff
+    }
+}

@@ -1,0 +1,46 @@
+---
+# ── Firewall avanzado ──────────────────────────────────────────────────────────
+# Variables para el rol firewall (mejoras sobre el nftables base del rol router)
+
+# Rate limiting SSH — máximo intentos por minuto desde una misma IP
+ssh_rate_limit: "5/minute"
+ssh_rate_burst: 10
+
+# Rate limiting DNS — protección contra amplificación DNS
+dns_rate_limit: "30/second"
+dns_rate_burst: 50
+
+# Rate limiting ICMP — evitar ping floods
+icmp_rate_limit: "10/second"
+icmp_rate_burst: 20
+
+# Puertos TCP que se bloquean explícitamente desde WAN (escaneo común)
+blocked_wan_tcp_ports:
+  - 23      # Telnet
+  - 135     # RPC Windows
+  - 137     # NetBIOS
+  - 138     # NetBIOS
+  - 139     # NetBIOS
+  - 445     # SMB
+  - 1433    # MSSQL
+  - 3306    # MySQL
+  - 3389    # RDP
+  - 5900    # VNC
+
+# Subredes internas — solo estas pueden acceder a servicios de gestión
+internal_subnets:
+  - "192.168.10.0/24"   # VLAN10 Gestión
+  - "192.168.20.0/24"   # VLAN20 Servidores
+  - "192.168.30.0/24"   # VLAN30 Clientes
+
+# Puertos de gestión accesibles solo desde VLAN10
+mgmt_ports_tcp:
+  - 9090    # Prometheus
+  - 3000    # Grafana
+  - 8080    # Pi-hole web admin
+
+# Habilitar logging de paquetes dropeados (útil para diagnóstico)
+# Poner en false en producción si genera demasiado log
+enable_drop_logging: true
+drop_log_prefix: "NFT DROP: "
+drop_log_limit: "5/minute"

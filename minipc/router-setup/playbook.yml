@@ -13,6 +13,8 @@
 #   ansible-playbook -i inventory.ini playbook.yml --tags captive_portal
 #   ansible-playbook -i inventory.ini playbook.yml --tags ntp
 #   ansible-playbook -i inventory.ini playbook.yml --tags monitoring
+#   ansible-playbook -i inventory.ini playbook.yml --tags firewall
+#   ansible-playbook -i inventory.ini playbook.yml --tags pihole
 #
 # Dry-run:
 #   ansible-playbook -i inventory.ini playbook.yml --check
@@ -58,6 +60,18 @@
     # 6. Monitoreo — Prometheus + Grafana + node_exporter
     - role: monitoring
       tags: [monitoring]
+
+    # 7. Firewall mejorado — reemplaza nftables del rol router con reglas
+    #    más robustas: rate limiting SSH/DNS/ICMP, bloqueo de puertos WAN,
+    #    aislamiento estricto entre VLANs, logging de drops
+    - role: firewall
+      tags: [firewall, nftables]
+
+    # 8. Pi-hole — DNS con bloqueo de publicidad y contenido no deseado
+    #    Corre como contenedor Docker, escucha en 192.168.10.1:53
+    #    El DNAT de nftables fuerza todo el DNS de las VLANs hacia Pi-hole
+    - role: pihole
+      tags: [pihole, dns]
 
 # ─── Play 2: Verificación ────────────────────────────────────────────────────
 
@@ -153,10 +167,47 @@
       failed_when: false
       register: ping_inet
 
+    # ── Pi-hole ───────────────────────────────────────────────────────────────
+    - name: Verificar Pi-hole responde en puerto 53
+      wait_for:
+        host: 192.168.10.1
+        port: 53
+        timeout: 10
+      ignore_errors: true
+      register: pihole_port_check
+
+    - name: Verificar panel web Pi-hole (puerto 8080)
+      wait_for:
+        host: 192.168.10.1
+        port: 8080
+        timeout: 10
+      ignore_errors: true
+      register: pihole_web_check
+
+    # ── Firewall ──────────────────────────────────────────────────────────────
+    - name: Verificar set ssh_bruteforce existe en nftables
+      command: nft list set inet filter ssh_bruteforce
+      changed_when: false
+      ignore_errors: true
+      register: nft_ssh_set
+
+    - name: Verificar rate limiting SSH en nftables
+      command: nft list chain inet filter input
+      register: nft_input_chain
+      changed_when: false
+
+    - name: Assert rate limiting SSH presente
+      assert:
+        that: "'ssh_bruteforce' in nft_input_chain.stdout"
+        fail_msg: "Rate limiting SSH no encontrado en nftables"
+
     - name: Resumen final
       debug:
         msg:
           - "ip_forward:        {{ ipv4_fwd.stdout }}"
           - "biblioteca.local:  {{ dns_check.stdout }}"
           - "ping internet:     {{ 'OK' if ping_inet.rc == 0 else 'FAIL (sin WAN)' }}"
+          - "Pi-hole DNS :53:   {{ 'OK' if pihole_port_check is not failed else 'FAIL' }}"
+          - "Pi-hole web :8080: {{ 'OK' if pihole_web_check is not failed else 'FAIL' }}"
+          - "SSH bruteforce set:{{ 'OK' if nft_ssh_set is not failed else 'FAIL' }}"
           - "Todos los servicios verificados correctamente"

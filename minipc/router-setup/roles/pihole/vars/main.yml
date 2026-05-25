@@ -1,0 +1,42 @@
+---
+# ── Pi-hole ────────────────────────────────────────────────────────────────────
+# Pi-hole corre como contenedor Docker en el Mini PC.
+# Escucha en 192.168.10.1:53 (misma IP que Bind9 usaba como forwarder).
+# Bind9 se deshabilita — Pi-hole toma el rol de DNS resolver con bloqueo de ads.
+
+pihole_version: "2024.07.0"          # Imagen pihole/pihole en Docker Hub
+pihole_web_port: 8080                 # Puerto web admin (evita conflicto con nginx :80)
+pihole_dns_port: 53                   # Puerto DNS (UDP/TCP)
+pihole_data_dir: /opt/pihole          # Volúmenes persistentes en el host
+
+# Contraseña del panel web de Pi-hole (cámbiala antes de desplegar)
+pihole_web_password: "cambia_esta_password"
+
+# Upstream DNS que Pi-hole usará para resolver lo que no bloquea
+# Se usan servidores con DoT/DoH para privacidad
+pihole_upstream_dns1: "9.9.9.9"      # Quad9 (filtra malware)
+pihole_upstream_dns2: "149.112.112.112"  # Quad9 secundario
+
+# Dominio local que Pi-hole debe delegar a Bind9 (si Bind9 sigue activo)
+# Si se deshabilita Bind9, Pi-hole resuelve biblioteca.local directamente
+pihole_local_domain: "biblioteca.local"
+
+# IP del Mini PC en VLAN10 (donde Pi-hole escucha)
+pihole_listen_ip: "192.168.10.1"
+
+# Listas de bloqueo adicionales (adlists) — se agregan al panel web
+# Estas son las más usadas para redes comunitarias
+pihole_adlists:
+  - "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+  - "https://adaway.org/hosts.txt"
+  - "https://v.firebog.net/hosts/AdguardDNS.txt"
+  - "https://v.firebog.net/hosts/Easylist.txt"
+  - "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt"
+
+# Dominios siempre permitidos (whitelist) — servicios locales y educativos
+pihole_whitelist:
+  - "biblioteca.local"
+  - "*.biblioteca.local"
+  - "kolibri.biblioteca.local"
+  - "kiwix.biblioteca.local"
+  - "jellyfin.biblioteca.local"

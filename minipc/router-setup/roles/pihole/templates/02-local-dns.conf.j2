@@ -1,0 +1,20 @@
+# Managed by Ansible — do not edit manually
+# Configuración dnsmasq: delegar dominio local a Bind9 en puerto 5353
+# Pi-hole reenvía consultas de biblioteca.local a Bind9 (que sigue corriendo
+# en el mismo host pero en puerto 5353 para no conflictuar con Pi-hole).
+
+# Delegar biblioteca.local a Bind9 local (puerto 5353)
+server=/{{ pihole_local_domain }}/127.0.0.1#5353
+
+# Delegar zonas inversas de las VLANs a Bind9 también
+server=/10.168.192.in-addr.arpa/127.0.0.1#5353
+server=/20.168.192.in-addr.arpa/127.0.0.1#5353
+server=/30.168.192.in-addr.arpa/127.0.0.1#5353
+
+# No reenviar consultas sin punto (nombres cortos) a upstream
+domain-needed
+bogus-priv
+
+# Responder NXDOMAIN para dominios bloqueados (en vez de 0.0.0.0)
+# Mejora compatibilidad con algunos clientes
+# address=/.ads.example.com/0.0.0.0  ← Pi-hole maneja esto automáticamente

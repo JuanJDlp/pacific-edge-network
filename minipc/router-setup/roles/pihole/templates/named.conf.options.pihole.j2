@@ -1,0 +1,51 @@
+// Managed by Ansible — do not edit manually
+// Bind9 configurado para coexistir con Pi-hole:
+// - Escucha en puerto 5353 (Pi-hole toma el 53)
+// - Solo acepta consultas desde localhost (Pi-hole) y VLANs internas
+// - Resuelve únicamente el dominio biblioteca.local y zonas inversas
+
+options {
+    directory "/var/cache/bind";
+
+    // Escuchar en puerto 5353 para no conflictuar con Pi-hole en :53
+    port 5353;
+
+    // Solo escuchar en loopback y VLANs internas
+    listen-on {
+        127.0.0.1;
+{% for vlan in vlans %}
+        {{ vlan.ipv4_address }};
+{% endfor %}
+    };
+    listen-on-v6 { none; };
+
+    // Solo aceptar consultas desde Pi-hole (localhost) y VLANs internas
+    allow-query {
+        127.0.0.1;
+        192.168.0.0/16;
+    };
+
+    // No hacer recursión hacia internet — Pi-hole maneja eso
+    recursion no;
+
+    // Deshabilitar transferencias de zona hacia fuera
+    allow-transfer { none; };
+
+    // Deshabilitar notificaciones
+    notify no;
+
+    // Logging mínimo
+    dnssec-validation no;
+};
+
+// Logging
+logging {
+    channel default_log {
+        file "/var/log/named/default.log" versions 3 size 5m;
+        severity dynamic;
+        print-time yes;
+        print-severity yes;
+        print-category yes;
+    };
+    category default { default_log; };
+};
