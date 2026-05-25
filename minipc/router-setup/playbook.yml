@@ -40,9 +40,13 @@
     - role: router
       tags: [router, nftables, netplan]
 
-    # 2. DNS — Bind9 con dominio biblioteca.local (reemplaza systemd-resolved en VLANs)
+    # 2. DNS — Bind9 con dominio biblioteca.tel + DNS64 (dual-stack)
     - role: dns
       tags: [dns]
+
+    # 2b. radvd — Router Advertisements (SLAAC + RDNSS) por VLAN
+    - role: radvd
+      tags: [radvd]
 
     # 3. DHCP — Kea DHCPv4 con reserva para RPi y DNS apuntando a Bind9
     - role: dhcp
@@ -108,8 +112,8 @@
         fail_msg: "Faltan rutas VLAN en la tabla de routing"
 
     # ── nftables ──────────────────────────────────────────────────────────────
-    - name: Verificar set captive_allowed
-      command: nft list set inet filter captive_allowed
+    - name: Verificar set captive_allowed_mac
+      command: nft list set inet filter captive_allowed_mac
       changed_when: false
 
     - name: Verificar DNAT portal en nat prerouting
@@ -124,14 +128,14 @@
 
     # ── DNS ───────────────────────────────────────────────────────────────────
     - name: Verificar Bind9 responde en 192.168.10.1
-      command: dig @192.168.10.1 biblioteca.local +short
+      command: dig @192.168.10.1 biblioteca.tel +short
       register: dns_check
       changed_when: false
       failed_when: dns_check.rc != 0 or dns_check.stdout == ""
 
-    - name: Mostrar IP resuelta para biblioteca.local
+    - name: Mostrar IP resuelta para biblioteca.tel
       debug:
-        msg: "biblioteca.local → {{ dns_check.stdout }}"
+        msg: "biblioteca.tel → {{ dns_check.stdout }}"
 
     # ── Servicios ─────────────────────────────────────────────────────────────
     - name: Verificar Kea DHCP4 activo
@@ -205,7 +209,7 @@
       debug:
         msg:
           - "ip_forward:        {{ ipv4_fwd.stdout }}"
-          - "biblioteca.local:  {{ dns_check.stdout }}"
+          - "biblioteca.tel:  {{ dns_check.stdout }}"
           - "ping internet:     {{ 'OK' if ping_inet.rc == 0 else 'FAIL (sin WAN)' }}"
           - "Pi-hole DNS :53:   {{ 'OK' if pihole_port_check is not failed else 'FAIL' }}"
           - "Pi-hole web :8080: {{ 'OK' if pihole_web_check is not failed else 'FAIL' }}"

@@ -1,7 +1,9 @@
 ---
-- name: Instalar nginx
+- name: Instalar paquetes del portal cautivo
   apt:
-    name: nginx
+    name:
+      - nginx
+      - conntrack  # para conntrack -D: limpiar entradas DNAT cacheadas al autenticar
     state: present
     update_cache: true
   become: true

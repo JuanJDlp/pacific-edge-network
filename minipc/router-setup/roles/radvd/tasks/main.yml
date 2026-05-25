@@ -1,0 +1,62 @@
+---
+# ─── Validación previa ────────────────────────────────────────────────────────
+
+- name: Verificar que IPv6 forwarding está habilitado
+  ansible.builtin.slurp:
+    src: /proc/sys/net/ipv6/conf/all/forwarding
+  register: ipv6_fwd_radvd
+  tags: radvd
+
+- name: Assert IPv6 forwarding = 1 (requerido por radvd)
+  ansible.builtin.assert:
+    that: ipv6_fwd_radvd.content | b64decode | trim == '1'
+    fail_msg: >
+      IPv6 forwarding no está habilitado. El rol 'router' debe correr antes
+      de radvd (fija net.ipv6.conf.all.forwarding=1).
+  tags: radvd
+
+# ─── Instalación ──────────────────────────────────────────────────────────────
+
+- name: Instalar radvd
+  ansible.builtin.apt:
+    name: radvd
+    state: present
+    update_cache: true
+  become: true
+  tags: radvd
+
+# ─── Configuración ────────────────────────────────────────────────────────────
+
+- name: Desplegar /etc/radvd.conf
+  ansible.builtin.template:
+    src: radvd.conf.j2
+    dest: /etc/radvd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: restart radvd
+  tags: radvd
+
+# ─── Servicio ─────────────────────────────────────────────────────────────────
+
+- name: Habilitar e iniciar radvd
+  ansible.builtin.systemd:
+    name: radvd
+    enabled: true
+    state: started
+  become: true
+  tags: radvd
+
+- name: Forzar handlers para validar
+  ansible.builtin.meta: flush_handlers
+  tags: radvd
+
+# ─── Verificación ─────────────────────────────────────────────────────────────
+
+- name: Verificar que radvd está activo
+  ansible.builtin.command: systemctl is-active radvd
+  register: radvd_active
+  changed_when: false
+  failed_when: radvd_active.stdout != 'active'
+  tags: radvd

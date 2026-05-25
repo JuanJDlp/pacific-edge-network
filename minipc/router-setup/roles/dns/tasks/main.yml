@@ -62,7 +62,7 @@
   become: true
   notify: reload bind9
 
-- name: Desplegar zona directa biblioteca.local
+- name: Desplegar zona directa biblioteca.tel
   template:
     src: db.forward.j2
     dest: "/etc/bind/zones/db.{{ dns_domain }}"

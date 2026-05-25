@@ -1,0 +1,6 @@
+---
+- name: restart radvd
+  ansible.builtin.systemd:
+    name: radvd
+    state: restarted
+  become: true

@@ -1,0 +1,16 @@
+---
+# ============================================================
+# Playbook individual: network_ipv6 (RPi dual-stack)
+# Uso:
+#   cd raspberry/
+#   ansible-playbook -i rpi-setup/inventory.ini services/network_ipv6.yml
+# ============================================================
+
+- name: Configurar IPv6 estática en RPi (eth0)
+  hosts: rpi
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: network_ipv6
+      tags: [network_ipv6]

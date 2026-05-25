@@ -1,0 +1,16 @@
+---
+- name: Deploy Squid (proxy cache) en RPi
+  hosts: rpi
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Actualizar cache apt
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+      ignore_errors: true
+      tags: always
+
+  roles:
+    - squid

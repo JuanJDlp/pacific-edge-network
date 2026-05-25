@@ -1,0 +1,22 @@
+---
+# El rol captive_portal usa variables definidas en router/vars/main.yml
+# (captive_portal_port, http_proxy_port, rpi_ip, squid_forward_port).
+# Se cargan explícitamente aquí para poder ejecutar el rol de forma independiente.
+- name: Deploy portal cautivo + nginx HTTP proxy en Mini PC
+  hosts: minipc
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - router-setup/roles/router/vars/main.yml
+
+  pre_tasks:
+    - name: Actualizar cache apt
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+      tags: always
+
+  roles:
+    - role: captive_portal
+      tags: [captive_portal, portal]

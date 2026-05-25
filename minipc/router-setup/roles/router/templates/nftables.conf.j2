@@ -9,24 +9,27 @@ flush ruleset
 {% endfor %}
 {% set client_iface = lan_interface ~ '.30' %}
 {% set client_vlan_ip = (vlans | selectattr('id', 'equalto', 30) | first).ipv4_address %}
+{% set dns_redirect_ipv6 = (vlans | selectattr('id', 'equalto', 10) | first).ipv6_address %}
 
 # ─── IPv4/IPv6 filter + captive portal set ───────────────────────────────────
 
 table inet filter {
 
-    # IPs de clientes VLAN30 que aceptaron el portal cautivo (timeout 8h)
-    set captive_allowed {
-        type ipv4_addr
+    # MACs de clientes VLAN30 que aceptaron el portal cautivo (timeout 8h)
+    # Usar MAC en lugar de IP evita que un dispositivo herede acceso si el DHCP
+    # le reasigna una IP que ya estaba autorizada para otro dispositivo.
+    set captive_allowed_mac {
+        type ether_addr
         flags dynamic, timeout
         timeout 8h
-        comment "Clientes VLAN30 autenticados via portal cautivo"
+        comment "Clientes VLAN30 autenticados via portal cautivo (MAC)"
     }
 
     # Mangle prerouting: marca (0x1) paquetes de clientes ya autenticados.
     # Prioridad mangle (-150) corre ANTES del DNAT (-100) en ip nat.
     chain captive_mangle {
         type filter hook prerouting priority mangle; policy accept;
-        iif "{{ client_iface }}" ip saddr @captive_allowed meta mark set 0x1
+        iif "{{ client_iface }}" ether saddr @captive_allowed_mac meta mark set 0x1
     }
 
     chain input {
@@ -50,6 +53,9 @@ table inet filter {
 
         # HTTP proxy intermediario (reenvía a Squid en RPi) — solo VLAN30 autenticada
         iif "{{ client_iface }}" tcp dport {{ http_proxy_port }} accept
+
+        # Monitoreo: Grafana (3000), Prometheus (9090), node_exporter (9100) — solo VLAN10 gestión
+        iif "{{ lan_interface }}.10" tcp dport { {{ monitoring_tcp_ports | join(', ') }} } accept
     }
 
     chain forward {
@@ -62,17 +68,16 @@ table inet filter {
         iif { {{ lan_interface }}.10, {{ lan_interface }}.20 } oif "{{ wan_interface }}" accept
 
         # VLAN30 (clientes) → WAN: solo clientes autenticados en portal
-        iif "{{ client_iface }}" oif "{{ wan_interface }}" ip saddr @captive_allowed accept
+        iif "{{ client_iface }}" oif "{{ wan_interface }}" meta mark 0x1 accept
 
         # VLAN30 → VLAN20 (servidores, path etiquetado): solo autenticados
-        iif "{{ client_iface }}" oif "{{ lan_interface }}.20" ip saddr @captive_allowed accept
+        iif "{{ client_iface }}" oif "{{ lan_interface }}.20" meta mark 0x1 accept
 
         # VLAN30 → servidores (path sin etiqueta, workaround switch): solo autenticados
-        iif "{{ client_iface }}" oif "{{ lan_interface }}" ip saddr @captive_allowed accept
+        iif "{{ client_iface }}" oif "{{ lan_interface }}" meta mark 0x1 accept
 
-        # HTTPS no autenticado: DROP — browser esperará timeout y reintentará con HTTP
-        # (RST inmediato evitaba que macOS/Chrome reintentara con HTTP)
-        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 drop
+        # HTTPS no autenticado: RST inmediato → browser reintenta con HTTP en < 1ms
+        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 reject with tcp reset
     }
 
     chain output {
@@ -96,7 +101,7 @@ table ip nat {
         iif "{{ client_iface }}" meta mark != 0x1 tcp dport 80 dnat to {{ client_vlan_ip }}:{{ captive_portal_port }}
 
         # Proxy transparente: HTTP de clientes autenticados (mark 0x1) → nginx intermediario.
-        # Se excluye la RPi ({{ rpi_ip }}) para que el acceso directo a biblioteca.local no pase por el proxy.
+        # Se excluye la RPi ({{ rpi_ip }}) para que el acceso directo a biblioteca.tel no pase por el proxy.
         # El nginx intermediario reenvía a Squid en RPi (puerto {{ squid_forward_port }}) como forward proxy,
         # evitando el problema de SO_ORIGINAL_DST en DNAT cross-machine.
         iif "{{ client_iface }}" meta mark 0x1 ip daddr != {{ rpi_ip }} tcp dport 80 dnat to {{ client_vlan_ip }}:{{ http_proxy_port }}
@@ -105,6 +110,26 @@ table ip nat {
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
         oif "{{ wan_interface }}" masquerade
+    }
+}
+
+# ─── IPv6 NAT (DNS redirect) ──────────────────────────────────────────────────
+# Forzar queries DNS IPv6 de clientes hacia Bind9 local (con DNS64).
+# No hay masquerade IPv6: el WAN no tiene IPv6 global, NAT64 (Jool) maneja
+# la salida a IPv4. Internet IPv6 nativo no es alcanzable por diseño.
+
+table ip6 nat {
+
+    chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+
+        # DNS de todas las VLANs → Bind9 en Mini PC (VLAN10 ULA)
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 dnat to [{{ dns_redirect_ipv6 }}]:53
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 dnat to [{{ dns_redirect_ipv6 }}]:53
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
     }
 }
 

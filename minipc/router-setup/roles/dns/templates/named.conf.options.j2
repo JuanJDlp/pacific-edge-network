@@ -1,5 +1,6 @@
 // Managed by Ansible — do not edit manually
 // Bind9 options para Mini PC — Biblioteca Digital Ladrilleros
+// Dual-stack: IPv4 + IPv6 (ULA). DNS64 sintetiza AAAA para NAT64 (Jool).
 
 options {
     directory "/var/cache/bind";
@@ -12,24 +13,31 @@ options {
     };
     forward only;
 
-    // DNSSEC: auto (valida cuando sea posible)
-    dnssec-validation auto;
+    // DNSSEC: deshabilitado — forward only + validación rompe cadenas de Apple/iCloud
+    dnssec-validation no;
 
-    // Escuchar solo en interfaces LAN y loopback (no en WAN)
+    // Escuchar IPv4 en loopback y VLANs
     listen-on port 53 {
 {% for ip in dns_listen_ips %}
         {{ ip }};
 {% endfor %}
     };
 
-    // IPv6: solo loopback (no hay IPv6 en LAN por ahora)
-    listen-on-v6 port 53 { ::1; };
+    // Escuchar IPv6 en loopback y VLANs (dual-stack)
+    listen-on-v6 port 53 {
+{% for ip in dns_listen_ips_v6 %}
+        {{ ip }};
+{% endfor %}
+    };
 
-    // Recursión habilitada solo para redes internas
+    // Recursión habilitada solo para redes internas (IPv4 + IPv6)
     recursion yes;
 
     allow-recursion {
 {% for net in dns_allow_query %}
+        {{ net }};
+{% endfor %}
+{% for net in dns_allow_query_v6 %}
         {{ net }};
 {% endfor %}
     };
@@ -38,11 +46,34 @@ options {
 {% for net in dns_allow_query %}
         {{ net }};
 {% endfor %}
+{% for net in dns_allow_query_v6 %}
+        {{ net }};
+{% endfor %}
     };
 
-    // Permitir zone transfers al DNS secundario (RPi) — la RPi conecta desde 192.168.20.10
-    allow-transfer { {{ dns_slave_ip }}; 192.168.20.1; 127.0.0.1; };
+    // Zone transfers al DNS secundario (RPi) por IPv4 e IPv6
+    allow-transfer { {{ dns_slave_ip }}; {{ dns_slave_ipv6 }}; 192.168.20.1; 127.0.0.1; };
 
-    // Minimizar información en respuestas de error
     auth-nxdomain no;
+
+    // ─── DNS64 ────────────────────────────────────────────────────────────
+    // Sintetiza 64:ff9b::<ipv4> para destinos externos sin AAAA real,
+    // y reemplaza AAAA reales con sintéticos porque no hay IPv6 nativo en el WAN.
+    //
+    // mapped:  excluye RFC1918 → no sintetiza para hosts internos IPv4-only
+    // exclude: excluye ULA fd00::/8 → preserva AAAA reales de la red interna
+    //          (biblioteca.tel y demás hosts dual-stack locales)
+    dns64 {{ dns64_prefix }} {
+        clients { any; };
+        mapped {
+            !10.0.0.0/8;
+            !172.16.0.0/12;
+            !192.168.0.0/16;
+            any;
+        };
+        exclude {
+            !fd00::/8;
+            any;
+        };
+    };
 };

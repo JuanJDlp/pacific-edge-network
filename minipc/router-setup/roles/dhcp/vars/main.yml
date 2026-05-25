@@ -7,9 +7,11 @@ dhcp_valid_lifetime: 4000
 dhcp_renew_timer: 1000
 dhcp_rebind_timer: 2000
 
+lan_interface: "enp171s0"
+
 # Servidor DNS para clientes (Bind9 en Mini PC)
 dhcp_dns_server: "192.168.10.1"
-dhcp_domain_search: "biblioteca.local"
+dhcp_domain_search: "biblioteca.tel"
 
 dhcp_subnets:
   - id: 10

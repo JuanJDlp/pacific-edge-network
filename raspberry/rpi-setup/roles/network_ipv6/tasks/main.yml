@@ -1,0 +1,47 @@
+---
+# ============================================================
+# Asignar IPv6 ULA estática a eth0 (dual-stack)
+# La RPi vive en VLAN20 (servidores). IPv4 sigue por DHCP (reservado en Kea).
+# Se agrega un drop-in netplan, no se reemplaza 50-cloud-init.yaml.
+# ============================================================
+
+- name: Crear backup del netplan existente
+  ansible.builtin.shell:
+    cmd: |
+      mkdir -p /etc/netplan/backups
+      for f in /etc/netplan/*.yaml; do
+        [ -f "$f" ] && cp -p "$f" /etc/netplan/backups/"$(basename $f).$(date +%Y%m%d-%H%M%S).bak" || true
+      done
+  changed_when: false
+  become: true
+  tags: network_ipv6
+
+- name: Desplegar drop-in netplan con IPv6 estática en eth0
+  ansible.builtin.template:
+    src: 60-ipv6.yaml.j2
+    dest: /etc/netplan/60-ipv6.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  become: true
+  register: ipv6_netplan
+  tags: network_ipv6
+
+- name: Aplicar netplan si cambió
+  ansible.builtin.command:
+    cmd: netplan apply
+  when: ipv6_netplan.changed
+  changed_when: true
+  become: true
+  tags: network_ipv6
+
+- name: Verificar que eth0 tiene la IPv6 esperada
+  ansible.builtin.shell:
+    cmd: ip -6 addr show dev eth0 | grep -q "{{ rpi_ipv6 }}"
+  changed_when: false
+  retries: 3
+  delay: 2
+  register: ipv6_check
+  until: ipv6_check.rc == 0
+  become: true
+  tags: network_ipv6

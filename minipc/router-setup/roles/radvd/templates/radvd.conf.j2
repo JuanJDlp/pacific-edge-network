@@ -1,0 +1,33 @@
+# Managed by Ansible — do not edit manually
+# radvd — Router Advertisement Daemon
+# Emite RA con SLAAC (AdvAutonomous) y RDNSS por cada VLAN.
+
+{% for vlan in radvd_vlans %}
+interface {{ lan_interface }}.{{ vlan.id }}
+{
+    AdvSendAdvert on;
+    AdvManagedFlag off;
+    AdvOtherConfigFlag off;
+    MinRtrAdvInterval {{ radvd_min_rtr_adv_interval }};
+    MaxRtrAdvInterval {{ radvd_max_rtr_adv_interval }};
+    AdvDefaultLifetime {{ radvd_default_lifetime }};
+
+    prefix {{ vlan.prefix }}
+    {
+        AdvOnLink on;
+        AdvAutonomous on;
+        AdvRouterAddr on;
+    };
+
+    RDNSS {{ vlan.rdnss }}
+    {
+        AdvRDNSSLifetime {{ radvd_rdnss_lifetime }};
+    };
+
+    DNSSL {{ radvd_dnssl }}
+    {
+        AdvDNSSLLifetime {{ radvd_dnssl_lifetime }};
+    };
+};
+
+{% endfor %}

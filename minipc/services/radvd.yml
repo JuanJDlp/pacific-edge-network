@@ -1,0 +1,16 @@
+---
+# ============================================================
+# Playbook individual: radvd (SLAAC + RDNSS)
+# Uso:
+#   cd minipc/
+#   ansible-playbook -i router-setup/inventory.ini services/radvd.yml
+# ============================================================
+
+- name: Configurar radvd (SLAAC IPv6) en Mini PC
+  hosts: minipc
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: radvd
+      tags: [radvd]

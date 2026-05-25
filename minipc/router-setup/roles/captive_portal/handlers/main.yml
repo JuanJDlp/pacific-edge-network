@@ -1,8 +1,8 @@
 ---
 - name: reload nginx
   systemd:
-    name: captive-portal
-    state: restarted
+    name: nginx
+    state: reloaded
   become: true
 
 - name: restart captive-portal

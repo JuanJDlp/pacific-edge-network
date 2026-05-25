@@ -12,6 +12,46 @@
 #   → nginx (este server) → Squid RPi:{{ squid_forward_port }} (forward proxy)
 #   → Squid usa Host header para conectar al destino real
 
+# ── OS Captive Portal Probes (clientes autenticados) ─────────────────────────
+# Interceptar las probes de conectividad del SO y devolver respuestas de éxito
+# localmente, sin reenviar a Squid/internet. Sin esto, el CNA del OS (macOS/iOS/
+# Android/Windows) sigue mostrando el popup del portal cautivo porque nunca recibe
+# confirmación de "internet disponible" desde los servidores del fabricante.
+
+# macOS / iOS: captive.apple.com/hotspot-detect.html → Success HTML
+server {
+    listen {{ http_proxy_port }};
+    server_name captive.apple.com;
+    location / {
+        default_type text/html;
+        return 200 "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>";
+    }
+}
+
+# Android: connectivitycheck.gstatic.com y connectivitycheck.android.com → 204
+server {
+    listen {{ http_proxy_port }};
+    server_name connectivitycheck.gstatic.com connectivitycheck.android.com;
+    location / {
+        return 204;
+    }
+}
+
+# Windows NCSI
+server {
+    listen {{ http_proxy_port }};
+    server_name www.msftconnecttest.com;
+    location / { return 200 "Microsoft Connect Test"; }
+}
+
+server {
+    listen {{ http_proxy_port }};
+    server_name www.msftncsi.com;
+    location / { return 200 "Microsoft NCSI"; }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 server {
     listen {{ http_proxy_port }};
     server_name _;

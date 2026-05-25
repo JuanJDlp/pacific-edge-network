@@ -41,8 +41,11 @@ captive_portal_port: 2050
 # Soluciona el problema SO_ORIGINAL_DST en DNAT cross-machine
 http_proxy_port: 8888
 
-# IP de la RPi (excluida del DNAT de proxy para acceso directo a biblioteca.local)
+# IP de la RPi (excluida del DNAT de proxy para acceso directo a biblioteca.tel)
 rpi_ip: "192.168.20.10"
 
 # Puerto forward proxy de Squid en la RPi (no intercept, evita loop detection)
 squid_forward_port: 3129
+
+# Puertos de monitoreo (Grafana, Prometheus, node_exporter)
+monitoring_tcp_ports: [3000, 9090, 9100]

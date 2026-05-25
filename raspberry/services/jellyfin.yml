@@ -1,0 +1,9 @@
+---
+# Jellyfin debe estar preinstalado en la RPi; este playbook solo habilita y arranca el servicio.
+- name: Habilitar Jellyfin (servidor de medios) en RPi
+  hosts: rpi
+  become: true
+  gather_facts: false
+
+  roles:
+    - jellyfin
