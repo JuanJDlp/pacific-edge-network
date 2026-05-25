@@ -5,9 +5,11 @@
 
 # Red
 rpi_ip: "192.168.20.10"
+rpi_ipv6: "fd00:0:0:20::10"
 minipc_captive_ip: "192.168.30.1"
 minipc_captive_port: 2050
 minipc_dns_ip: "192.168.10.1"
+minipc_dns_ipv6: "fd00:0:0:10::1"
 
 # Dominio local
 dns_domain: "biblioteca.tel"
@@ -23,6 +25,10 @@ kiwix_user: "kiwix"
 
 # DNS secundario
 dns_primary_ip: "192.168.10.1"
+dns_primary_ipv6: "fd00:0:0:10::1"
 dns_slave_listen_ips:
   - "127.0.0.1"
   - "192.168.20.10"
+dns_slave_listen_ips_v6:
+  - "::1"
+  - "fd00:0:0:20::10"

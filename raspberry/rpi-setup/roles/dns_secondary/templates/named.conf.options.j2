@@ -1,12 +1,14 @@
 // Managed by Ansible — do not edit manually
 // Bind9 options para RPi — DNS secundario de {{ dns_domain }}
+// Dual-stack: escucha IPv4 + IPv6.
 
 options {
     directory "/var/cache/bind";
 
-    // Reenviar queries externas al DNS primario del Mini PC
+    // Reenviar queries externas al DNS primario del Mini PC (IPv4 + IPv6)
     forwarders {
         {{ dns_primary_ip }};
+        {{ dns_primary_ipv6 }};
         8.8.8.8;
         8.8.4.4;
     };
@@ -14,27 +16,36 @@ options {
 
     dnssec-validation auto;
 
-    // Escuchar solo en loopback e interfaz LAN (no en wlan0/wt0)
+    // Escuchar IPv4 en loopback e interfaz LAN
     listen-on port 53 {
 {% for ip in dns_slave_listen_ips %}
         {{ ip }};
 {% endfor %}
     };
 
-    listen-on-v6 port 53 { ::1; };
+    // Escuchar IPv6 en loopback y eth0 (dual-stack)
+    listen-on-v6 port 53 {
+{% for ip in dns_slave_listen_ips_v6 %}
+        {{ ip }};
+{% endfor %}
+    };
 
     recursion yes;
 
     allow-recursion {
         127.0.0.1;
         192.168.0.0/16;
-        100.64.0.0/10;  // Netbird CGNAT
+        100.64.0.0/10;       // Netbird CGNAT
+        ::1;
+        fd00::/8;            // ULA (todas las VLANs internas)
     };
 
     allow-query {
         127.0.0.1;
         192.168.0.0/16;
         100.64.0.0/10;
+        ::1;
+        fd00::/8;
     };
 
     // Solo acepta zone transfers del primario

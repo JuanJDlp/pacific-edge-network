@@ -14,15 +14,24 @@ $TTL    3600
 @   IN  NS  {{ dns_primary_ns }}.{{ dns_domain }}.
 
 ; Registro del NS
-{{ dns_primary_ns }}    IN  A   {{ dns_primary_ip }}
+{{ dns_primary_ns }}    IN  A     {{ dns_primary_ip }}
+{{ dns_primary_ns }}    IN  AAAA  {{ dns_primary_ipv6 }}
 
 ; Apex: biblioteca.tel → RPi (para que http://biblioteca.tel resuelva)
 {% set rpi_host = dns_hosts | selectattr('name', 'equalto', 'biblioteca') | first %}
-@               IN  A   {{ rpi_host.ip }}
+@               IN  A     {{ rpi_host.ip }}
+{% if rpi_host.ipv6 is defined %}
+@               IN  AAAA  {{ rpi_host.ipv6 }}
+{% endif %}
 
-; Hosts
+; Hosts — A records
 {% for host in dns_hosts %}
-{{ host.name.ljust(16) }}IN  A   {{ host.ip }}
+{{ host.name.ljust(16) }}IN  A     {{ host.ip }}
+{% endfor %}
+
+; Hosts — AAAA records (dual-stack)
+{% for host in dns_hosts if host.ipv6 is defined %}
+{{ host.name.ljust(16) }}IN  AAAA  {{ host.ipv6 }}
 {% endfor %}
 
 ; CNAME — alias de servicios educativos → biblioteca (RPi)

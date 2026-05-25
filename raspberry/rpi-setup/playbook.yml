@@ -4,6 +4,7 @@
   become: true
 
   roles:
+    - network_ipv6     # Dual-stack: asigna fd00:0:0:20::10 a eth0 (debe ir primero)
     - nginx
     - squid
     - kiwix

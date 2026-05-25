@@ -38,9 +38,13 @@
     - role: router
       tags: [router, nftables, netplan]
 
-    # 2. DNS — Bind9 con dominio biblioteca.tel (reemplaza systemd-resolved en VLANs)
+    # 2. DNS — Bind9 con dominio biblioteca.tel + DNS64 (dual-stack)
     - role: dns
       tags: [dns]
+
+    # 2b. radvd — Router Advertisements (SLAAC + RDNSS) por VLAN
+    - role: radvd
+      tags: [radvd]
 
     # 3. DHCP — Kea DHCPv4 con reserva para RPi y DNS apuntando a Bind9
     - role: dhcp

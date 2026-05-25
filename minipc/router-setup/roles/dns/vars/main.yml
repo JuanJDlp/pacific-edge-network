@@ -2,7 +2,8 @@
 # ============================================================
 # DNS — Bind9 para Mini PC
 # Dominio local: biblioteca.tel
-# Escucha en todas las interfaces LAN del Mini PC
+# Escucha en todas las interfaces LAN del Mini PC (IPv4 + IPv6)
+# DNS64 sintetiza AAAA para destinos IPv4-only → NAT64 vía Jool
 # ============================================================
 
 dns_domain: "biblioteca.tel"
@@ -10,43 +11,64 @@ dns_domain: "biblioteca.tel"
 # IP del NS primario (Mini PC, VLAN10)
 dns_primary_ns: "ns1"
 dns_primary_ip: "192.168.10.1"
+dns_primary_ipv6: "fd00:0:0:10::1"
 
-# Interfaces donde escucha Bind9
+# Interfaces IPv4 donde escucha Bind9
 dns_listen_ips:
   - "127.0.0.1"
   - "192.168.10.1"
   - "192.168.20.1"
   - "192.168.30.1"
 
-# Forwarders externos (ISP vía WAN del Mini PC)
+# Interfaces IPv6 donde escucha Bind9
+dns_listen_ips_v6:
+  - "::1"
+  - "fd00:0:0:10::1"
+  - "fd00:0:0:20::1"
+  - "fd00:0:0:30::1"
+
+# Forwarders externos (ISP vía WAN del Mini PC, IPv4)
 dns_forwarders:
   - "8.8.8.8"
   - "8.8.4.4"
   - "1.1.1.1"
 
-# Redes permitidas para queries recursivas
+# Redes IPv4 permitidas para queries recursivas
 dns_allow_query:
   - "127.0.0.1"
   - "192.168.10.0/24"
   - "192.168.20.0/24"
   - "192.168.30.0/24"
 
-# Zonas inversas (una por VLAN)
+# Redes IPv6 permitidas para queries recursivas (ULA por VLAN + loopback)
+dns_allow_query_v6:
+  - "::1"
+  - "fd00:0:0:10::/64"
+  - "fd00:0:0:20::/64"
+  - "fd00:0:0:30::/64"
+
+# DNS64: prefijo NAT64 con el que se sintetizan AAAA desde A
+# Coincide con pool6 de Jool en el rol router (64:ff9b::/96)
+dns64_prefix: "64:ff9b::/96"
+
+# Zonas inversas IPv4 (una por VLAN)
 dns_reverse_zones:
   - "10.168.192"    # VLAN10
   - "20.168.192"    # VLAN20
   - "30.168.192"    # VLAN30
 
 # Hosts del dominio biblioteca.tel
+# Campo ipv6 opcional: si está presente, se publica AAAA además de A
 dns_hosts:
-  - { name: "minipc",      ip: "192.168.10.1", vlan_octet: "10" }
-  - { name: "ns1",         ip: "192.168.10.1", vlan_octet: "10" }
-  - { name: "switch",      ip: "192.168.10.2", vlan_octet: "10" }
-  - { name: "biblioteca",  ip: "192.168.20.10", vlan_octet: "20" }
-  - { name: "rpi",         ip: "192.168.20.10", vlan_octet: "20" }
+  - { name: "minipc",      ip: "192.168.10.1",  ipv6: "fd00:0:0:10::1",  vlan_octet: "10" }
+  - { name: "ns1",         ip: "192.168.10.1",  ipv6: "fd00:0:0:10::1",  vlan_octet: "10" }
+  - { name: "switch",      ip: "192.168.10.2",                            vlan_octet: "10" }
+  - { name: "biblioteca",  ip: "192.168.20.10", ipv6: "fd00:0:0:20::10", vlan_octet: "20" }
+  - { name: "rpi",         ip: "192.168.20.10", ipv6: "fd00:0:0:20::10", vlan_octet: "20" }
 
 # IP del DNS secundario (RPi) para zone transfers
 dns_slave_ip: "192.168.20.10"
+dns_slave_ipv6: "fd00:0:0:20::10"
 
 # CNAME: servicios educativos → biblioteca (RPi)
 dns_aliases:

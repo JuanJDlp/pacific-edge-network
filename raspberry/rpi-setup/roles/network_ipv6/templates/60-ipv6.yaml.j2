@@ -1,0 +1,10 @@
+# Managed by Ansible — do not edit manually
+# Drop-in para asignar IPv6 ULA estática en eth0 (VLAN20 de Pacific Edge)
+# IPv4 sigue gestionada por 50-cloud-init.yaml (DHCP).
+network:
+  version: 2
+  ethernets:
+    eth0:
+      addresses:
+        - {{ rpi_ipv6 }}/64
+      accept-ra: true
