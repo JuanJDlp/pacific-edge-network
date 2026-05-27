@@ -1,0 +1,51 @@
+# Managed by Ansible — do not edit manually
+# Modo offline — activado por wan-check.sh cuando WAN esta caido
+# Sirve offline.html directamente sin proxy a Squid.
+# wan-check.sh intercambia el symlink entre http-proxy y http-proxy-offline.
+
+# ── OS Captive Portal Probes (mismos que en http-proxy normal) ────────────
+# Deben seguir respondiendo "exito" para que el CNA del OS no muestre popups.
+
+# macOS / iOS
+server {
+    listen {{ http_proxy_port }};
+    server_name captive.apple.com;
+    location / {
+        default_type text/html;
+        return 200 "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>";
+    }
+}
+
+# Android
+server {
+    listen {{ http_proxy_port }};
+    server_name connectivitycheck.gstatic.com connectivitycheck.android.com;
+    location / {
+        return 204;
+    }
+}
+
+# Windows NCSI
+server {
+    listen {{ http_proxy_port }};
+    server_name www.msftconnecttest.com;
+    location / { return 200 "Microsoft Connect Test"; }
+}
+
+server {
+    listen {{ http_proxy_port }};
+    server_name www.msftncsi.com;
+    location / { return 200 "Microsoft NCSI"; }
+}
+
+# ── Todas las demas peticiones → offline.html ──────────────────────────────
+server {
+    listen {{ http_proxy_port }} default_server;
+    server_name _;
+    root /etc/captive-portal;
+
+    location / {
+        try_files /offline.html =503;
+        add_header Cache-Control "no-store" always;
+    }
+}

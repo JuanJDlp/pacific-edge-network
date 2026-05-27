@@ -76,4 +76,8 @@ options {
             any;
         };
     };
+
+    // RPZ offline — wan-check.sh intercambia entre .enabled y .disabled
+    // Cuando WAN esta caido, response-policy redirige dominios externos a {{ captive_portal_ip }}
+    include "/etc/bind/named.conf.rpz";
 };

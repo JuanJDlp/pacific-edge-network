@@ -21,3 +21,13 @@ zone "{{ rz }}.in-addr.arpa" {
 };
 
 {% endfor %}
+
+//
+// RPZ offline zone — siempre cargada, pero solo activa cuando
+// response-policy la referencia (ver named.conf.rpz dentro de options{})
+//
+zone "rpz.offline" {
+    type master;
+    file "/etc/bind/zones/rpz.offline.zone";
+    allow-query { none; };
+};

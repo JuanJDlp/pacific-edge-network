@@ -6,6 +6,9 @@
 # DNS64 sintetiza AAAA para destinos IPv4-only → NAT64 vía Jool
 # ============================================================
 
+# IP del portal cautivo (VLAN30 Mini PC) — usada por RPZ offline zone
+captive_portal_ip: "192.168.30.1"
+
 dns_domain: "biblioteca.tel"
 
 # IP del NS primario (Mini PC, VLAN10)

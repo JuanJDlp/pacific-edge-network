@@ -1,0 +1,8 @@
+# Managed by Ansible — do not edit manually
+[Unit]
+Description=WAN health check — toggle offline mode (RPZ + nginx)
+After=named.service nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/wan-check.sh

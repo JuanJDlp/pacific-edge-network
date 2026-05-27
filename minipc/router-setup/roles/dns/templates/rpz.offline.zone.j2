@@ -1,0 +1,24 @@
+; Managed by Ansible — do not edit manually
+; RPZ offline zone — activada por wan-check.sh cuando WAN esta caido
+; Resuelve todos los dominios externos a {{ captive_portal_ip }} (Mini PC VLAN30)
+; para que el browser llegue a nginx y vea offline.html en lugar de un timeout DNS.
+;
+; biblioteca.tel queda excluido (passthru) para que la biblioteca local
+; siga accesible normalmente incluso sin internet.
+
+$TTL 5
+@   IN  SOA ns1.{{ dns_domain }}. admin.{{ dns_domain }}. (
+        1       ; serial (fijo — no necesita incrementar, zone es estatica)
+        3600    ; refresh
+        600     ; retry
+        86400   ; expire
+        5       ; minimum TTL
+    )
+@   IN  NS  ns1.{{ dns_domain }}.
+
+; ── Passthru: dominios locales resuelven normalmente ──────────────────────
+{{ dns_domain }}        CNAME   rpz-passthru.
+*.{{ dns_domain }}      CNAME   rpz-passthru.
+
+; ── Wildcard: todo lo demas → Mini PC VLAN30 ──────────────────────────────
+*                       A       {{ captive_portal_ip }}

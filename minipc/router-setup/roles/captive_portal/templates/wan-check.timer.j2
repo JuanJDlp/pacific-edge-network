@@ -1,0 +1,11 @@
+# Managed by Ansible — do not edit manually
+[Unit]
+Description=WAN health check timer (cada 15s)
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

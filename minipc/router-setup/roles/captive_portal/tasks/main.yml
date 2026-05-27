@@ -113,6 +113,55 @@
   become: true
   notify: reload nginx
 
+# ── nginx: http proxy offline mode (para wan-check.sh) ────────────────────────
+- name: Desplegar config nginx — HTTP proxy offline (sin Squid)
+  template:
+    src: http-proxy-offline.nginx.j2
+    dest: /etc/nginx/sites-available/http-proxy-offline
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+# ── WAN health check — toggle modo offline ───────────────────────────────────
+- name: Copiar wan-check.sh
+  copy:
+    src: wan-check.sh
+    dest: /usr/local/bin/wan-check.sh
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Desplegar wan-check.service
+  template:
+    src: wan-check.service.j2
+    dest: /etc/systemd/system/wan-check.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload systemd
+
+- name: Desplegar wan-check.timer
+  template:
+    src: wan-check.timer.j2
+    dest: /etc/systemd/system/wan-check.timer
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload systemd
+
+- name: Habilitar e iniciar wan-check.timer
+  systemd:
+    name: wan-check.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"
+
 # ── Systemd units ─────────────────────────────────────────────────────────────
 - name: Desplegar unit captive-portal.service
   template:
