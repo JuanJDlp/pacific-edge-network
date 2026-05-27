@@ -2,14 +2,14 @@
 
 **Dispositivo:** Mini PC (`plataformas`)
 **Rol Ansible:** `minipc/router-setup/roles/captive_portal/`
-**Servicios systemd:** `nginx` (puertos 2050 y 8888), `captive-accept`
+**Servicios systemd:** `nginx` (puertos 80, 2050 y 8888), `captive-accept`
 **Aplica a:** VLAN30 (clientes, `192.168.30.0/24`)
 
 ---
 
 ## Qué hace
 
-Intercepta el tráfico HTTP de clientes VLAN30 no autenticados y los redirige a una página de bienvenida (splash page). Al hacer clic en "Entrar a la biblioteca", el sistema registra la MAC del dispositivo y le permite acceder a internet y a los servicios locales.
+Intercepta el tráfico HTTP **y HTTPS** de clientes VLAN30 no autenticados y los redirige a una página de bienvenida (splash page) servida por HTTPS. Al hacer clic en "Entrar a la biblioteca", el sistema registra la MAC del dispositivo y le permite acceder a los servicios locales y a internet. El redirect post-autenticación va a `https://biblioteca.tel`.
 
 ---
 
@@ -17,13 +17,16 @@ Intercepta el tráfico HTTP de clientes VLAN30 no autenticados y los redirige a 
 
 | Componente | Archivo | Puerto | Función |
 |---|---|---|---|
-| nginx splash | `captive-portal.nginx.j2` | `:2050` | Sirve el splash page y proxy hacia captive-accept |
+| nginx HTTP redirect | `captive-portal.nginx.j2` | `:80` | Redirige cualquier request HTTP a `https://192.168.30.1:2050` |
+| nginx splash HTTPS | `captive-portal.nginx.j2` | `:2050` (SSL) | Sirve el splash page con cert autofirmado; proxy hacia captive-accept |
 | captive-accept | `captive-accept.py` | `127.0.0.1:2051` | Handler Python: resuelve MAC, autoriza en nftables |
-| nginx http-proxy | `http-proxy.nginx.j2` | `:8888` | Reenvía HTTP autenticado hacia Squid en RPi |
+| nginx http-proxy | `http-proxy.nginx.j2` | `:8888` | Reenvía HTTP autenticado hacia Squid en RPi; sirve `offline.html` si WAN cae |
 
 ---
 
 ## Flujo completo de un cliente nuevo
+
+### Cliente HTTP (puerto 80)
 
 ```
 1. [Cliente conecta a VLAN30]
@@ -31,11 +34,28 @@ Intercepta el tráfico HTTP de clientes VLAN30 no autenticados y los redirige a 
 
 2. [Cliente abre http://ejemplo.com]
    → nftables: mark != 0x1 (no autenticado)
-   → DNAT a 192.168.30.1:2050
+   → DNAT puerto 80 → 192.168.30.1:2050 (puerto SSL de nginx)
+   → nginx recibe HTTP en puerto SSL → devuelve código 497
+   → error_page 497 → redirect a https://192.168.30.1:2050/
 
-3. [nginx :2050]
-   → sirve splash.html
+3. [Browser abre https://192.168.30.1:2050]
+   → nginx sirve splash.html con advertencia de cert autofirmado
+```
 
+### Cliente HTTPS (puerto 443)
+
+```
+2. [Cliente abre https://ejemplo.com]
+   → nftables: mark != 0x1 (no autenticado)
+   → DNAT puerto 443 → 192.168.30.1:2050 (SSL nginx)
+   → SSL handshake con cert del portal (autofirmado)
+   → browser muestra "Tu conexión no es privada"
+   → usuario hace clic "Continuar" → ve splash HTTPS
+```
+
+### Aceptación y acceso
+
+```
 4. [Usuario hace clic en "Entrar a la biblioteca"]
    → GET /accept
 
@@ -44,15 +64,14 @@ Intercepta el tráfico HTTP de clientes VLAN30 no autenticados y los redirige a 
    → ip neigh show <IP> dev enp171s0.30  → obtiene MAC
    → nft add element inet filter captive_allowed_mac { <MAC> }
    → conntrack -D -s <IP>  (limpia entradas DNAT cacheadas)
-   → responde 200 con <TITLE>Success</TITLE> + meta-refresh a biblioteca.tel
+   → responde 200 con <TITLE>Success</TITLE> + meta-refresh a https://biblioteca.tel
 
 6. [nginx cierra TCP] (keepalive_timeout 0 en /accept)
    → browser abre NUEVA conexión TCP
 
-7. [Nueva conexión HTTP a biblioteca.tel]
+7. [Nueva conexión a https://biblioteca.tel]
    → nftables captive_mangle: MAC en captive_allowed_mac → mark=0x1
-   → nftables prerouting: mark=0x1 → DNAT a :8888 (http-proxy)
-   → nginx :8888 → Squid RPi:3129 → internet/contenido
+   → nftables: mark=0x1 → acceso permitido → va directo a RPi:443
 ```
 
 ---
@@ -114,9 +133,36 @@ nginx recibe el request, reconstruye la petición con el `Host` header correcto 
 
 ---
 
-## Certificado SSL autofirmado
+## Certificado SSL del portal
 
-El rol genera un certificado autofirmado en `/etc/nginx/ssl/captive.crt` para uso futuro en HTTPS. Se genera con `openssl` solo si no existe (`creates:` en Ansible).
+El rol genera un certificado autofirmado en `/etc/nginx/ssl/captive.crt` para el servidor HTTPS en puerto 2050. Se genera solo si no existe (`creates:` en Ansible):
+
+```
+CN: portal.pacificedge.local
+Ubicación: /etc/nginx/ssl/captive.crt + captive.key
+```
+
+Los browsers mostrarán una advertencia de cert porque no coincide con el dominio que el usuario intentaba visitar — este es el comportamiento estándar de todos los captive portals HTTPS.
+
+---
+
+## Página offline (sin WAN)
+
+Cuando el Mini PC no tiene conexión WAN, los clientes autenticados que intentan navegar por HTTP ven una página amigable en lugar de un error de Squid.
+
+**Flujo:**
+```
+Cliente HTTP autenticado → nginx:8888 → Squid:3129
+  Squid no puede conectar al origen (WAN caído, ~15s timeout)
+  → Squid devuelve 503
+  → nginx intercepta (proxy_intercept_errors on)
+  → sirve /etc/captive-portal/offline.html (HTTP 200)
+  → browser muestra "Sin conexión a internet" con botón a https://biblioteca.tel
+```
+
+La biblioteca local (`https://biblioteca.tel`) siempre está disponible aunque WAN esté caído, porque el nftables excluye la IP de la RPi del DNAT hacia el proxy.
+
+> **Limitación:** HTTPS autenticado va directo al WAN sin pasar por el proxy — no es posible interceptarlo sin SSL bumping. El browser mostrará `ERR_CONNECTION_TIMED_OUT`.
 
 ---
 
@@ -126,7 +172,7 @@ El rol genera un certificado autofirmado en `/etc/nginx/ssl/captive.crt` para us
 # Ver MACs autorizadas actualmente
 sudo nft list set inet filter captive_allowed_mac
 
-# Limpiar todas las MACs (re-probar)
+# Limpiar todas las MACs (re-probar el portal desde cero)
 sudo nft flush set inet filter captive_allowed_mac
 
 # Logs del handler captive-accept
@@ -137,6 +183,13 @@ sudo tail -f /var/log/nginx/access.log
 
 # Probar que captive-accept responde
 curl -v -H 'X-Real-IP: 192.168.30.101' http://127.0.0.1:2051/
+
+# Verificar cert SSL del portal
+openssl x509 -in /etc/nginx/ssl/captive.crt -noout -subject -dates
+
+# Simular respuesta offline (desde la RPi o Mini PC en VLAN20)
+curl -s http://192.168.30.1:8888/ --header 'Host: google.com'
+# Con WAN caído debería retornar el HTML de offline.html
 ```
 
 ---

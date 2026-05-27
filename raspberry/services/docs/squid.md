@@ -37,6 +37,16 @@ El nginx intermediario reconstruye el request con el `Host` header correcto y se
 
 ---
 
+## Timeout de conexión
+
+```
+connect_timeout 15 seconds
+```
+
+Squid espera un máximo de 15 segundos para conectarse al destino antes de devolver error al cliente. El valor por defecto es 60 segundos. El timeout reducido permite que el nginx intermediario del Mini PC intercepte el error y muestre `offline.html` más rápidamente cuando el WAN está caído.
+
+---
+
 ## Caché configurada
 
 | Parámetro | Valor |

@@ -49,6 +49,11 @@ server {
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
+    # Fix HTTP-on-HTTPS-port: nftables DNAT envía port 80 unauthenticated → port 2050
+    # (SSL). El cliente habla HTTP plano al puerto SSL → nginx devuelve 497. Este
+    # error_page lo redirige al splash HTTPS para que el browser lo muestre correctamente.
+    error_page 497 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+
     # ── Aceptar portal: delegar al handler Python (necesita root para nft) ───
     # Connection: close fuerza al browser a cerrar el TCP después de esta respuesta.
     # Sin esto, el browser reutiliza la conexión HTTP/1.1 keep-alive que estaba

@@ -3,13 +3,13 @@
 **Dispositivo:** Raspberry Pi (`akasicom2`, 192.168.20.10)
 **Rol Ansible:** `raspberry/rpi-setup/roles/nginx/`
 **Servicio systemd:** `nginx`
-**Puerto:** `:80`
+**Puertos:** `:80` (HTTP) · `:443` (HTTPS)
 
 ---
 
 ## Qué hace
 
-nginx actúa como reverse proxy unificado en la RPi. Recibe todas las peticiones HTTP en el puerto 80 y las enruta a los servicios correspondientes según el path: Kiwix (Wikipedia offline), Kolibri (educación), o Jellyfin (videos). También sirve una página de portal estática e intercepta las probes de conectividad del OS.
+nginx actúa como reverse proxy unificado en la RPi. Recibe peticiones HTTP y HTTPS en los puertos 80 y 443 y las enruta a los servicios correspondientes según el path: Kiwix (Wikipedia offline), Kolibri (educación), o Jellyfin (videos). También sirve una página de portal estática e intercepta las probes de conectividad del OS.
 
 ---
 
@@ -35,6 +35,29 @@ Todos escuchan en loopback — los clientes siempre pasan por nginx, nunca acced
 | `/kolibri/` | `kolibri_backend` | Plataforma Kolibri |
 | `/videos/` | `jellyfin_backend` | Jellyfin (con soporte WebSocket) |
 | `/status` | `/var/www/html/status.json` | Endpoint de salud JSON |
+
+---
+
+## HTTPS con certificado autofirmado
+
+nginx sirve `https://biblioteca.tel` con un certificado autofirmado generado por el rol Ansible:
+
+| Parámetro | Valor |
+|---|---|
+| Cert | `/var/www/html/biblioteca-segura.crt` |
+| Key | `/etc/ssl/private/biblioteca.key` |
+| CN | `biblioteca.tel` |
+| SAN | `DNS:biblioteca.tel`, `DNS:www.biblioteca.tel`, `IP:192.168.20.1` |
+| Validez | 10 años |
+
+Los browsers mostrarán una advertencia de cert la primera vez (cert autofirmado, no firmado por CA pública). El destino post-autenticación del portal cautivo apunta directamente a `https://biblioteca.tel`.
+
+El bloque HTTPS tiene las mismas locations que el HTTP — el contenido es idéntico por ambos protocolos.
+
+```
+/var/log/nginx/biblioteca-ssl-access.log
+/var/log/nginx/biblioteca-ssl-error.log
+```
 
 ---
 
@@ -96,21 +119,30 @@ proxy_set_header Connection $connection_upgrade;
 [Cliente autenticado 192.168.30.X]
     │ GET http://biblioteca.tel/wikipedia/Artículo
     ▼
+[Mini PC — nftables]
+    │ IP destino = RPi → excluida del DNAT del proxy
+    │ va directo a RPi:80 (HTTP) o RPi:443 (HTTPS)
+    ▼
+[nginx RPi :80 o :443]
+    │ path /wikipedia/ → kiwix_backend :8080
+    ▼
+[Kiwix :8080]
+    │ sirve el artículo del ZIM
+
+---
+
+[Cliente autenticado — acceso a internet]
+    │ GET http://google.com
+    ▼
 [Mini PC — nftables DNAT :8888]
-    │ HTTP autenticado → nginx http-proxy
+    │ IP destino ≠ RPi → DNAT a nginx http-proxy
     ▼
 [Mini PC — nginx :8888]
     │ reenvía a Squid RPi:3129 como forward proxy
     ▼
 [Squid RPi :3129]
     │ ¿en caché? → sirve directo
-    │ no → reenvía a RPi:80
-    ▼
-[nginx RPi :80]
-    │ path /wikipedia/ → kiwix_backend :8080
-    ▼
-[Kiwix :8080]
-    │ sirve el artículo del ZIM
+    │ no → sale a internet
 ```
 
 ---
@@ -127,11 +159,20 @@ sudo nginx -t
 # Recargar sin cortar conexiones
 sudo systemctl reload nginx
 
-# Ver accesos en tiempo real
+# Ver accesos en tiempo real (HTTP)
 sudo tail -f /var/log/nginx/biblioteca-access.log
+
+# Ver accesos HTTPS
+sudo tail -f /var/log/nginx/biblioteca-ssl-access.log
 
 # Ver errores
 sudo tail -f /var/log/nginx/biblioteca-error.log
+
+# Verificar cert SSL
+openssl x509 -in /var/www/html/biblioteca-segura.crt -noout -subject -dates -ext subjectAltName
+
+# Probar HTTPS (desde la red interna)
+curl -k https://192.168.20.10/status
 ```
 
 ---

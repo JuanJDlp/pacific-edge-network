@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1f6f43">
+    <title>Sin conexión a internet</title>
+    <style>
+        :root {
+            --verde-selva: #1f6f43;
+            --verde-claro: #4ea375;
+            --crema: #f7f3e8;
+            --tierra: #8b5a2b;
+            --texto: #1a2e1f;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(160deg, var(--verde-selva) 0%, var(--verde-claro) 100%);
+            color: var(--texto);
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
+        .card {
+            background: var(--crema);
+            border-radius: 18px;
+            padding: 2.5rem 2rem;
+            max-width: 440px; width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+            text-align: center;
+        }
+        .badge {
+            display: inline-block;
+            background: var(--tierra);
+            color: var(--crema);
+            padding: .35rem .9rem;
+            border-radius: 999px;
+            font-size: .75rem; letter-spacing: .12em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        h1 { font-size: 1.7rem; color: var(--verde-selva); margin-bottom: .5rem; }
+        p  { font-size: .95rem; line-height: 1.55; margin-bottom: 1rem; color: #2a3a2e; }
+        .btn {
+            display: block;
+            background: var(--verde-selva);
+            color: var(--crema);
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem; font-weight: 600;
+            border-radius: 10px; cursor: pointer;
+            width: 100%;
+            text-decoration: none;
+            transition: background .2s;
+            margin-top: 1.5rem;
+        }
+        .btn:hover { background: #18553a; }
+        .footer { margin-top: 1.5rem; font-size: .75rem; color: var(--tierra); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">Red comunitaria · sin internet</span>
+        <span class="icon">📡</span>
+        <h1>Sin conexión a internet</h1>
+
+        <p>El acceso a internet no está disponible en este momento.</p>
+        <p>La <strong>biblioteca local</strong> con Wikipedia, videos educativos y más sigue funcionando sin internet.</p>
+
+        <a href="https://biblioteca.tel" class="btn">Ir a la biblioteca local</a>
+
+        <p class="footer">Operada por la comunidad · Universidad ICESI</p>
+    </div>
+</body>
+</html>

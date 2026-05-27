@@ -10,7 +10,7 @@ import logging
 import sys
 import re
 
-REDIRECT         = 'http://biblioteca.tel'   # Destino post-autenticación (resuelve via Bind9)
+REDIRECT         = 'https://biblioteca.tel'  # Destino post-autenticación (resuelve via Bind9)
 
 # HTML de éxito: <TITLE>Success</TITLE> hace que macOS/iOS CNA cierre el popup
 # al detectar que la autenticación fue exitosa. El meta-refresh y JS redirigen

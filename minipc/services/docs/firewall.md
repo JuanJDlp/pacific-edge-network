@@ -95,10 +95,26 @@ sudo journalctl -f | grep "NFT DROP:"
 
 | Set | Tipo | Timeout | Propósito |
 |-----|------|---------|-----------|
-| `captive_allowed` | `ipv4_addr` | 8h | IPs VLAN30 autenticadas en portal cautivo |
+| `captive_allowed_mac` | `ether_addr` | 8h | MACs VLAN30 autenticadas en portal cautivo |
 | `ssh_bruteforce` | `ipv4_addr` | 1h | IPs baneadas por exceso de conexiones SSH |
 
-> **Nota:** El set `captive_allowed` usa IP (versión legada). El rol `router` usa `captive_allowed_mac` (por MAC). Si ambos roles están activos, el de `router` tiene precedencia por ser el último en escribir `/etc/nftables.conf`.
+## Portal cautivo — DNAT HTTP y HTTPS
+
+El firewall intercepta tanto HTTP como HTTPS de clientes no autenticados y los redirige al splash del portal:
+
+```nft
+# HTTP unauthenticated → portal (puerto 2050 SSL)
+iif "enp171s0.30" meta mark != 0x1 tcp dport 80
+    dnat to 192.168.30.1:2050
+
+# HTTPS unauthenticated → portal (mismo puerto 2050 SSL)
+# El SSL handshake usa el cert del portal → browser muestra advertencia,
+# pero puede continuar para ver el splash.
+iif "enp171s0.30" meta mark != 0x1 tcp dport 443
+    dnat to 192.168.30.1:2050
+```
+
+El puerto 443 solía tener una regla `drop` (antes `reject with tcp reset`) que impedía que los clientes HTTPS vieran el splash. Ahora el DNAT lo redirige al portal igual que HTTP.
 
 ---
 

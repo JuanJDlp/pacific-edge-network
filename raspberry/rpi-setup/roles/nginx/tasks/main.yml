@@ -5,6 +5,18 @@
     state: present
   become: true
 
+- name: Generar certificado autofirmado para biblioteca.tel
+  command: >
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048
+    -keyout /etc/ssl/private/biblioteca.key
+    -out /var/www/html/biblioteca-segura.crt
+    -subj "/C=CO/ST=Valle del Cauca/L=Ladrilleros/O=Pacific Edge Network/CN=biblioteca.tel"
+    -addext "subjectAltName=DNS:biblioteca.tel,DNS:www.biblioteca.tel,IP:192.168.20.1"
+  args:
+    creates: /var/www/html/biblioteca-segura.crt
+  become: true
+  notify: reload nginx
+
 - name: Desplegar vhost biblioteca
   template:
     src: biblioteca.nginx.j2

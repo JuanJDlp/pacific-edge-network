@@ -173,8 +173,8 @@ table inet filter {
 {% endif %}
             drop
 
-        # ── HTTPS no autenticado: DROP (no RST — permite retry con HTTP) ──────
-        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 drop
+        # ── HTTPS no autenticado: redirigido por DNAT al portal (en prerouting nat). ──
+        # Ya no se necesita DROP — el cliente verá el splash HTTPS con advertencia de cert.
 
         # ── Drop final con log ────────────────────────────────────────────────
 {% if enable_drop_logging %}
@@ -204,6 +204,12 @@ table ip nat {
 
         # ── Portal cautivo: interceptar HTTP de VLAN30 no autenticados ────────
         iif "{{ client_iface }}" meta mark != 0x1 tcp dport 80 \
+            dnat to {{ client_vlan_ip }}:{{ captive_portal_port }}
+
+        # ── Portal cautivo: interceptar HTTPS de VLAN30 no autenticados ───────
+        # El SSL handshake usa el cert del portal (autofirmado). iOS/macOS detectan
+        # el portal vía probe HTTP antes de que el usuario navegue a HTTPS.
+        iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 \
             dnat to {{ client_vlan_ip }}:{{ captive_portal_port }}
 
         # ── Proxy transparente: HTTP de autenticados → nginx intermediario ────

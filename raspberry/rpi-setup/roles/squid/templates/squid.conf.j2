@@ -44,3 +44,7 @@ refresh_pattern -i (/cgi-bin/|\?) 0     0%      0
 refresh_pattern .               43200   90%     525600
 
 visible_hostname {{ dns_domain }}
+
+# Reducir timeout de conexión: con WAN caído, Squid falla en ~15s en lugar de ~60s.
+# nginx (http-proxy) intercepta el 503/504 resultante y muestra offline.html.
+connect_timeout 15 seconds

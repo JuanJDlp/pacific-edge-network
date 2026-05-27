@@ -79,5 +79,17 @@ server {
         proxy_connect_timeout 10s;
         proxy_read_timeout    120s;
         proxy_send_timeout    120s;
+
+        # Cuando Squid no puede alcanzar el destino (WAN caído), devuelve 502/503/504.
+        # proxy_intercept_errors permite que nginx intercepte estos errores y sirva
+        # offline.html en lugar de pasar la página de error de Squid al browser.
+        proxy_intercept_errors on;
+        error_page 502 503 504 =200 @sin_internet;
+    }
+
+    location @sin_internet {
+        root /etc/captive-portal;
+        try_files /offline.html =503;
+        add_header Cache-Control "no-store" always;
     }
 }

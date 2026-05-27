@@ -27,6 +27,16 @@
   become: true
   notify: reload nginx
 
+- name: Copiar offline.html
+  copy:
+    src: offline.html
+    dest: /etc/captive-portal/offline.html
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+  notify: reload nginx
+
 - name: Copiar captive-accept.py
   copy:
     src: captive-accept.py
