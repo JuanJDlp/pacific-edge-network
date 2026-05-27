@@ -124,7 +124,6 @@
   become: true
   notify:
     - reload systemd
-    - restart captive-portal
 
 - name: Desplegar unit captive-accept.service
   template:
@@ -147,12 +146,23 @@
   become: true
   ignore_errors: "{{ ansible_check_mode }}"
 
-- name: Habilitar e iniciar captive-portal (nginx)
+# captive-portal.service intenta arrancar su propio proceso nginx, pero nginx.service
+# ya lo gestiona (auto-arrancado por apt). Ambos peleaban por los mismos puertos en un
+# race condition de boot. Se deshabilita captive-portal.service; nginx.service es el dueño.
+- name: Deshabilitar captive-portal.service (nginx.service gestiona nginx)
   systemd:
     name: captive-portal
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Asegurar nginx.service habilitado e iniciado
+  systemd:
+    name: nginx
     enabled: true
     state: started
-    daemon_reload: true
   become: true
   ignore_errors: "{{ ansible_check_mode }}"
 
