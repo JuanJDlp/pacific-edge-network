@@ -141,3 +141,8 @@ visible_hostname {{ dns_domain }}
 # Con WAN caído, Squid falla en ~15s en lugar de ~60s.
 # nginx (http-proxy) intercepta el 503/504 y muestra offline.html.
 connect_timeout 15 seconds
+
+# La RPi no tiene conectividad IPv6 vía NAT del Mini PC. Sin esto, Squid
+# intenta primero el AAAA que devuelve DNS (ej. YouTube/Google) y espera el
+# timeout completo antes de probar IPv4 → 503 espurio. dns_v4_first prioriza A.
+dns_v4_first on

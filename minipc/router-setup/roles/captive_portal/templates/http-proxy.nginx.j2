@@ -53,7 +53,11 @@ server {
 # ─────────────────────────────────────────────────────────────────────────────
 
 server {
-    listen {{ http_proxy_port }};
+    # default_server: nginx usa el PRIMER server block como default si ninguno lo
+    # marca. Sin esta directiva, captive.apple.com (primero en el archivo) se
+    # vuelve default → cualquier Host: que no matchee un nombre explícito
+    # (youtube.com, etc.) recibe "Success" y nunca llega a Squid.
+    listen {{ http_proxy_port }} default_server;
     server_name _;
 
     # Resolver DNS interno para que nginx pueda resolver $http_host
