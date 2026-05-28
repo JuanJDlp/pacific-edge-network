@@ -3,6 +3,15 @@
 ; Managed by Ansible — do not edit manually
 ;
 $TTL    3600
+
+; ── DNSSEC keys ─────────────────────────────────────────────────────────────
+; Estas líneas son generadas por Ansible después de crear las llaves.
+; No editar manualmente.
+{% for key_file in dnssec_key_files | default([]) %}
+$INCLUDE "{{ key_file }}"
+{% endfor %}
+; ────────────────────────────────────────────────────────────────────────────
+
 @   IN  SOA {{ dns_primary_ns }}.{{ dns_domain }}. admin.{{ dns_domain }}. (
             {{ ansible_date_time.epoch }} ; Serial (epoch)
             3600                         ; Refresh
@@ -17,7 +26,7 @@ $TTL    3600
 {{ dns_primary_ns }}    IN  A     {{ dns_primary_ip }}
 {{ dns_primary_ns }}    IN  AAAA  {{ dns_primary_ipv6 }}
 
-; Apex: biblioteca.tel → RPi (para que http://biblioteca.tel resuelva)
+; Apex: biblioteca.tel → RPi
 {% set rpi_host = dns_hosts | selectattr('name', 'equalto', 'biblioteca') | first %}
 @               IN  A     {{ rpi_host.ip }}
 {% if rpi_host.ipv6 is defined %}

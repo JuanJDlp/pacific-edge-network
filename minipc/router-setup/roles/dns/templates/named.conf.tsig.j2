@@ -1,0 +1,22 @@
+# ── TSIG key: autenticación zone transfer ns1 (master) ↔ ns2 (slave) ────────
+# Managed by Ansible — do not edit manually
+# IMPORTANTE: este archivo contiene el secret HMAC. Permisos 0640 owner bind.
+
+key "ns1-ns2." {
+    algorithm hmac-sha256;
+    secret "{{ tsig_secret }}";
+};
+
+# Master declara al slave y le asocia la llave
+server {{ dns_slave_ip }} {
+    keys {
+        ns1-ns2.;
+    };
+};
+
+# Incluir también la dirección IPv6 del slave
+server {{ dns_slave_ipv6 }} {
+    keys {
+        ns1-ns2.;
+    };
+};
