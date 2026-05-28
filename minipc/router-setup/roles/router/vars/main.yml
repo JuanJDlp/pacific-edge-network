@@ -47,5 +47,11 @@ rpi_ip: "192.168.20.10"
 # Puerto forward proxy de Squid en la RPi (no intercept, evita loop detection)
 squid_forward_port: 3129
 
+# Puerto intercept HTTPS de Squid en la RPi (peek+splice por SNI para filtrado)
+squid_intercept_https_port: 3130
+
+# Feature flag: redirigir HTTPS de VLAN30 autenticada hacia Squid para filtrado
+enable_https_filter: true
+
 # Puertos de monitoreo (Grafana, Prometheus, node_exporter)
 monitoring_tcp_ports: [3000, 9090, 9100]

@@ -155,10 +155,18 @@ server {
 # HTTPS — biblioteca.tel
 # Certificado autofirmado generado por el rol nginx (idempotente).
 # Mismas locations que el server :80 — el contenido es idéntico por HTTP y HTTPS.
+#
+# Cuando Squid maneja HTTPS para biblioteca.tel (nginx_serve_https=false), nginx
+# NO bindea :443 públicamente — solo escucha en 127.0.0.1:8443 para usos internos.
+# Squid (https_port 443 accel) cachea y usa cache_peer 127.0.0.1:80 (HTTP) como backend.
 # =============================================================================
 server {
+{% if nginx_serve_https | default(true) %}
     listen 443 ssl default_server;
     listen [::]:443 ssl default_server;
+{% else %}
+    listen 127.0.0.1:8443 ssl;
+{% endif %}
     server_name _;
 
     root /var/www/html;

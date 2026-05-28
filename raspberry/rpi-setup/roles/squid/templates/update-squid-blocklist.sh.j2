@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Managed by Ansible — do not edit manually
+# Updates Squid blocklist from configured hosts-format sources.
+# Idempotent. Designed for cron weekly.
+
+set -euo pipefail
+
+BLOCKLIST_DIR="{{ squid_blocklist_path | dirname }}"
+TARGET="{{ squid_blocklist_path }}"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+SOURCES=(
+{% for url in squid_blocklist_sources %}
+  "{{ url }}"
+{% endfor %}
+)
+
+log() { logger -t squid-blocklist "$*"; echo "[$(date -Is)] $*"; }
+
+log "Starting blocklist update"
+
+i=0
+for url in "${SOURCES[@]}"; do
+  i=$((i+1))
+  if ! curl -fsSL --max-time 60 -o "${TMP_DIR}/src${i}.txt" "$url"; then
+    log "ERROR: failed to download ${url} — aborting (keeping previous list)"
+    exit 1
+  fi
+done
+
+awk '/^0\.0\.0\.0/ {print $2}' "${TMP_DIR}"/src*.txt \
+  | grep -Ev '^(0\.0\.0\.0|localhost|broadcasthost|ip6-)' \
+  | sort -u > "${TMP_DIR}/combined.txt"
+
+NEW_COUNT=$(wc -l < "${TMP_DIR}/combined.txt")
+if [ "$NEW_COUNT" -lt 1000 ]; then
+  log "ERROR: combined list has only ${NEW_COUNT} entries (sanity-check failed) — keeping previous"
+  exit 1
+fi
+
+mkdir -p "$BLOCKLIST_DIR"
+
+if [ -f "$TARGET" ] && cmp -s "${TMP_DIR}/combined.txt" "$TARGET"; then
+  log "No changes (${NEW_COUNT} domains) — skipping reconfigure"
+  exit 0
+fi
+
+install -m 0644 -o root -g root "${TMP_DIR}/combined.txt" "$TARGET"
+log "Installed blocklist with ${NEW_COUNT} domains"
+
+if systemctl is-active --quiet squid; then
+  /usr/sbin/squid -k reconfigure
+  log "Squid reconfigured"
+fi

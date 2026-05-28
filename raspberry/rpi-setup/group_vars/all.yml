@@ -23,6 +23,33 @@ jellyfin_port: 8096
 kiwix_library: "/var/lib/biblioteca/zim/library.xml"
 kiwix_user: "kiwix"
 
+# ---- Squid: filtrado HTTPS (peek+splice) + reverse-proxy cache biblioteca.tel ----
+# Cuando squid_enable_biblioteca_accel = true, Squid bindea :443 públicamente
+# (reverse proxy + cache) y nginx libera :443 (queda solo en 127.0.0.1:8443).
+squid_enable_https_filter: true
+squid_enable_biblioteca_accel: true
+
+# Puertos
+squid_intercept_https_port: 3130    # peek+splice / filtrado SNI
+squid_accel_https_port: 443         # accel reverse proxy biblioteca.tel
+biblioteca_backend_port: 80         # backend HTTP local (nginx en loopback)
+
+# Rutas de certificados / DB
+squid_bump_ca_cert: "/etc/squid/ssl/bump-ca.crt"
+squid_bump_ca_key:  "/etc/squid/ssl/bump-ca.key"
+squid_ssl_db:       "/var/lib/squid/ssl_db"
+biblioteca_cert:    "/etc/squid/ssl/biblioteca.crt"
+biblioteca_key:     "/etc/squid/ssl/biblioteca.key"
+
+# Fuentes de blocklist (StevenBlack/hosts — categorías)
+squid_blocklist_sources:
+  - "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts"
+  - "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-only/hosts"
+squid_blocklist_path: "/etc/squid/blocklists/blocked_domains.txt"
+
+# Cuando Squid maneja HTTPS, nginx no debe bindear :443 (queda en 127.0.0.1:8443)
+nginx_serve_https: false
+
 # DNS secundario
 dns_primary_ip: "192.168.10.1"
 dns_primary_ipv6: "fd00:0:0:10::1"

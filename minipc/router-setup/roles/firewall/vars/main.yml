@@ -44,3 +44,9 @@ mgmt_ports_tcp:
 enable_drop_logging: true
 drop_log_prefix: "NFT DROP: "
 drop_log_limit: "5/minute"
+
+# ── Filtrado HTTPS via Squid en la RPi ────────────────────────────────────────
+# Cuando true, VLAN30 autenticada (mark 0x1) → DNAT 443 → Squid RPi 3130
+# (peek+splice por SNI, bloqueo por blocklist). Excepción: tráfico a la RPi.
+enable_https_filter: true
+squid_intercept_https_port: 3130

@@ -1,43 +1,136 @@
 # =============================================================================
-# /etc/squid/squid.conf — Biblioteca offline web cache
+# /etc/squid/squid.conf — Biblioteca offline web cache + filtrado HTTPS
 # Managed by Ansible — do not edit manually
 # =============================================================================
 
-# Puerto 3129: forward proxy acelerado (Mini PC nginx le envía requests con Host header)
-# Puerto 3128: intercept (tráfico local de la RPi)
+# -----------------------------------------------------------------------------
+# Puertos
+# -----------------------------------------------------------------------------
+# 3129: forward proxy acelerado para HTTP (nginx Mini PC envía con Host header)
+# 3128: intercept HTTP (tráfico local de la RPi)
+# 3130: intercept HTTPS con SSL bump peek+splice (filtrado por SNI)
+# 443 : reverse proxy/accelerator HTTPS para biblioteca.tel (cache)
+# -----------------------------------------------------------------------------
+
 http_port 3129 accel vhost allow-direct
 http_port 3128 intercept
 
-# --- ACL: quién puede usar el proxy -----------------------------------------
+{% if squid_enable_https_filter | default(true) %}
+# --- HTTPS intercept con peek+splice (filtrado por SNI) -----------------------
+# No descifra tráfico: solo lee el SNI del ClientHello para decidir si bloquear.
+https_port {{ squid_intercept_https_port | default(3130) }} intercept ssl-bump \
+    tls-cert={{ squid_bump_ca_cert }} \
+    tls-key={{ squid_bump_ca_key }} \
+    generate-host-certificates=off
+sslcrtd_program /usr/lib/squid/security_file_certgen -s {{ squid_ssl_db }} -M 20MB
+sslcrtd_children 5 startup=1 idle=1
+{% endif %}
+
+{% if squid_enable_biblioteca_accel | default(false) %}
+# --- HTTPS reverse-proxy para biblioteca.tel (cache habilitado) ---------------
+# Squid termina TLS con el certificado de biblioteca.tel y reenvía al nginx
+# interno (puerto {{ biblioteca_backend_port | default(80) }} en localhost, HTTP). El cache se rige
+# por refresh_pattern; solo se cachea biblioteca.tel (cache deny !cache_allowed).
+https_port {{ squid_accel_https_port | default(443) }} accel \
+    cert={{ biblioteca_cert }} \
+    key={{ biblioteca_key }} \
+    defaultsite=biblioteca.tel \
+    vhost
+cache_peer 127.0.0.1 parent {{ biblioteca_backend_port | default(80) }} 0 no-query originserver \
+    name=biblioteca_backend login=PASSTHRU
+{% endif %}
+
+# -----------------------------------------------------------------------------
+# ACLs base
+# -----------------------------------------------------------------------------
 acl localnet src 10.0.0.0/8           # RFC1918
 acl localnet src 172.16.0.0/12        # RFC1918
 acl localnet src 192.168.0.0/16       # RFC1918
 acl localnet src 100.64.0.0/10        # RFC6598 CGNAT (Netbird/Tailscale)
+
 acl SSL_ports port 443
 acl Safe_ports port 80
 acl Safe_ports port 443
 acl Safe_ports port 1025-65535
 acl CONNECT method CONNECT
 
+{% if squid_enable_https_filter | default(true) %}
+# -----------------------------------------------------------------------------
+# Blocklist (categorías: porn + gambling — StevenBlack/hosts)
+# Actualizada vía /usr/local/sbin/update-squid-blocklist (cron semanal)
+# -----------------------------------------------------------------------------
+acl blocked_domains   dstdomain        "/etc/squid/blocklists/blocked_domains.txt"
+acl blocked_sni       ssl::server_name "/etc/squid/blocklists/blocked_domains.txt"
+acl step1 at_step SslBump1
+{% endif %}
+
+{% if squid_enable_biblioteca_accel | default(false) %}
+# ACL para enrutar biblioteca.tel al cache_peer (no salir a internet directo)
+acl biblioteca_dom dstdomain biblioteca.tel
+{% endif %}
+
+# -----------------------------------------------------------------------------
+# Reglas de acceso
+# -----------------------------------------------------------------------------
 http_access deny !Safe_ports
 http_access deny CONNECT !SSL_ports
+
+{% if squid_enable_https_filter | default(true) %}
+# Bloqueo por dominio (HTTP) — antes de allow localnet
+http_access deny blocked_domains
+{% endif %}
+
+{% if squid_enable_biblioteca_accel | default(false) %}
+http_access allow biblioteca_dom
+
+# Routing: biblioteca.tel SIEMPRE pasa por el cache_peer (nginx interno).
+# El resto sigue always_direct (forward proxy normal a internet).
+cache_peer_access biblioteca_backend allow biblioteca_dom
+cache_peer_access biblioteca_backend deny all
+never_direct allow biblioteca_dom
+always_direct deny biblioteca_dom
+{% endif %}
+
 http_access allow localhost
 http_access allow localnet
 http_access deny all
 always_direct allow all
 
-# --- Cache storage -----------------------------------------------------------
+{% if squid_enable_https_filter | default(true) %}
+# -----------------------------------------------------------------------------
+# SSL bump policy: peek el SNI, terminate si está en blocklist, splice resto.
+# "splice" = pasar TLS sin descifrar (cliente habla directo con el origen).
+# "terminate" = cortar la conexión.
+# -----------------------------------------------------------------------------
+ssl_bump peek step1
+ssl_bump terminate blocked_sni
+ssl_bump splice all
+{% endif %}
+
+# -----------------------------------------------------------------------------
+# Cache storage
+# -----------------------------------------------------------------------------
 cache_dir aufs /var/lib/biblioteca/squid-cache 10240 16 256
 cache_mem 512 MB
 maximum_object_size 128 MB
 maximum_object_size_in_memory 4 MB
 
-# --- Logs -------------------------------------------------------------------
+{% if squid_enable_biblioteca_accel | default(false) %}
+# Solo cachear biblioteca.tel; el resto de internet NO se cachea.
+acl cache_allowed dstdomain biblioteca.tel
+cache deny !cache_allowed
+{% endif %}
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
 access_log /var/log/squid/access.log squid
 cache_log  /var/log/squid/cache.log
 coredump_dir /var/spool/squid
 
-# --- Refresh patterns: retención larga para offline -------------------------
+# -----------------------------------------------------------------------------
+# Refresh patterns: retención larga (offline-first)
+# -----------------------------------------------------------------------------
 refresh_pattern ^ftp:           1440    20%     10080
 refresh_pattern ^gopher:        1440    0%      1440
 refresh_pattern -i (/cgi-bin/|\?) 0     0%      0
@@ -45,6 +138,6 @@ refresh_pattern .               43200   90%     525600
 
 visible_hostname {{ dns_domain }}
 
-# Reducir timeout de conexión: con WAN caído, Squid falla en ~15s en lugar de ~60s.
-# nginx (http-proxy) intercepta el 503/504 resultante y muestra offline.html.
+# Con WAN caído, Squid falla en ~15s en lugar de ~60s.
+# nginx (http-proxy) intercepta el 503/504 y muestra offline.html.
 connect_timeout 15 seconds

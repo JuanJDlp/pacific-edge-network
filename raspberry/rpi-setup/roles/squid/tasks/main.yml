@@ -1,9 +1,19 @@
 ---
-- name: Asegurar Squid instalado
+# ─────────────────────────────────────────────────────────────────────────────
+# Squid — proxy/cache + filtrado HTTPS + reverse-proxy biblioteca.tel
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: Asegurar squid-openssl instalado (reemplaza squid GnuTLS si está presente)
   apt:
-    name: squid
+    name: squid-openssl
     state: present
   become: true
+
+- name: Verificar que Squid tiene soporte OpenSSL
+  shell: "squid -v 2>&1 | grep -- '--with-openssl'"
+  register: squid_openssl_check
+  changed_when: false
+  failed_when: squid_openssl_check.rc != 0
 
 - name: Crear directorio de caché Squid
   file:
@@ -14,6 +24,126 @@
     mode: "0750"
   become: true
 
+# ─── SSL bump CA (peek+splice + accel) ────────────────────────────────────────
+
+- name: Crear directorio /etc/squid/ssl
+  file:
+    path: /etc/squid/ssl
+    state: directory
+    owner: proxy
+    group: proxy
+    mode: "0750"
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+- name: Generar CA autofirmada para SSL bump (idempotente)
+  command: >
+    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509
+    -subj "/C=CO/ST=Pacific/L=Edge/O=Biblioteca/OU=Squid-Bump/CN=biblioteca-squid-bump-CA"
+    -keyout {{ squid_bump_ca_key }}
+    -out {{ squid_bump_ca_cert }}
+  args:
+    creates: "{{ squid_bump_ca_cert }}"
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+- name: Ajustar permisos de la CA bump
+  file:
+    path: "{{ item.path }}"
+    owner: proxy
+    group: proxy
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ squid_bump_ca_cert }}", mode: "0644" }
+    - { path: "{{ squid_bump_ca_key }}",  mode: "0600" }
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+- name: Crear directorio padre de la SSL cert DB
+  file:
+    path: "{{ squid_ssl_db | dirname }}"
+    state: directory
+    owner: proxy
+    group: proxy
+    mode: "0750"
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+- name: Inicializar SSL certificate DB (security_file_certgen)
+  command: /usr/lib/squid/security_file_certgen -c -s {{ squid_ssl_db }} -M 20MB
+  args:
+    creates: "{{ squid_ssl_db }}/index.txt"
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+- name: Permisos de la SSL cert DB
+  file:
+    path: "{{ squid_ssl_db }}"
+    owner: proxy
+    group: proxy
+    recurse: true
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+# ─── Certificado de biblioteca.tel para Squid accel ──────────────────────────
+
+- name: Copiar certificado biblioteca.tel a /etc/squid/ssl/
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    remote_src: true
+    owner: proxy
+    group: proxy
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: "/var/www/html/biblioteca-segura.crt", dest: "{{ biblioteca_cert }}", mode: "0644" }
+    - { src: "/etc/ssl/private/biblioteca.key",     dest: "{{ biblioteca_key }}",  mode: "0600" }
+  become: true
+  when: squid_enable_biblioteca_accel | default(false)
+  notify: reload squid
+
+# ─── Blocklist (StevenBlack/hosts: porn + gambling) ───────────────────────────
+
+- name: Crear directorio /etc/squid/blocklists
+  file:
+    path: "{{ squid_blocklist_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+- name: Instalar script de actualización de blocklist
+  template:
+    src: update-squid-blocklist.sh.j2
+    dest: /usr/local/sbin/update-squid-blocklist
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+- name: Ejecutar actualización inicial de blocklist (si no existe)
+  command: /usr/local/sbin/update-squid-blocklist
+  args:
+    creates: "{{ squid_blocklist_path }}"
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+- name: Cron semanal — actualizar blocklist los domingos 03:30
+  cron:
+    name: "update-squid-blocklist"
+    weekday: "0"
+    hour: "3"
+    minute: "30"
+    user: root
+    job: "/usr/local/sbin/update-squid-blocklist >> /var/log/squid-blocklist.log 2>&1"
+  become: true
+  when: squid_enable_https_filter | default(true)
+
+# ─── Configuración principal ──────────────────────────────────────────────────
+
 - name: Desplegar configuración Squid
   template:
     src: squid.conf.j2
@@ -21,6 +151,8 @@
     owner: root
     group: root
     mode: "0644"
+    backup: true
+    validate: "/usr/sbin/squid -k parse -f %s"
   become: true
   notify: reload squid
 

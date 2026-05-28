@@ -1,4 +1,8 @@
-# Squid — Caché web offline + forward proxy
+# Squid — Caché web offline + forward proxy + filtrado HTTPS
+
+> **Actualización 2026-05-27:** Squid ahora también filtra HTTPS por SNI (porn + gambling) y cachea biblioteca.tel como reverse proxy.
+> Documentación completa del filtrado/cache en **[`squid-filter-cache/`](squid-filter-cache/README.md)**:
+> arquitectura, decisiones técnicas, implementación, consideraciones, testing, blocklists y troubleshooting.
 
 ## Rol Ansible
 
@@ -6,12 +10,14 @@
 
 ## Descripción
 
-Squid en la RPi cumple dos roles según el puerto:
+Squid en la RPi cumple cuatro roles según el puerto:
 
 | Puerto | Modo | Propósito |
 |--------|------|-----------|
 | 3128 | `intercept` | Captura tráfico HTTP local de la RPi |
-| 3129 | `accel vhost allow-direct` | Recibe requests del Mini PC nginx y los sirve con caché |
+| 3129 | `accel vhost allow-direct` | Recibe requests del Mini PC nginx (HTTP) y los sirve con caché |
+| 3130 | `intercept ssl-bump` (peek+splice) | Filtra HTTPS por SNI usando blocklist (porn + gambling) |
+| 443  | `accel` (reverse proxy) | Termina TLS de biblioteca.tel y cachea con backend → nginx 127.0.0.1:80 |
 
 ## Flujo para clientes autenticados (VLAN30)
 
