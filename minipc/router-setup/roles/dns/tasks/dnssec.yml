@@ -1,0 +1,92 @@
+---
+# ── DNSSEC para biblioteca.tel ───────────────────────────────────────────────
+
+# 1. Buscar llaves .key existentes
+- name: DNSSEC | Buscar llaves .key existentes
+  find:
+    paths: /etc/bind
+    patterns: "Kbiblioteca.tel.+013+*.key"
+  register: dnssec_keys_found
+  become: true
+
+# 2. Generar ZSK si no existen las llaves
+- name: DNSSEC | Generar ZSK (Zone Signing Key)
+  command: >
+    dnssec-keygen -a ECDSAP256SHA256 biblioteca.tel
+  args:
+    chdir: /etc/bind
+  when: dnssec_keys_found.matched < 2
+  become: true
+
+# 3. Generar KSK si no existen las llaves
+- name: DNSSEC | Generar KSK (Key Signing Key)
+  command: >
+    dnssec-keygen -a ECDSAP256SHA256 -f KSK -n ZONE biblioteca.tel
+  args:
+    chdir: /etc/bind
+  when: dnssec_keys_found.matched < 2
+  become: true
+
+# 4. Releer llaves (ya sea recién generadas o pre-existentes)
+- name: DNSSEC | Obtener lista final de llaves .key
+  find:
+    paths: /etc/bind
+    patterns: "Kbiblioteca.tel.+013+*.key"
+  register: dnssec_keys_list
+  become: true
+
+# 5. Permisos llaves públicas
+- name: DNSSEC | Permisos llaves .key (lectura bind)
+  file:
+    path: "{{ item.path }}"
+    owner: bind
+    group: bind
+    mode: "0640"
+  loop: "{{ dnssec_keys_list.files }}"
+  become: true
+
+# 6. Permisos llaves privadas
+- name: DNSSEC | Obtener lista de llaves .private
+  find:
+    paths: /etc/bind
+    patterns: "Kbiblioteca.tel.+013+*.private"
+  register: dnssec_private_list
+  become: true
+
+- name: DNSSEC | Permisos llaves .private (solo bind)
+  file:
+    path: "{{ item.path }}"
+    owner: bind
+    group: bind
+    mode: "0600"
+  loop: "{{ dnssec_private_list.files }}"
+  become: true
+
+# 7. Construir lista de paths para pasar al template db.forward.j2
+- name: DNSSEC | Construir variable dnssec_key_files
+  set_fact:
+    dnssec_key_files: "{{ dnssec_keys_list.files | map(attribute='path') | list }}"
+
+# 8. Re-desplegar la zona directa YA CON los $INCLUDE de las llaves
+- name: DNSSEC | Redesplegar zona directa con $INCLUDE de llaves
+  template:
+    src: db.forward.j2
+    dest: "/etc/bind/zones/db.{{ dns_domain }}"
+    owner: bind
+    group: bind
+    mode: "0644"
+  become: true
+
+# 9. Firmar la zona
+- name: DNSSEC | Firmar zona directa
+  command: >
+    dnssec-signzone
+      -o {{ dns_domain }}
+      -N keep
+      -t
+      /etc/bind/zones/db.{{ dns_domain }}
+  args:
+    chdir: /etc/bind
+  become: true
+  changed_when: true
+  notify: reload bind9
