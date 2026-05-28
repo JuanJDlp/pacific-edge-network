@@ -1,0 +1,94 @@
+---
+# ── TSIG: autenticación de zone transfers Master→Slave ───────────────────────
+# La llave se genera UNA vez en el master y se copia al slave vía Ansible.
+# Nombre convencional: ns1-ns2 (master-slave)
+
+# 1. Verificar si la llave TSIG ya existe
+- name: TSIG | Verificar si named.conf.tsig ya existe
+  stat:
+    path: /etc/bind/named.conf.tsig
+  register: tsig_file
+  become: true
+
+# 2. Generar la llave TSIG solo si no existe
+- name: TSIG | Generar llave TSIG ns1-ns2
+  command: >
+    tsig-keygen ns1-ns2
+  register: tsig_keygen_output
+  when: not tsig_file.stat.exists
+  become: true
+
+# 3. Guardar la llave generada en un archivo temporal para parsearla
+- name: TSIG | Guardar output de tsig-keygen
+  copy:
+    content: "{{ tsig_keygen_output.stdout }}"
+    dest: /tmp/tsig_raw.conf
+    mode: "0600"
+  when: not tsig_file.stat.exists
+  become: true
+
+# 4. Extraer el secret de la llave generada
+- name: TSIG | Extraer secret de la llave
+  shell: >
+    grep 'secret' /tmp/tsig_raw.conf | awk -F'"' '{print $2}'
+  register: tsig_secret_raw
+  when: not tsig_file.stat.exists
+  changed_when: false
+  become: true
+
+# 5. Guardar el secret como fact persistente en el host
+- name: TSIG | Registrar secret como fact
+  set_fact:
+    tsig_secret: "{{ tsig_secret_raw.stdout }}"
+  when: not tsig_file.stat.exists
+
+# 6. Si la llave ya existía, leer el secret del archivo existente
+- name: TSIG | Leer secret desde archivo existente
+  shell: >
+    grep 'secret' /etc/bind/named.conf.tsig | awk -F'"' '{print $2}'
+  register: tsig_secret_existing
+  when: tsig_file.stat.exists
+  changed_when: false
+  become: true
+
+- name: TSIG | Registrar secret existente como fact
+  set_fact:
+    tsig_secret: "{{ tsig_secret_existing.stdout }}"
+  when: tsig_file.stat.exists
+
+# 7. Desplegar named.conf.tsig en el master (Mini PC)
+- name: TSIG | Desplegar named.conf.tsig en master
+  template:
+    src: named.conf.tsig.j2
+    dest: /etc/bind/named.conf.tsig
+    owner: bind
+    group: bind
+    mode: "0640"         
+  become: true
+  notify: reload bind9
+
+# 8. Limpiar archivo temporal
+- name: TSIG | Limpiar archivo temporal
+  file:
+    path: /tmp/tsig_raw.conf
+    state: absent
+  become: true
+
+# 9. Copiar named.conf.tsig al slave (RPi) via Ansible
+- name: TSIG | Copiar named.conf.tsig al slave (RPi)
+  fetch:
+    src: /etc/bind/named.conf.tsig
+    dest: /tmp/named.conf.tsig
+    flat: true
+  become: true
+
+- name: TSIG | Desplegar named.conf.tsig en slave (RPi)
+  copy:
+    src: /tmp/named.conf.tsig
+    dest: /etc/bind/named.conf.tsig
+    owner: bind
+    group: bind
+    mode: "0640"
+  delegate_to: "{{ dns_slave_ip }}"
+  become: true
+  notify: reload bind9

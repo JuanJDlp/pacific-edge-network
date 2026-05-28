@@ -1,13 +1,27 @@
 // Managed by Ansible — do not edit manually
 // Zonas locales para {{ dns_domain }}
 
+// ── TSIG: llave de autenticación para zone transfers ─────────────────────────
+include "/etc/bind/named.conf.tsig";
+
 //
 // Zona directa
 //
 zone "{{ dns_domain }}" {
     type master;
     file "/etc/bind/zones/db.{{ dns_domain }}.signed";
-    allow-transfer { {{ dns_slave_ip }}; };  // RPi DNS secundario
+
+    // Solo el slave autenticado con TSIG puede hacer AXFR
+    // Se elimina la IP explícita — la llave es suficiente y más seguro
+    allow-transfer { key "ns1-ns2."; };
+
+    // Notificar al slave cuando la zona se re-firme (DNSSEC)
+    also-notify {
+        {{ dns_slave_ip }};
+        {{ dns_slave_ipv6 }};
+    };
+
+    notify yes;
 };
 
 //
@@ -17,17 +31,26 @@ zone "{{ dns_domain }}" {
 zone "{{ rz }}.in-addr.arpa" {
     type master;
     file "/etc/bind/zones/db.{{ rz }}";
-    allow-transfer { {{ dns_slave_ip }}; };  // RPi DNS secundario
+
+    allow-transfer { key "ns1-ns2."; };
+
+    also-notify {
+        {{ dns_slave_ip }};
+        {{ dns_slave_ipv6 }};
+    };
+
+    notify yes;
 };
 
 {% endfor %}
 
 //
-// RPZ offline zone — siempre cargada, pero solo activa cuando
-// response-policy la referencia (ver named.conf.rpz dentro de options{})
+// RPZ offline zone
 //
 zone "rpz.offline" {
     type master;
     file "/etc/bind/zones/rpz.offline.zone";
     allow-query { none; };
+    // RPZ no se transfiere al slave
+    allow-transfer { none; };
 };

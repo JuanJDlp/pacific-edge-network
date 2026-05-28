@@ -85,9 +85,13 @@
   become: true
   notify: reload bind9
 
-# ── RPZ offline zone (para wan-check.sh) ────────────────────────────────────
+# ── DNSSEC ────────────────────────────────────
 - name: Ejecutar tareas DNSSEC
   include_tasks: dnssec.yml  
+
+# ── TSIG ─────────────────────────────────────────────────────────────────────
+- name: Ejecutar tareas TSIG
+  include_tasks: tsig.yml 
 
 # ── RPZ offline zone (para wan-check.sh) ────────────────────────────────────
 - name: Desplegar RPZ offline zone file
