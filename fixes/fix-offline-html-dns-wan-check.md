@@ -1,7 +1,7 @@
-# Fix: offline.html no se muestra cuando WAN esta caido
+# Fix: offline.html no se muestra cuando WAN esta caido (HTTP + HTTPS)
 
-**Fecha:** 2026-05-27
-**Componentes:** Bind9 RPZ, nginx, wan-check.sh (systemd timer)
+**Fecha:** 2026-05-27 (HTTP), 2026-05-28 (HTTPS)
+**Componentes:** Bind9 RPZ, nginx, wan-check.sh (systemd timer), nftables DNAT swap
 
 ## Problema
 
@@ -82,20 +82,50 @@ Flag: `/var/run/wan-offline` (existe cuando estamos en modo offline).
 | `roles/captive_portal/templates/wan-check.timer.j2` | CREADO |
 | `roles/captive_portal/tasks/main.yml` | MODIFICADO — deploy wan-check + offline nginx |
 
+## Componente 4 — HTTPS offline (2026-05-28)
+
+Despues de implementar Squid HTTPS filter (peek+splice en RPi:3130), el trafico HTTPS de clientes autenticados se redirige via nftables DNAT a Squid. Cuando WAN cae, RPZ resuelve `google.com` → `192.168.30.1`, pero nftables aun envia dport 443 a Squid en la RPi. Squid intenta conectar a `192.168.30.1:443` (SO_ORIGINAL_DST) pero nadie escucha → connection refused.
+
+**Solucion**: wan-check.sh ahora tambien swappea la regla nftables DNAT de HTTPS:
+- WAN DOWN: elimina regla `wan-https-filter` (→ RPi:3130), agrega `wan-offline-https` (→ 192.168.30.1:443)
+- WAN UP: restaura `wan-https-filter`
+
+nginx offline config ahora incluye `listen 443 ssl` con cert autofirmado (`captive.crt`). El cliente ve un warning de cert (CN no coincide) pero puede hacer clic "Continuar" para ver offline.html. Sitios con HSTS no permitiran bypass.
+
+**Archivos adicionales:**
+
+| Archivo | Accion |
+|---------|--------|
+| `roles/firewall/templates/nftables.conf.j2` | MODIFICADO — comment `"wan-https-filter"` en regla HTTPS DNAT |
+| `roles/captive_portal/templates/http-proxy-offline.nginx.j2` | MODIFICADO — agregado `listen 443 ssl` server block |
+| `roles/captive_portal/files/wan-check.sh` | MODIFICADO — nftables rule swap para HTTPS |
+
 ## Deploy
 
 ```bash
 cd minipc/
+
+# DNS (RPZ zone + config)
 ansible-playbook -i router-setup/inventory.ini services/dns.yml
-ansible-playbook -i router-setup/inventory.ini services/captive_portal.yml -e @router-setup/roles/router/vars/main.yml
+
+# Firewall (comment en regla HTTPS DNAT)
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags firewall
+
+# Captive portal (wan-check.sh + nginx offline con :443)
+ansible-playbook -i router-setup/inventory.ini services/captive_portal.yml \
+    -e @router-setup/roles/router/vars/main.yml
 ```
 
 ## Pruebas de validacion
 
 ### Test: WAN UP (operacion normal)
 ```bash
+# nftables: wan-https-filter apunta a RPi:3130
+sudo nft -a list chain ip nat prerouting | grep 443
+# -> wan-https-filter ... dnat to 192.168.20.10:3130
+
 dig +short example.com @192.168.10.1
-# -> IP real (e.g. 104.20.23.154)
+# -> IP real (e.g. 142.250.218.206)
 
 ls /var/run/wan-offline
 # -> No such file
@@ -109,15 +139,25 @@ readlink /etc/nginx/sites-enabled/http-proxy
 sudo nft add rule inet filter output oif enp170s0 ip daddr 172.16.0.1 icmp type echo-request drop comment wan-test
 sudo /usr/local/bin/wan-check.sh
 
+# nftables: wan-offline-https apunta a Mini PC:443
+sudo nft -a list chain ip nat prerouting | grep 443
+# -> wan-offline-https ... dnat to 192.168.30.1:443
+
 dig +short example.com @192.168.10.1
 # -> 192.168.30.1 (RPZ wildcard)
 
 dig +short biblioteca.tel @192.168.10.1
 # -> 192.168.20.10 (passthru)
 
+# HTTP offline
 curl -s http://127.0.0.1:8888/ -H 'Host: example.com' | head -1
 # -> <!DOCTYPE html> (offline.html)
 
+# HTTPS offline
+curl -sk https://127.0.0.1:443/ -H 'Host: example.com' | head -1
+# -> <!DOCTYPE html> (offline.html)
+
+# CNA probe
 curl -s http://127.0.0.1:8888/ -H 'Host: captive.apple.com'
 # -> <HTML>...<TITLE>Success</TITLE>... (CNA probe)
 ```
@@ -128,6 +168,10 @@ curl -s http://127.0.0.1:8888/ -H 'Host: captive.apple.com'
 sudo nft -a list chain inet filter output | grep wan-test
 sudo nft delete rule inet filter output handle <N>
 sudo /usr/local/bin/wan-check.sh
+
+# nftables: wan-https-filter restaurada
+sudo nft -a list chain ip nat prerouting | grep 443
+# -> wan-https-filter ... dnat to 192.168.20.10:3130
 
 dig +short example.com @192.168.10.1
 # -> IP real

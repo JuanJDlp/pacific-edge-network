@@ -38,11 +38,33 @@ server {
     location / { return 200 "Microsoft NCSI"; }
 }
 
-# ── Todas las demas peticiones → offline.html ──────────────────────────────
+# ── Todas las demas peticiones HTTP → offline.html ───────────────────────
 server {
     listen {{ http_proxy_port }} default_server;
     server_name _;
     root /etc/captive-portal;
+
+    location / {
+        try_files /offline.html =503;
+        add_header Cache-Control "no-store" always;
+    }
+}
+
+# ── HTTPS offline: peticiones HTTPS externas → offline.html ──────────────
+# wan-check.sh cambia la regla nftables DNAT para que port 443 llegue aqui
+# (192.168.30.1:443) en lugar de a Squid en la RPi cuando WAN esta caido.
+# El cliente vera warning de certificado (cert autofirmado, CN no coincide)
+# y puede hacer clic "Continuar" para ver offline.html.
+# Sitios con HSTS preloading no permitiran bypass — aceptable.
+server {
+    listen 443 ssl default_server;
+    server_name _;
+    root /etc/captive-portal;
+
+    ssl_certificate /etc/nginx/ssl/captive.crt;
+    ssl_certificate_key /etc/nginx/ssl/captive.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
 
     location / {
         try_files /offline.html =503;

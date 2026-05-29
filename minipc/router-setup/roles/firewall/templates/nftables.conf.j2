@@ -226,7 +226,7 @@ table ip nat {
         # Squid hace peek+splice del SNI sin descifrar; bloquea dominios en lista.
         # Excluye RPi para acceso directo a biblioteca.tel (cache propio).
         iif "{{ client_iface }}" meta mark 0x1 ip daddr != {{ rpi_ip }} tcp dport 443 \
-            dnat to {{ rpi_ip }}:{{ squid_intercept_https_port }}
+            dnat to {{ rpi_ip }}:{{ squid_intercept_https_port }} comment "wan-https-filter"
 {% endif %}
     }
 
