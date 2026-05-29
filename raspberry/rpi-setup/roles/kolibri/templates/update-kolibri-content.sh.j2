@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Managed by Ansible — do not edit manually
+# Updates Kolibri channels from studio.learningequality.org.
+# Designed for cron (Tue/Fri 03:00). Idempotent, resumable.
+
+set -euo pipefail
+
+# ── Configuration ────────────────────────────────────────────────────────────
+KOLIBRI_USER="{{ kolibri_user }}"
+KOLIBRI_HOME="{{ kolibri_home }}"
+MIN_FREE_MB=4000
+LOCK="/run/lock/kolibri-update.lock"
+LOG_TAG="kolibri-update"
+STUDIO_URL="https://studio.learningequality.org"
+
+CHANNELS=(
+{% for ch in kolibri_channels %}
+  "{{ ch.id }}:{{ ch.name }}"
+{% endfor %}
+)
+
+export KOLIBRI_HOME
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+log() { logger -t "$LOG_TAG" "$*"; echo "[$(date -Is)] $*"; }
+
+wan_check() {
+    curl -fsSL --max-time 15 -o /dev/null "${STUDIO_URL}/" 2>/dev/null
+}
+
+get_free_mb() {
+    df -BM --output=avail "$KOLIBRI_HOME" | tail -1 | tr -d ' M'
+}
+
+run_kolibri() {
+    sudo -u "$KOLIBRI_USER" KOLIBRI_HOME="$KOLIBRI_HOME" kolibri manage "$@"
+}
+
+# ── Lock ─────────────────────────────────────────────────────────────────────
+exec 200>"$LOCK"
+if ! flock -n 200; then
+    log "Another instance is running — exiting"
+    exit 0
+fi
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+log "Starting Kolibri content update check"
+
+if ! wan_check; then
+    log "No internet — skipping"
+    exit 0
+fi
+
+# Verify Kolibri service is running
+if ! systemctl is-active --quiet kolibri; then
+    log "WARNING: kolibri service is not running — starting it"
+    systemctl start kolibri
+    sleep 5
+fi
+
+UPDATE_COUNT=0
+
+for entry in "${CHANNELS[@]}"; do
+    channel_id="${entry%%:*}"
+    channel_name="${entry#*:}"
+
+    log "${channel_name}: checking for updates (${channel_id})"
+
+    # Check disk space
+    free_mb="$(get_free_mb)"
+    if [ "$free_mb" -lt "$MIN_FREE_MB" ]; then
+        log "ERROR: insufficient disk space (${free_mb}MB free, need ${MIN_FREE_MB}MB) — skipping remaining channels"
+        break
+    fi
+
+    # Import channel metadata (fast — only downloads the channel DB)
+    if ! run_kolibri importchannel network "$channel_id" 2>&1 | while IFS= read -r line; do
+        echo "$line"
+        logger -t "$LOG_TAG" "$line"
+    done; then
+        log "ERROR: importchannel failed for ${channel_name} — skipping"
+        continue
+    fi
+
+    # Import content (downloads actual files — resumable, skips existing)
+    if ! run_kolibri importcontent network "$channel_id" 2>&1 | while IFS= read -r line; do
+        echo "$line"
+        logger -t "$LOG_TAG" "$line"
+    done; then
+        log "ERROR: importcontent failed for ${channel_name} — partial content kept for resume"
+        continue
+    fi
+
+    UPDATE_COUNT=$((UPDATE_COUNT + 1))
+    log "${channel_name}: update complete"
+done
+
+log "Content update finished (${UPDATE_COUNT} channels processed)"

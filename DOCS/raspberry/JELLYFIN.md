@@ -47,15 +47,32 @@ Jellyfin lee bibliotecas de medios definidas en su configuración:
 
 Las bibliotecas de video deben apuntar a directorios con los archivos `.mp4`, `.mkv`, etc.
 
+## Acceso sin credenciales
+
+Usuario **"Invitado"** sin password visible en la pantalla de login. Documentacion completa en [`jellyfin-config/`](jellyfin-config/).
+
+## Escaneo automatico de biblioteca
+
+Cron diario a las 04:30 re-escanea la biblioteca para indexar archivos nuevos. Documentacion en [`jellyfin-config/`](jellyfin-config/).
+
+## Directorios de media
+
+```
+/var/lib/biblioteca/videos/
+├── comunitarios/    # Videos de la comunidad
+├── educativos/      # Material educativo
+└── culturales/      # Contenido cultural
+```
+
 ## Agregar contenido
 
 ```bash
-# 1. Copiar videos a un directorio accesible por jellyfin
-sudo cp video.mp4 /media/videos/
-sudo chown jellyfin:jellyfin /media/videos/video.mp4
+# 1. Copiar videos a un directorio de media
+sudo cp video.mp4 /var/lib/biblioteca/videos/educativos/
+sudo chown jellyfin:jellyfin /var/lib/biblioteca/videos/educativos/video.mp4
 
-# 2. Desde la interfaz web, agregar la carpeta como nueva biblioteca
-# http://biblioteca.tel/videos/ → Dashboard → Bibliotecas → Agregar
+# 2. Forzar re-escaneo (o esperar al cron diario)
+sudo /usr/local/sbin/scan-jellyfin-library
 ```
 
 ## Verificación

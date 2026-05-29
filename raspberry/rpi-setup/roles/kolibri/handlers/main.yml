@@ -1,0 +1,6 @@
+---
+- name: restart kolibri
+  systemd:
+    name: kolibri
+    state: restarted
+  become: true

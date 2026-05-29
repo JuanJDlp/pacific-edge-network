@@ -6,3 +6,57 @@
     state: started
   become: true
   ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Crear directorios de videos
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: jellyfin
+    group: jellyfin
+    mode: "0755"
+  loop: "{{ jellyfin_media_dirs }}"
+  become: true
+
+- name: Crear directorio de logs de biblioteca
+  file:
+    path: /var/log/biblioteca
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+# ── Escaneo automatico de biblioteca ─────────────────────────────────────────
+- name: Desplegar script de escaneo de biblioteca Jellyfin
+  template:
+    src: scan-jellyfin-library.sh.j2
+    dest: /usr/local/sbin/scan-jellyfin-library
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Cron diario — escanear biblioteca Jellyfin (04:30)
+  cron:
+    name: "scan-jellyfin-library"
+    hour: "4"
+    minute: "30"
+    user: root
+    job: "/usr/local/sbin/scan-jellyfin-library >> /var/log/biblioteca/jellyfin-scan.log 2>&1"
+  become: true
+
+- name: Logrotate para logs de escaneo Jellyfin
+  copy:
+    dest: /etc/logrotate.d/jellyfin-scan
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      /var/log/biblioteca/jellyfin-scan.log {
+          monthly
+          rotate 6
+          compress
+          missingok
+          notifempty
+      }
+  become: true

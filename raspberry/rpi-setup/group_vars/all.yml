@@ -32,6 +32,21 @@ kiwix_zim_sources:
   - { category: "wikiversity", prefix: "wikiversity_es_all_nopic" }
   - { category: "wikivoyage",  prefix: "wikivoyage_es_all_nopic" }
 
+# Kolibri
+kolibri_user: "akasicom"
+kolibri_home: "/home/akasicom/.kolibri"
+
+# Kolibri channel auto-update: id = UUID del canal en studio.learningequality.org
+kolibri_channels:
+  - { id: "c1f2b7e6ac9f56a2bb44fa7a48b66dce", name: "Khan Academy (Español)" }
+
+# Jellyfin
+jellyfin_api_key: "1e2ba6b4e3ca45aa95627eddc7f46bf2"
+jellyfin_media_dirs:
+  - /var/lib/biblioteca/videos/comunitarios
+  - /var/lib/biblioteca/videos/educativos
+  - /var/lib/biblioteca/videos/culturales
+
 # ---- Squid: filtrado HTTPS (peek+splice) + reverse-proxy cache biblioteca.tel ----
 # Cuando squid_enable_biblioteca_accel = true, Squid bindea :443 públicamente
 # (reverse proxy + cache) y nginx libera :443 (queda solo en 127.0.0.1:8443).

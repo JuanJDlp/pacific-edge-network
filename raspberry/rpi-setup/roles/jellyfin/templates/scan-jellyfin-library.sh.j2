@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Managed by Ansible — do not edit manually
+# Triggers a Jellyfin library scan to index new/changed media files.
+# Designed for cron (daily 04:30). Idempotent.
+
+set -euo pipefail
+
+JELLYFIN_URL="http://127.0.0.1:{{ jellyfin_port }}"
+API_KEY="{{ jellyfin_api_key }}"
+LOG_TAG="jellyfin-scan"
+
+log() { logger -t "$LOG_TAG" "$*"; echo "[$(date -Is)] $*"; }
+
+# Verify Jellyfin is running
+if ! systemctl is-active --quiet jellyfin; then
+    log "WARNING: jellyfin service is not running — starting it"
+    systemctl start jellyfin
+    sleep 5
+fi
+
+log "Triggering library scan"
+if curl -fsSL -X POST "${JELLYFIN_URL}/Library/Refresh?api_key=${API_KEY}" 2>/dev/null; then
+    log "Library scan triggered successfully"
+else
+    log "ERROR: failed to trigger library scan"
+    exit 1
+fi

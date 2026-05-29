@@ -46,6 +46,14 @@ Kolibri almacena su configuración y base de datos en:
 
 Para gestionar Kolibri (descargar canales, crear usuarios, etc.) acceder a `http://biblioteca.tel/kolibri/` como admin.
 
+## Auto-actualizacion de canales
+
+Los canales se actualizan automaticamente via cron (martes y viernes a las 03:00). Documentacion completa en [`kolibri-auto-update/`](kolibri-auto-update/).
+
+## Acceso sin credenciales
+
+Configurado con `landing_page=learn` y `allow_guest_access=True`. Los usuarios ven el contenido directamente en `http://biblioteca.tel/kolibri/` sin necesidad de login.
+
 ## Agregar canales educativos
 
 ```bash

@@ -6,3 +6,48 @@
     state: started
   become: true
   ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Crear directorio de logs de biblioteca
+  file:
+    path: /var/log/biblioteca
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+# ── Auto-update de contenido Kolibri ─────────────────────────────────────────
+- name: Desplegar script de actualizacion de contenido Kolibri
+  template:
+    src: update-kolibri-content.sh.j2
+    dest: /usr/local/sbin/update-kolibri-content
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Cron nocturno — actualizar contenido Kolibri (martes y viernes 03:00)
+  cron:
+    name: "update-kolibri-content"
+    weekday: "2,5"
+    hour: "3"
+    minute: "0"
+    user: root
+    job: "/usr/local/sbin/update-kolibri-content >> /var/log/biblioteca/kolibri-update.log 2>&1"
+  become: true
+
+- name: Logrotate para logs de actualizacion Kolibri
+  copy:
+    dest: /etc/logrotate.d/kolibri-update
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      /var/log/biblioteca/kolibri-update.log {
+          monthly
+          rotate 6
+          compress
+          missingok
+          notifempty
+      }
+  become: true
