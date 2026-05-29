@@ -35,3 +35,39 @@
     daemon_reload: true
   become: true
   ignore_errors: "{{ ansible_check_mode }}"
+
+# ── Auto-update de contenido ZIM ────────────────────────────────────────────
+- name: Desplegar script de actualización de contenido ZIM
+  template:
+    src: update-kiwix-content.sh.j2
+    dest: /usr/local/sbin/update-kiwix-content
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Cron nocturno — actualizar contenido ZIM (lunes y jueves 02:00)
+  cron:
+    name: "update-kiwix-content"
+    weekday: "1,4"
+    hour: "2"
+    minute: "0"
+    user: root
+    job: "/usr/local/sbin/update-kiwix-content >> /var/log/biblioteca/kiwix-update.log 2>&1"
+  become: true
+
+- name: Logrotate para logs de actualización ZIM
+  copy:
+    dest: /etc/logrotate.d/kiwix-update
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      /var/log/biblioteca/kiwix-update.log {
+          monthly
+          rotate 6
+          compress
+          missingok
+          notifempty
+      }
+  become: true

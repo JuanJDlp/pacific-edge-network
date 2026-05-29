@@ -52,6 +52,10 @@ MemoryMax=1G
 CPUQuota=200%
 ```
 
+## Auto-actualizacion de contenido
+
+Los ZIMs se actualizan automaticamente via cron (lunes y jueves a las 02:00). Documentacion completa en [`kiwix-auto-update/`](kiwix-auto-update/).
+
 ## Agregar nuevo contenido ZIM
 
 ```bash
@@ -63,6 +67,8 @@ sudo -u kiwix kiwix-manage /var/lib/biblioteca/zim/library.xml add /var/lib/bibl
 
 # 3. Reiniciar kiwix
 sudo systemctl restart kiwix-serve
+
+# 4. Agregar a kiwix_zim_sources en group_vars/all.yml para auto-update
 ```
 
 ## Archivos desplegados por Ansible
@@ -70,6 +76,7 @@ sudo systemctl restart kiwix-serve
 | Template | Destino |
 |----------|---------|
 | `templates/kiwix-serve.service.j2` | `/etc/systemd/system/kiwix-serve.service` |
+| `templates/update-kiwix-content.sh.j2` | `/usr/local/sbin/update-kiwix-content` |
 
 ## Verificación
 

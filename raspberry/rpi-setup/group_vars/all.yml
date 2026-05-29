@@ -23,6 +23,15 @@ jellyfin_port: 8096
 kiwix_library: "/var/lib/biblioteca/zim/library.xml"
 kiwix_user: "kiwix"
 
+# Kiwix ZIM auto-update: category = subdirectorio en download.kiwix.org/zim/
+# prefix = nombre del archivo sin la fecha (e.g., wikipedia_es_all_mini)
+kiwix_zim_sources:
+  - { category: "wikipedia",   prefix: "wikipedia_es_all_mini" }
+  - { category: "wikibooks",   prefix: "wikibooks_es_all_nopic" }
+  - { category: "wikinews",    prefix: "wikinews_es_all_nopic" }
+  - { category: "wikiversity", prefix: "wikiversity_es_all_nopic" }
+  - { category: "wikivoyage",  prefix: "wikivoyage_es_all_nopic" }
+
 # ---- Squid: filtrado HTTPS (peek+splice) + reverse-proxy cache biblioteca.tel ----
 # Cuando squid_enable_biblioteca_accel = true, Squid bindea :443 públicamente
 # (reverse proxy + cache) y nginx libera :443 (queda solo en 127.0.0.1:8443).

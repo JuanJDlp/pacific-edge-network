@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+# Managed by Ansible — do not edit manually
+# Checks for newer Kiwix ZIM files and downloads them automatically.
+# Updates library.xml, homepage links, and restarts kiwix-serve.
+# Designed for cron (Mon/Thu 02:00). Idempotent, resumable.
+
+set -euo pipefail
+
+# ── Configuration ────────────────────────────────────────────────────────────
+ZIM_DIR="{{ kiwix_library | dirname }}"
+LIBRARY="{{ kiwix_library }}"
+HOMEPAGE="/var/www/html/index.html"
+KIWIX_USER="{{ kiwix_user }}"
+RATE_LIMIT="2M"         # curl --limit-rate (2 MB/s ≈ 7 GB/hora)
+MIN_FREE_MB=4000        # mínimo 4 GB libres antes de descargar
+LOCK="/run/lock/kiwix-update.lock"
+LOG_TAG="kiwix-update"
+BASE_URL="https://download.kiwix.org/zim"
+
+ZIMS=(
+{% for zim in kiwix_zim_sources %}
+  "{{ zim.category }}:{{ zim.prefix }}"
+{% endfor %}
+)
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+log() { logger -t "$LOG_TAG" "$*"; echo "[$(date -Is)] $*"; }
+
+wan_check() {
+    curl -fsSL --max-time 10 -o /dev/null "$BASE_URL/" 2>/dev/null
+}
+
+# Obtener el ZIM actual en disco para un prefix dado.
+# Devuelve el filename (sin path), o cadena vacía si no existe.
+get_current_zim() {
+    local prefix="$1"
+    ls -1 "${ZIM_DIR}/${prefix}_"*.zim 2>/dev/null | sort | tail -1 | xargs -r basename
+}
+
+# Scrape download.kiwix.org para obtener el ZIM más reciente con el prefix dado.
+# Devuelve el filename (e.g., wikipedia_es_all_mini_2026-05.zim).
+get_latest_remote() {
+    local category="$1" prefix="$2"
+    curl -fsSL --max-time 30 "${BASE_URL}/${category}/" 2>/dev/null \
+        | grep -oP "href=\"${prefix}_[0-9]{4}-[0-9]{2}\.zim\"" \
+        | sed 's/href="//;s/"//' \
+        | sort \
+        | tail -1
+}
+
+# Obtener el book ID de library.xml para un ZIM dado (por filename stem).
+get_book_id() {
+    local stem="$1"
+    grep -oP 'id="[^"]*"[^>]*path="[^"]*'"${stem}"'' "$LIBRARY" 2>/dev/null \
+        | grep -oP 'id="\K[^"]+' \
+        | head -1
+}
+
+# Obtener Content-Length remoto en bytes.
+get_remote_size() {
+    local url="$1"
+    curl -fsSI --max-time 15 "$url" 2>/dev/null \
+        | grep -i '^content-length:' \
+        | awk '{print $2}' \
+        | tr -d '\r'
+}
+
+# Espacio libre en MB en la partición del ZIM_DIR.
+get_free_mb() {
+    df -BM --output=avail "$ZIM_DIR" | tail -1 | tr -d ' M'
+}
+
+# ── Lock ─────────────────────────────────────────────────────────────────────
+exec 200>"$LOCK"
+if ! flock -n 200; then
+    log "Another instance is running — exiting"
+    exit 0
+fi
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+log "Starting content update check"
+
+if ! wan_check; then
+    log "No internet — skipping"
+    exit 0
+fi
+
+RESTART_NEEDED=false
+
+# Limpiar .tmp stale (de versiones que ya no son las últimas)
+for tmp_file in "${ZIM_DIR}"/*.zim.tmp; do
+    [ -f "$tmp_file" ] || continue
+    tmp_name="$(basename "$tmp_file" .tmp)"
+    is_current=false
+    for entry in "${ZIMS[@]}"; do
+        category="${entry%%:*}"
+        prefix="${entry#*:}"
+        latest="$(get_latest_remote "$category" "$prefix" 2>/dev/null || true)"
+        if [ "$tmp_name" = "$latest" ]; then
+            is_current=true
+            break
+        fi
+    done
+    if ! $is_current; then
+        log "Removing stale temp file: $(basename "$tmp_file")"
+        rm -f "$tmp_file"
+    fi
+done
+
+for entry in "${ZIMS[@]}"; do
+    category="${entry%%:*}"
+    prefix="${entry#*:}"
+
+    # 1. ZIM actual en disco
+    current="$(get_current_zim "$prefix")"
+    if [ -z "$current" ]; then
+        log "WARNING: no current ZIM for ${prefix} — skipping (install manually first)"
+        continue
+    fi
+
+    # 2. Última versión remota
+    latest="$(get_latest_remote "$category" "$prefix")"
+    if [ -z "$latest" ]; then
+        log "WARNING: could not determine latest version for ${prefix} — skipping"
+        continue
+    fi
+
+    # 3. Comparar
+    if [ "$current" = "$latest" ]; then
+        log "${prefix}: up to date (${current})"
+        continue
+    fi
+
+    log "${prefix}: update available ${current} → ${latest}"
+
+    # 4. Verificar espacio en disco
+    download_url="${BASE_URL}/${category}/${latest}"
+    remote_size="$(get_remote_size "$download_url")"
+    if [ -n "$remote_size" ]; then
+        required_mb=$(( (remote_size / 1048576) + 500 ))
+        free_mb="$(get_free_mb)"
+        if [ "$free_mb" -lt "$required_mb" ] || [ "$free_mb" -lt "$MIN_FREE_MB" ]; then
+            log "ERROR: insufficient disk space for ${latest} (need ${required_mb}MB, have ${free_mb}MB) — skipping"
+            continue
+        fi
+    fi
+
+    # 5. Descargar (con resume y rate limit)
+    tmp_path="${ZIM_DIR}/${latest}.tmp"
+    log "${prefix}: downloading ${latest} (rate limit: ${RATE_LIMIT}/s)"
+    if ! curl -fSL --limit-rate "$RATE_LIMIT" --continue-at - \
+            -o "$tmp_path" "$download_url"; then
+        log "ERROR: download failed for ${latest} — will retry next run (partial kept for resume)"
+        continue
+    fi
+
+    # 6. Verificar tamaño
+    if [ -n "$remote_size" ]; then
+        local_size="$(stat -c%s "$tmp_path" 2>/dev/null || echo 0)"
+        if [ "$local_size" != "$remote_size" ]; then
+            log "ERROR: size mismatch for ${latest} (expected ${remote_size}, got ${local_size}) — removing"
+            rm -f "$tmp_path"
+            continue
+        fi
+    fi
+
+    # 7. Atomic swap
+    log "${prefix}: installing ${latest}"
+
+    current_stem="${current%.zim}"
+    new_stem="${latest%.zim}"
+
+    # 7a. Rename temp → final
+    mv "$tmp_path" "${ZIM_DIR}/${latest}"
+    chown "${KIWIX_USER}:${KIWIX_USER}" "${ZIM_DIR}/${latest}"
+
+    # 7b. Agregar nuevo al library (antes de quitar viejo = seguro)
+    if ! sudo -u "$KIWIX_USER" kiwix-manage "$LIBRARY" add "${ZIM_DIR}/${latest}" 2>/dev/null; then
+        log "ERROR: kiwix-manage add failed for ${latest}"
+        continue
+    fi
+
+    # 7c. Quitar viejo del library
+    old_id="$(get_book_id "$current_stem")"
+    if [ -n "$old_id" ]; then
+        sudo -u "$KIWIX_USER" kiwix-manage "$LIBRARY" remove "$old_id" 2>/dev/null || true
+    fi
+
+    # 7d. Actualizar homepage links
+    if [ -f "$HOMEPAGE" ]; then
+        sed -i "s|${current_stem}|${new_stem}|g" "$HOMEPAGE"
+        log "${prefix}: homepage updated (${current_stem} → ${new_stem})"
+    fi
+
+    # 7e. Eliminar ZIM viejo
+    if [ -f "${ZIM_DIR}/${current}" ]; then
+        rm -f "${ZIM_DIR}/${current}"
+        log "${prefix}: removed old file ${current}"
+    fi
+
+    RESTART_NEEDED=true
+    log "${prefix}: update complete (${current} → ${latest})"
+done
+
+# 8. Reiniciar kiwix-serve (una sola vez al final)
+if $RESTART_NEEDED; then
+    systemctl restart kiwix-serve
+    log "kiwix-serve restarted"
+fi
+
+log "Content update check finished"
