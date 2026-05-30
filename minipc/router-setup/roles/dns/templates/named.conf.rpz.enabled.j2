@@ -1,7 +1,8 @@
 // Managed by Ansible — do not edit manually
-// RPZ offline — activado por wan-check.sh cuando WAN esta caido
-// Redirige todos los dominios externos a {{ captive_portal_ip }} (Mini PC VLAN30)
+// RPZ activo: blocklist permanente (porn+gambling) + offline (wan-check.sh).
+// El orden importa: rpz.offline primero asegura captive cuando WAN cae.
 
 response-policy {
     zone "rpz.offline";
+    zone "rpz.blocklist";
 } qname-wait-recurse no;

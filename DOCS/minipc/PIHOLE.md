@@ -32,7 +32,7 @@ Pi-hole correria como contenedor Docker en el Mini PC y actuaria como resolvedor
 ## Estado actual alternativo
 
 El filtrado de contenido se maneja via:
-- **Squid** en la RPi (`:3128`/`:3130`) con blocklists de StevenBlack (porn + gambling)
-- **nftables** DNAT forzando HTTPS de VLAN30 a Squid SNI filter (`:3130`)
+- **Bind9 RPZ** (`rpz.blocklist`) en el Mini PC con blocklists de StevenBlack (porn + gambling) — bloquea HTTPS y HTTP a nivel DNS (NXDOMAIN). Ver `DOCS/minipc/DNS-BIND9.md`.
+- **Squid** en la RPi (`:3128`/`:3129`) sigue cacheando HTTP y aplicando blocklist por dominio como defensa-en-profundidad.
 
-Ver `DOCS/raspberry/squid-filter-cache/` para documentacion completa del sistema de filtrado actual.
+> El antiguo intento de filtrar HTTPS via DNAT a Squid intercept en `:3130` fue descartado: el DNAT cross-host (Mini PC → RPi) hace que Squid pierda `SO_ORIGINAL_DST` y termine haciendo `TCP_DENIED CONNECT 192.168.20.10:3130`. El filtrado HTTPS se hace ahora 100% via DNS RPZ.

@@ -17,7 +17,7 @@ Squid en la RPi cumple cuatro roles segun el puerto:
 |--------|------|-----------|
 | 3128 | `intercept` | Captura trafico HTTP local de la RPi |
 | 3129 | `accel vhost allow-direct` | Recibe requests del Mini PC nginx (HTTP) y los sirve con cache |
-| 3130 | `intercept ssl-bump` (peek+splice) | Filtra HTTPS por SNI usando blocklist (porn + gambling) |
+| 3130 | `intercept ssl-bump` (peek+splice) | **NO usado en produccion** — cross-host DNAT pierde `SO_ORIGINAL_DST` y Squid termina con `TCP_DENIED CONNECT 192.168.20.10:3130`. Filtrado HTTPS porn/gambling se hace ahora a nivel DNS via Bind9 RPZ (`rpz.blocklist`). El puerto queda en la config historicamente; el DNAT que apuntaba a el fue removido. |
 | 443  | `accel` (reverse proxy) | Termina TLS de biblioteca.tel y cachea con backend → nginx 127.0.0.1:80 |
 
 ## Flujo para clientes autenticados (VLAN30)

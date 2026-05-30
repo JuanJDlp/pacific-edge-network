@@ -69,13 +69,14 @@ table inet filter
   chain input      -> policy DROP
   chain forward    -> policy DROP
   chain output     -> policy ACCEPT
-  set captive_allowed { type ipv4_addr; flags timeout; timeout 8h }
+  set captive_allowed_mac { type ether_addr; flags dynamic,timeout; timeout 8h }
 
 table ip nat
   chain prerouting  -> DNAT DNS -> 192.168.10.1:53
-                    -> Captive redirect (VLAN30 sin marca) -> 192.168.30.1:2050
-                    -> HTTP proxy (VLAN30 con marca 0x1) -> 192.168.30.1:8888
-                    -> HTTPS filter a squid :3130
+                    -> Captive redirect (VLAN30 sin marca) -> 192.168.30.1:2050 (HTTP+HTTPS)
+                    -> HTTP proxy (VLAN30 con marca 0x1) -> 192.168.30.1:8888 -> Squid RPi
+                    -> HTTPS autenticado: SIN DNAT (pasa directo a WAN);
+                       filtrado porn/gambling via Bind9 RPZ (rpz.blocklist)
   chain postrouting -> MASQUERADE en enp170s0 (NAT44)
 ```
 
@@ -135,5 +136,5 @@ systemctl status named kea-dhcp4-server nginx captive-accept chrony prometheus g
 cat /var/lib/kea/kea-leases4.csv
 
 # Ver clientes autorizados en portal cautivo
-sudo nft list set inet filter captive_allowed
+sudo nft list set inet filter captive_allowed_mac
 ```

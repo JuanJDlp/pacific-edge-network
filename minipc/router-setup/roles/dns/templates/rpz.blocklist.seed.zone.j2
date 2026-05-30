@@ -1,0 +1,16 @@
+; Managed by Ansible — seed file
+; RPZ blocklist (porn+gambling). El contenido real lo genera
+; /usr/local/sbin/update-bind-rpz desde StevenBlack/hosts.
+; Este archivo se despliega solo si /etc/bind/zones/rpz.blocklist.zone no existe.
+
+$TTL 60
+@   IN  SOA ns1.{{ dns_domain }}. admin.{{ dns_domain }}. (
+        1       ; serial
+        3600    ; refresh
+        600     ; retry
+        86400   ; expire
+        60      ; minimum TTL
+    )
+@   IN  NS  ns1.{{ dns_domain }}.
+
+; (vacio hasta que update-bind-rpz corra por primera vez)

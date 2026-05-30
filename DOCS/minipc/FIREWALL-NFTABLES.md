@@ -112,13 +112,14 @@ iif "enp171s0.30" meta mark != 0x1 tcp dport 443
 
 Para clientes autenticados:
 ```nft
-# HTTP autenticado → proxy nginx (:8888) → Squid RPi
+# HTTP autenticado → proxy nginx (:8888) → Squid RPi (cache + blocklist HTTP)
 iif "enp171s0.30" meta mark 0x1 ip daddr != 192.168.20.10 tcp dport 80
     dnat to 192.168.30.1:8888
 
-# HTTPS autenticado → Squid SNI filter (:3130)
-iif "enp171s0.30" meta mark 0x1 ip daddr != 192.168.20.10 tcp dport 443
-    dnat to 192.168.20.10:3130
+# HTTPS autenticado → pasa directo a WAN (sin DNAT).
+# El bloqueo de porn/gambling para HTTPS se hace a nivel DNS via Bind9 RPZ
+# (zona rpz.blocklist). Squid intercept HTTPS cross-host NO funciona:
+# pierde SO_ORIGINAL_DST y termina con TCP_DENIED contra si mismo.
 ```
 
 ---

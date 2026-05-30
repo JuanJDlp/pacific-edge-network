@@ -10,3 +10,14 @@
     name: named
     state: reloaded
   become: true
+
+- name: daemon-reload
+  systemd:
+    daemon_reload: true
+  become: true
+
+- name: restart systemd-resolved
+  systemd:
+    name: systemd-resolved
+    state: restarted
+  become: true

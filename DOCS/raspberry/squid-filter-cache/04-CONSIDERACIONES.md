@@ -1,5 +1,7 @@
 # 04 — Consideraciones, límites y riesgos
 
+> **NOTA HISTORICA (2026-05-30):** El filtrado HTTPS via Squid intercept en `:3130` descrito aqui **ya no esta desplegado**. El DNAT cross-host (Mini PC → RPi) hace que Squid pierda `SO_ORIGINAL_DST`, terminando con `TCP_DENIED CONNECT 192.168.20.10:3130` y rompiendo toda la navegacion HTTPS de los clientes autenticados. El filtrado porn/gambling para HTTPS se hace ahora a nivel DNS via Bind9 RPZ permanente (`rpz.blocklist`, ver `DOCS/minipc/DNS-BIND9.md`). Squid sigue cacheando HTTP (puerto 3129 accel) y aplicando la blocklist por dominio HTTP. Lo que sigue describe el diseno original — util como referencia historica y para las consideraciones sobre DoH, ECH, etc.
+
 Lo que **hay que tener en cuenta** antes y después de operar este sistema. Cosas que pueden salir mal, bypasses conocidos, decisiones que hacen trade-offs.
 
 ## 1. Bypasses conocidos del filtrado

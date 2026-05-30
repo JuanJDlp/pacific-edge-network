@@ -107,3 +107,33 @@ named-checkzone biblioteca.tel /var/cache/bind/db.biblioteca.tel
 ## Coexistencia con systemd-resolved
 
 systemd-resolved sigue activo en `127.0.0.53` para resolver consultas locales del Mini PC (ej. actualizaciones apt). No interfiere con Bind9 porque escuchan en IPs distintas. Los clientes DHCP reciben `192.168.10.1` como DNS, apuntando directamente a Bind9.
+
+## RPZ (Response Policy Zone)
+
+Bind9 usa RPZ para dos cosas:
+
+### `rpz.blocklist` — siempre activa (porn + gambling)
+
+Zona master local que carga `/etc/bind/zones/rpz.blocklist.zone`. Cualquier consulta DNS para un dominio en la lista retorna **NXDOMAIN**, bloqueando porn y gambling a nivel DNS (HTTP y HTTPS por igual). `biblioteca.tel` y subdominios son `PASSTHRU` (nunca bloqueados).
+
+- **Script de actualizacion:** `/usr/local/sbin/update-bind-rpz` — descarga StevenBlack/hosts (porn-only + gambling-only), genera la zona, valida con `named-checkzone`, hace `rndc reload`.
+- **Timer systemd:** `bind-rpz-update.timer` — domingos 03:00 (±30 min).
+- **Bootstrap:** la zona se inicializa al ejecutar el rol Ansible (`/var/lib/bind-rpz-bootstrap.done` marca el primer run).
+- **Tamano actual:** ~82 800 dominios.
+
+### `rpz.offline` — activa solo cuando WAN cae
+
+Zona master local que redirige todos los dominios externos a `192.168.30.1`. Activada/desactivada por `wan-check.sh` (timer cada 15s) reemplazando `/etc/bind/named.conf.rpz` con `.enabled` o `.disabled`. `rpz.blocklist` queda activa en ambos casos.
+
+```bash
+# Ver dominios bloqueados (live)
+dig @192.168.10.1 bet365.com +short   # → NXDOMAIN
+dig @192.168.10.1 google.com +short   # → resuelve normal
+
+# Forzar update de la blocklist
+sudo systemctl start bind-rpz-update.service
+
+# Ver estado de las zonas RPZ
+sudo rndc zonestatus rpz.blocklist
+sudo rndc zonestatus rpz.offline
+```

@@ -46,7 +46,10 @@ drop_log_prefix: "NFT DROP: "
 drop_log_limit: "5/minute"
 
 # ── Filtrado HTTPS via Squid en la RPi ────────────────────────────────────────
-# Cuando true, VLAN30 autenticada (mark 0x1) → DNAT 443 → Squid RPi 3130
-# (peek+splice por SNI, bloqueo por blocklist). Excepción: tráfico a la RPi.
-enable_https_filter: true
+# DEPRECATED: cross-host DNAT a Squid intercept HTTPS NO funciona — Squid pierde
+# SO_ORIGINAL_DST (apunta a si mismo) y termina con TCP_DENIED CONNECT a si mismo.
+# El bloqueo de porn/gambling para HTTPS se hace ahora a nivel DNS via Bind9 RPZ
+# (zona rpz.blocklist). HTTP sigue pasando por Squid (cache + blocklist) via
+# nginx:8888.
+enable_https_filter: false
 squid_intercept_https_port: 3130

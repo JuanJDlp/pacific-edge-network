@@ -54,3 +54,15 @@ zone "rpz.offline" {
     // RPZ no se transfiere al slave
     allow-transfer { none; };
 };
+
+//
+// RPZ blocklist zone — porn + gambling (StevenBlack/hosts)
+// El archivo lo genera /usr/local/sbin/update-bind-rpz (cron semanal).
+// Siempre referenciada por response-policy (ver named.conf.rpz).
+//
+zone "rpz.blocklist" {
+    type master;
+    file "/etc/bind/zones/rpz.blocklist.zone";
+    allow-query { none; };
+    allow-transfer { none; };
+};

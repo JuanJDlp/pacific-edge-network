@@ -1,3 +1,8 @@
 // Managed by Ansible — do not edit manually
-// RPZ offline — DESACTIVADO (WAN operativo)
-// wan-check.sh reemplaza este archivo con named.conf.rpz.enabled cuando WAN cae.
+// RPZ offline DESACTIVADO (WAN operativo). wan-check.sh reemplaza este archivo
+// con named.conf.rpz.enabled cuando WAN cae.
+// rpz.blocklist (porn+gambling) sigue activo siempre.
+
+response-policy {
+    zone "rpz.blocklist";
+} qname-wait-recurse no;

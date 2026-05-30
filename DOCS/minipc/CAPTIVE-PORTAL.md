@@ -31,7 +31,7 @@ El servicio `captive-portal.service` esta **disabled** por conflicto de puerto c
                     |
                     v
             [captive-accept.py :2051]  <-- captive-accept.service (activo)
-                    |  nft add element inet filter captive_allowed {IP}
+                    |  nft add element inet filter captive_allowed_mac {IP}
                     v
             302 -> http://biblioteca.tel
 ```
@@ -59,11 +59,11 @@ El redirect apunta siempre a `http://192.168.30.1:2050/` (IP fija, no `$host:$se
 
 ### 2. captive-accept.py (puerto 2051)
 
-Script Python que recibe el POST del boton "Entrar" y agrega la IP del cliente al set nftables `captive_allowed`.
+Script Python que recibe el POST del boton "Entrar" y agrega la IP del cliente al set nftables `captive_allowed_mac`.
 
 ```python
 # Accion principal al recibir POST /accept
-nft add element inet filter captive_allowed { CLIENT_IP }
+nft add element inet filter captive_allowed_mac { CLIENT_IP }
 # Luego redirige a:
 http://biblioteca.tel
 ```
@@ -75,12 +75,12 @@ El redirect post-autenticacion apunta a `http://biblioteca.tel` (no a `http://19
 **Socket:** `127.0.0.1:2051`
 **Estado:** `captive-accept.service` esta **activo y enabled**.
 
-### 3. nftables — set `captive_allowed`
+### 3. nftables — set `captive_allowed_mac`
 
 El set almacena las IPs autorizadas. Las reglas de nftables permiten tráfico saliente de IPs en este set sin DNAT al portal.
 
 ```nft
-set captive_allowed {
+set captive_allowed_mac {
     type ipv4_addr
     flags timeout
     timeout 8h
@@ -104,21 +104,23 @@ Página de bienvenida del portal cautivo.
 4. nginx en :2050 responde con splash page
 5. Usuario hace clic en "Entrar" → POST a `http://192.168.30.1:2050/accept`
 6. nginx hace proxy del POST a captive-accept.py en :2051
-7. captive-accept.py ejecuta `nft add element inet filter captive_allowed { 192.168.30.x }`
+7. captive-accept.py ejecuta `nft add element inet filter captive_allowed_mac { 192.168.30.x }`
 8. captive-accept.py responde 302 → `http://biblioteca.tel`
-9. Próximo paquete HTTP del cliente: nftables verifica `captive_allowed` → mark=0x1 → DNAT a 192.168.30.1:8888 (nginx intermediario → Squid)
+9. Próximo paquete del cliente:
+   - **HTTP** (dport 80): nftables verifica `captive_allowed_mac` → mark=0x1 → DNAT a `192.168.30.1:8888` (nginx intermediario → Squid RPi cache).
+   - **HTTPS** (dport 443): mark=0x1 → SIN DNAT, sale directo a WAN via masquerade. El filtrado porn/gambling se hace a nivel DNS por la zona `rpz.blocklist` en Bind9 (siempre activa). Squid intercept HTTPS cross-host no es viable (pierde `SO_ORIGINAL_DST`).
 
 ## Limpiar autorizaciones
 
 ```bash
 # Ver clientes autorizados
-nft list set inet filter captive_allowed
+nft list set inet filter captive_allowed_mac
 
 # Eliminar un cliente específico
-nft delete element inet filter captive_allowed { 192.168.30.x }
+nft delete element inet filter captive_allowed_mac { 192.168.30.x }
 
 # Eliminar todos los clientes (solo borra el set, sesiones TCP activas siguen hasta que expiren)
-nft flush set inet filter captive_allowed
+nft flush set inet filter captive_allowed_mac
 
 # Para cortar sesiones TCP activas también:
 conntrack -D -s 192.168.30.x
@@ -146,7 +148,7 @@ curl -kI https://192.168.30.1:2050/
 # -> HTTP/1.1 302
 
 # Verificar set nftables
-nft list set inet filter captive_allowed
+nft list set inet filter captive_allowed_mac
 
 # Simular OS probe de macOS
 curl -I http://captive.apple.com/hotspot-detect.html --resolve captive.apple.com:80:192.168.30.1

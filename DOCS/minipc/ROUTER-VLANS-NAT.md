@@ -60,8 +60,8 @@ Tres tablas principales:
 - **`prerouting`**:
   - DNS de todas las VLANs → DNAT a `192.168.10.1:53` (Bind9)
   - HTTP/HTTPS de VLAN30 sin mark → DNAT al portal cautivo (`:2050`)
-  - HTTP de VLAN30 con mark `0x1` → DNAT al proxy nginx (`:8888`) → Squid RPi
-  - HTTPS de VLAN30 con mark `0x1` → DNAT a Squid RPi (`:3130`) para filtrado SNI
+  - HTTP de VLAN30 con mark `0x1` → DNAT al proxy nginx (`:8888`) → Squid RPi (cache + blocklist HTTP)
+  - HTTPS de VLAN30 con mark `0x1` → SIN DNAT (pasa directo a WAN). Filtrado porn/gambling para HTTPS se hace a nivel DNS via Bind9 RPZ (`rpz.blocklist`) — Squid intercept HTTPS cross-host no es viable (pierde `SO_ORIGINAL_DST`).
 - **`postrouting`**: `masquerade` saliendo por `enp170s0` (NAT hacia internet)
 
 ### `table netdev dhcp_fix`

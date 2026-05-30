@@ -3,15 +3,19 @@
 # Ejecutado por wan-check.timer cada 15 segundos.
 #
 # Cuando WAN esta caido:
-#   1. Activa RPZ en Bind9 → todos los dominios externos resuelven a 192.168.30.1
+#   1. Activa RPZ offline en Bind9 → dominios externos resuelven a 192.168.30.1
 #   2. Cambia nginx:8888 a modo offline → sirve offline.html directamente (sin Squid)
-#   3. Cambia DNAT HTTPS → redirige port 443 a nginx local (en vez de Squid RPi)
+#   3. Agrega DNAT HTTPS local → puerto 443 a nginx local (sirve offline.html con TLS)
 #   4. biblioteca.tel sigue resolviendo normalmente (RPZ passthru)
 #
 # Cuando WAN se recupera:
-#   1. Restaura DNAT HTTPS → Squid en RPi (peek+splice normal)
-#   2. Desactiva RPZ → DNS normal via forwarders
-#   3. Restaura nginx:8888 → proxy a Squid
+#   1. Quita DNAT HTTPS offline → tráfico HTTPS de autenticados pasa directo a WAN
+#   2. Desactiva RPZ offline → DNS normal via forwarders (RPZ blocklist sigue activa)
+#   3. Restaura nginx:8888 → proxy a Squid (HTTP cache + blocklist)
+#
+# Nota: el filtrado de dominios bloqueados (porn/gambling) se hace a nivel DNS
+# via RPZ permanente (rpz.blocklist), no via Squid intercept HTTPS. La intercepcion
+# transparente HTTPS cross-host no es viable (Squid pierde SO_ORIGINAL_DST).
 
 set -euo pipefail
 
@@ -94,15 +98,11 @@ enter_online() {
 
     logger -t wan-check "WAN UP — desactivando modo offline"
 
-    # 1. Swap nftables PRIMERO: restaurar HTTPS → Squid en RPi
-    #    Debe hacerse ANTES de quitar nginx :443 para evitar ventana sin destino
+    # 1. Quitar DNAT HTTPS offline. HTTPS autenticado pasa directo a WAN.
+    #    (El bloqueo de dominios prohibidos lo hace Bind9 RPZ a nivel DNS.)
     nft_delete_by_comment "$HTTPS_OFFLINE_COMMENT"
-    if ! nft_rule_exists "$HTTPS_ONLINE_COMMENT"; then
-        nft add rule ${NFT_CHAIN} \
-            iif "${CLIENT_IFACE}" meta mark 0x1 ip daddr != ${RPI_IP} tcp dport 443 \
-            dnat to ${RPI_IP}:${SQUID_HTTPS_PORT} \
-            comment \"${HTTPS_ONLINE_COMMENT}\" 2>/dev/null || true
-    fi
+    # Limpieza defensiva: borrar cualquier resto de la regla rota antigua.
+    nft_delete_by_comment "$HTTPS_ONLINE_COMMENT"
 
     # 2. Desactivar RPZ en Bind9
     if [ -f "$RPZ_DISABLED" ]; then
