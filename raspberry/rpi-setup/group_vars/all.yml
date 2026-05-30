@@ -39,6 +39,10 @@ kolibri_home: "/home/akasicom/.kolibri"
 # Kolibri channel auto-update: id = UUID del canal en studio.learningequality.org
 kolibri_channels:
   - { id: "c1f2b7e6ac9f56a2bb44fa7a48b66dce", name: "Khan Academy (Español)" }
+  - { id: "359e048230974c8f80db1a95dc80d544", name: "EiE Familias (español)" }
+  - { id: "f446655247a95c0aa94ca9fa4d66783b", name: "Proyecto Biosfera" }
+  - { id: "fed29d60e4d84a1e8dcfc781d920b40e", name: "Biblioteca Elejandria" }
+  - { id: "da53f90b1be25752a04682bbc353659f", name: "Ciencia NASA" }
 
 # Jellyfin
 jellyfin_api_key: "1e2ba6b4e3ca45aa95627eddc7f46bf2"
