@@ -1,20 +1,6 @@
 # Pacific Edge Network
 
-> ## ⛔ REGLA IRROMPIBLE — TVWS
->
-> **La verdad absoluta sobre lo que se puede y no se puede hacer en los equipos TVWS (Innonet) está en `networkDevices/tvws_AP/official_doc/TVWS_Korean.pdf`.** Cualquier acción, configuración o recomendación sobre los TVWS DEBE alinearse exactamente con ese documento. Si algo no está en el PDF, no se hace.
->
-> En particular, y sin excepciones:
-> - **NO cambiar las direcciones IP de las interfaces del TVWS.** El MASTER es `192.168.100.1/24` (LAN) y el SLAVE queda en `192.168.1.1/24` tras el cambio de modo. Estas IPs son las únicas válidas para administración; modificarlas rompe el acceso y el procedimiento documentado.
-> - El orden de configuración es **primero MASTER, luego SLAVE**.
-> - Acceso web: puerto **8800** (`http://192.168.100.1:8800` para MASTER, `http://192.168.1.1:8800` para SLAVE). Credenciales: `root` / `innonet160905`.
-> - Parámetros de RF documentados (laboratorio 1:1): `Mode` MASTER/SLAVE, `Bandwidth` 6 MHz, `Channel` 31 (575 MHz), `TxPower` 14 dBm, mismo `SSID` en ambos extremos.
-> - Tras `Save & Apply` en el SLAVE, ejecutar `System → Reboot`.
->
-> Antes de tocar cualquier TVWS, **consultar el PDF**. Esta regla prevalece sobre cualquier otra instrucción de este `CLAUDE.md` o del repo.
-
-
-Red comunitaria de borde (Pacific Edge) desplegada con un Mini PC como router/servicios y una Raspberry Pi como servidor de contenido offline, interconectados por un switch capa 2 con VLANs. La salida a Internet la provee un router externo conectado al Mini PC.
+Red comunitaria de borde (Pacific Edge) desplegada con un Mini PC como router/servicios y una Raspberry Pi como servidor de contenido offline, interconectados por un switch capa 2 con VLANs. La salida a Internet la provee un router externo conectado al Mini PC. Un Linksys E2500 en modo bridge provee WiFi a los clientes en VLAN 30.
 
 ## Topología física
 
@@ -36,19 +22,19 @@ Red comunitaria de borde (Pacific Edge) desplegada con un Mini PC como router/se
          ┌─────────┴──────────┐
          │ Switch L2 (Cisco)  │  Puerto 24 ── Mini PC (trunk)
          │ SG350X-24 / 2960   │  Puerto  1 ── Raspberry Pi
-         │                    │  Puerto  4 ── TVWS Master AP
+         │                    │  Puerto  4 ── Linksys E2500 AP (VLAN 30)
          └────────┬──┬──┬─────┘
                   │  │  │
         Puerto 1  │  │  │  Puerto 4
        ┌──────────┘  │  └──────────┐
        │             │             │
  ┌─────┴──────┐      │       ┌─────┴──────┐
- │ Raspberry  │      │       │ TVWS AP    │
- │ akasicom2  │      │       │ (Innonet)  │
- │ 100.90.81. │      │       │            │
- │   168      │      │       └────────────┘
- └────────────┘      │
-                  Otros puertos de acceso (clientes VLAN 10/20/30)
+ │ Raspberry  │      │       │ Linksys    │
+ │ akasicom2  │      │       │ E2500 (AP  │
+ │ 100.90.81. │      │       │ bridge)    │
+ │   168      │      │       └─────┬──────┘
+ └────────────┘      │             │
+                  Otros puertos  Clientes WiFi (VLAN 30)
 ```
 
 ### Mapeo de puertos del switch L2
@@ -56,13 +42,13 @@ Red comunitaria de borde (Pacific Edge) desplegada con un Mini PC como router/se
 | Puerto | Dispositivo            | Modo               |
 |--------|------------------------|--------------------|
 | 1      | Raspberry Pi (akasicom2) | Acceso (VLAN 20 — Servidores) |
-| 4      | TVWS Master AP (Innonet) | Acceso             |
+| 4      | Linksys E2500 (AP bridge) | Acceso (VLAN 30 — Clientes WiFi) |
 | 24     | Mini PC (plataformas)  | Trunk 802.1Q (VLAN 10/20/30) |
 
-Documentación de switches y AP TVWS: `networkDevices/`
+Documentación de switches: `networkDevices/`
 - `networkDevices/SwitchCerritoBongo/` — configs Cisco SG350X-24 y Catalyst 2960 + `revision-config.md`.
 - `networkDevices/SwitchCocalito/` — config y readme del switch del nodo Cocalito.
-- `networkDevices/tvws_AP/` — guías Innonet TVWS (`TVWS-MASTER-AP-INSTALACION.md`, `Innonet_TVWS_Korean.md`, `official_doc/`, `UI_Mapped_TVWS/`).
+- `networkDevices/tvws_AP/` — documentación histórica del TVWS Innonet (ya no desplegado, reemplazado por Linksys E2500).
 
 ## Direccionamiento IP
 
@@ -128,13 +114,11 @@ Servicios activos (systemd):
 
 Ansible para la RPi: `raspberry/rpi-setup/` (`playbook.yml`, `inventory.ini`, `group_vars/all.yml`, `roles/`).
 
-## TVWS Master AP
+## Linksys E2500 — Access Point (VLAN 30)
 
-Punto de acceso TVWS (Innonet) conectado al **puerto 4** del switch L2. Toda la guía de instalación y configuración como AP maestro está en `networkDevices/tvws_AP/`:
-- `TVWS-MASTER-AP-INSTALACION.md` — procedimiento de despliegue.
-- `Innonet_TVWS_Korean.md` — notas del firmware/UI original.
-- `official_doc/TVWS_Korean.pdf` — documento oficial de referencia (fuente de verdad).
-- `UI_Mapped_TVWS/` — mapeo completo de la UI (Network, Services, Status, System).
+Linksys E2500 en **modo bridge** conectado al **puerto 4** del switch L2 (acceso VLAN 30). Provee WiFi a los clientes de la red comunitaria. No hace routing ni DHCP — los clientes reciben IP del Kea DHCP del Mini PC via VLAN 30 y pasan por el portal cautivo.
+
+> **Nota histórica:** Anteriormente se usaba un TVWS AP (Innonet) en este puerto. La documentación del TVWS se conserva en `networkDevices/tvws_AP/` como referencia histórica.
 
 ## Estructura del repositorio
 
@@ -207,16 +191,12 @@ Punto de acceso TVWS (Innonet) conectado al **puerto 4** del switch L2. Toda la 
 ├── networkDevices/
 │   ├── SwitchCerritoBongo/           # Cisco SG350X-24 / Catalyst 2960
 │   ├── SwitchCocalito/               # Switch nodo Cocalito
-│   └── tvws_AP/                      # Innonet TVWS Master AP
-│       ├── TVWS-MASTER-AP-INSTALACION.md
-│       ├── Innonet_TVWS_Korean.md
-│       ├── official_doc/TVWS_Korean.pdf
-│       └── UI_Mapped_TVWS/           # Network, Services, Status, System
+│   └── tvws_AP/                      # Histórico: TVWS Innonet (ya no desplegado)
 ```
 
 ## Accesos SSH (resumen)
 
-- Raspberry Pi: `ssh -i ~/.ssh/plats_mini_pc akasicom@100.90.81.168`
-- Mini PC:      `ssh -i ~/.ssh/plats_mini_pc user@100.90.95.134`
+- Mini PC:      `ssh minipc` (o `ssh -i ~/.ssh/id_ed25519_ladrilleros user@100.90.95.134`)
+- Raspberry Pi: `ssh raspberry` (o `ssh -i ~/.ssh/id_ed25519_ladrilleros akasicom@100.90.81.168`)
 
 Detalles y demás credenciales en `DOCS/red/CREDENCIALES-SSH.md`. Estado operativo de la red en `DOCS/red/ESTADO_ACTUAL_RED.md`.

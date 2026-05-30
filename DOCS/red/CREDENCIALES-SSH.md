@@ -134,15 +134,15 @@ child.sendline('exit')
 
 ---
 
-## TVWS Master AP (Innonet)
+## Linksys E2500 (AP bridge, VLAN 30)
 
 | Campo | Valor |
 |-------|-------|
-| IP (MASTER) | `192.168.100.1` |
-| IP (SLAVE) | `192.168.1.1` |
-| Puerto web | `8800` |
-| Usuario | `root` |
-| Contraseña | `innonet160905` |
+| Modo | Bridge (AP) |
+| Puerto switch | 4 (acceso VLAN 30) |
+| Funcion | Access point WiFi para clientes en VLAN 30 |
+
+> El Linksys E2500 opera en modo bridge — no hace routing ni DHCP. Los clientes WiFi reciben IP del Kea DHCP del Mini PC via VLAN 30.
 
 ---
 
@@ -154,4 +154,3 @@ child.sendline('exit')
 | Raspberry Pi | `ssh raspberry` | `akasicom` | `4k4s1c0m` |
 | Switch | Desde Mini PC/RPi → `ssh user@192.168.10.2` + flags legacy | `user` | `password` |
 | Jellyfin | `http://biblioteca.tel/videos/` | `admin` | `admin2026` |
-| TVWS AP | `http://192.168.100.1:8800` | `root` | `innonet160905` |

@@ -24,18 +24,19 @@
          +---------+----------+
          | Switch L2 (Cisco)  |  P24 -> Mini PC (trunk)
          | SG350X-24 / 2960   |  P1  -> RPi (access VLAN20)
-         |                    |  P4  -> TVWS Master AP
+         |                    |  P4  -> Linksys E2500 AP (access VLAN30)
          +--------+-+-+------+
                   |  |  |
        +----------+  |  +----------+
        |             |             |
  +-----+------+     |       +-----+------+
- | Raspberry  |     |       | TVWS AP    |
- | akasicom2  |     |       | (Innonet)  |
- | 192.168.   |     |       +------------+
- |  20.10     |     |
- +------------+  Clientes
-              (VLAN 10/20/30)
+ | Raspberry  |     |       | Linksys    |
+ | akasicom2  |     |       | E2500 (AP  |
+ | 192.168.   |     |       | bridge)    |
+ |  20.10     |     |       +-----+------+
+ +------------+  Clientes         |
+              (VLAN 10/20/30)  Clientes WiFi
+                               (VLAN 30)
 ```
 
 ### Mapeo de puertos del switch L2
@@ -43,7 +44,7 @@
 | Puerto | Dispositivo                | Modo                              |
 |--------|----------------------------|-----------------------------------|
 | 1      | Raspberry Pi (akasicom2)   | Acceso (VLAN 20 -- Servidores)    |
-| 4      | TVWS Master AP (Innonet)   | Acceso                            |
+| 4      | Linksys E2500 (AP bridge)  | Acceso (VLAN 30 -- Clientes)      |
 | 24     | Mini PC (plataformas)      | Trunk 802.1Q (VLAN 10/20/30)     |
 
 ---
