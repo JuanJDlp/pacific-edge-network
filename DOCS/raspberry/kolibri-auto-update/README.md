@@ -1,10 +1,11 @@
 # Kolibri — Auto-actualizacion de canales educativos
 
 > **Implementado:** 2026-05-29
+> **Ultima actualizacion:** 2026-05-30
 > **Estado:** En produccion
 > **Componente:** `raspberry/rpi-setup/roles/kolibri/`
 
-Sistema automatico que mantiene actualizados los canales educativos de Kolibri (Khan Academy, etc.) descargando contenido nuevo desde Kolibri Studio.
+Sistema automatico que mantiene actualizados los canales educativos de Kolibri descargando contenido nuevo desde Kolibri Studio.
 
 ## Problema que resuelve
 
@@ -17,6 +18,18 @@ Kolibri sirve canales educativos que se publican con actualizaciones periodicas 
    - `importchannel network <id>` — descarga metadata (rapido)
    - `importcontent network <id>` — descarga contenido nuevo (resumable, skip existente)
 3. Kolibri detecta automaticamente el contenido nuevo sin reinicio
+
+## Canales configurados (5 canales, ~41 GB total)
+
+| Canal | ID | Tamano aprox. |
+|-------|----|---------------|
+| Khan Academy Espanol | `c1f2b7e6ac9f56a2bb44fa7a48b66dce` | ~37 GB |
+| EiE Familias | - | 0.1 GB |
+| Proyecto Biosfera | - | 0.2 GB |
+| Biblioteca Elejandria | - | 0.96 GB |
+| Ciencia NASA | - | 3.4 GB |
+
+**Disco RPi:** 59G total, 51G usado, 5.6G libre. Considerar espacio disponible antes de agregar canales nuevos.
 
 ## Diferencias con Kiwix auto-update
 
@@ -43,9 +56,15 @@ Kolibri sirve canales educativos que se publican con actualizaciones periodicas 
 ```yaml
 kolibri_channels:
   - { id: "c1f2b7e6ac9f56a2bb44fa7a48b66dce", name: "Khan Academy (Español)" }
+  # + EiE Familias, Proyecto Biosfera, Biblioteca Elejandria, Ciencia NASA
 ```
 
 Para agregar un canal: buscar el ID en studio.learningequality.org, importarlo manualmente la primera vez, y agregarlo a la lista.
+
+### Usuario y KOLIBRI_HOME
+
+- **Usuario:** `akasicom`
+- **KOLIBRI_HOME:** `/home/akasicom/.kolibri`
 
 ### Schedule
 

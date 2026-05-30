@@ -1,5 +1,7 @@
 # Jellyfin — Servidor de video educativo
 
+> **Ultima actualizacion:** 2026-05-30
+
 ## Rol Ansible
 
 `raspberry/rpi-setup/roles/jellyfin/`
@@ -37,32 +39,56 @@ El trailing slash en `proxy_pass` hace que nginx reemplace `/videos/` antes de e
 
 Los timeouts de 6 horas permiten reproducir videos sin interrupciones.
 
-## Almacenamiento de video
+## Bibliotecas configuradas
 
-Jellyfin lee bibliotecas de medios definidas en su configuración:
+Jellyfin tiene 3 bibliotecas configuradas:
+
+| Biblioteca | Directorio | Contenido |
+|------------|-----------|-----------|
+| Comunitarios | `/var/lib/biblioteca/videos/comunitarios` | Videos de la comunidad |
+| Educativos | `/var/lib/biblioteca/videos/educativos` | Material educativo |
+| Culturales | `/var/lib/biblioteca/videos/culturales` | Contenido cultural |
+
+## Videos actuales
+
+| Video | Tamano |
+|-------|--------|
+| test.mp4 | 1.1 MB |
+| Tiburones-Discovery | 133 MB |
+| Tierra Fragil | 293 MB |
+| WOW-Discovery | 290 MB |
+| Cueva de los Tallos | 107 MB |
+| **Total** | **~823 MB** |
+
+## Almacenamiento
+
 ```
-/etc/jellyfin/           # configuración del servidor
+/etc/jellyfin/           # configuracion del servidor
 /var/lib/jellyfin/       # base de datos, metadatos, miniaturas
-```
-
-Las bibliotecas de video deben apuntar a directorios con los archivos `.mp4`, `.mkv`, etc.
-
-## Acceso sin credenciales
-
-Usuario **"Invitado"** sin password visible en la pantalla de login. Documentacion completa en [`jellyfin-config/`](jellyfin-config/).
-
-## Escaneo automatico de biblioteca
-
-Cron diario a las 04:30 re-escanea la biblioteca para indexar archivos nuevos. Documentacion en [`jellyfin-config/`](jellyfin-config/).
-
-## Directorios de media
-
-```
 /var/lib/biblioteca/videos/
 ├── comunitarios/    # Videos de la comunidad
 ├── educativos/      # Material educativo
 └── culturales/      # Contenido cultural
 ```
+
+## Credenciales
+
+| Usuario | Password | Visible en login | Rol |
+|---------|----------|-------------------|-----|
+| admin | admin2026 | No (oculto) | Administrador |
+| Invitado | (sin password) | Si | Acceso a todo el contenido |
+
+Documentacion completa en [`jellyfin-config/`](jellyfin-config/).
+
+## API Key
+
+API key para automatizacion: `1e2ba6b4e3ca45aa95627eddc7f46bf2`
+
+Generada desde el dashboard de Jellyfin (`Dashboard > API Keys`). Almacenada tambien en `group_vars/all.yml` como `jellyfin_api_key`.
+
+## Escaneo automatico de biblioteca
+
+Cron diario a las 04:30 re-escanea la biblioteca para indexar archivos nuevos. El script dispara `POST /Library/Refresh` via la API con el API key. Documentacion en [`jellyfin-config/`](jellyfin-config/).
 
 ## Agregar contenido
 

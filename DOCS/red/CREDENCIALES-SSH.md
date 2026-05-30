@@ -14,7 +14,8 @@
 | Sudo | Sin contraseña (`NOPASSWD`) |
 
 ```bash
-ssh user@100.90.95.134
+ssh minipc
+# o: ssh -i ~/.ssh/id_ed25519_ladrilleros user@100.90.95.134
 ```
 
 ---
@@ -30,7 +31,8 @@ ssh user@100.90.95.134
 | Sudo | Con contraseña (usar `-S`) |
 
 ```bash
-ssh akasicom@100.90.81.168
+ssh raspberry
+# o: ssh -i ~/.ssh/id_ed25519_ladrilleros akasicom@100.90.81.168
 ```
 
 Para comandos con sudo desde scripts (sin TTY):
@@ -121,10 +123,35 @@ child.sendline('exit')
 
 ---
 
-## Resumen rápido
+## Jellyfin (RPi)
+
+| Campo | Valor |
+|-------|-------|
+| Admin | `admin` / `admin2026` |
+| Invitado | `Invitado` (sin password) |
+| API key | `1e2ba6b4e3ca45aa95627eddc7f46bf2` |
+| URL interna | `http://127.0.0.1:8096` |
+
+---
+
+## TVWS Master AP (Innonet)
+
+| Campo | Valor |
+|-------|-------|
+| IP (MASTER) | `192.168.100.1` |
+| IP (SLAVE) | `192.168.1.1` |
+| Puerto web | `8800` |
+| Usuario | `root` |
+| Contraseña | `innonet160905` |
+
+---
+
+## Resumen rapido
 
 | Dispositivo | Acceso directo | Usuario | Contraseña |
 |-------------|---------------|---------|------------|
-| Mini PC | `ssh user@100.90.95.134` | `user` | `password` |
-| Raspberry Pi | `ssh akasicom@100.90.81.168` | `akasicom` | `4k4s1c0m` |
-| Switch | Solo desde Mini PC o RPi → `ssh user@192.168.10.2` + flags legacy | `user` | `password` |
+| Mini PC | `ssh minipc` | `user` | `password` |
+| Raspberry Pi | `ssh raspberry` | `akasicom` | `4k4s1c0m` |
+| Switch | Desde Mini PC/RPi → `ssh user@192.168.10.2` + flags legacy | `user` | `password` |
+| Jellyfin | `http://biblioteca.tel/videos/` | `admin` | `admin2026` |
+| TVWS AP | `http://192.168.100.1:8800` | `root` | `innonet160905` |

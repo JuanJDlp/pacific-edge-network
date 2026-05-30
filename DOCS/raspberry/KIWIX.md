@@ -1,5 +1,7 @@
 # Kiwix — Servidor de contenido offline (Wikipedia y ZIM)
 
+> **Ultima actualizacion:** 2026-05-30
+
 ## Rol Ansible
 
 `raspberry/rpi-setup/roles/kiwix/`
@@ -21,7 +23,17 @@ ExecStart=/usr/local/bin/kiwix-serve \
 - **library.xml**: catálogo de archivos ZIM disponibles
 - **Usuario**: `kiwix` (sin shell, sin home)
 
-## Paths accesibles vía nginx
+## ZIMs actuales
+
+| Archivo ZIM | Version | Tamano |
+|-------------|---------|--------|
+| wikipedia_es_all_mini | 2026-05 | 3.5 GB |
+| wikibooks_es | - | 107 MB |
+| wikinews_es | - | 33 MB |
+| wikiversity_es | - | 18 MB |
+| wikivoyage_es | - | 36 MB |
+
+## Paths accesibles via nginx
 
 | URL cliente | Comportamiento |
 |------------|----------------|

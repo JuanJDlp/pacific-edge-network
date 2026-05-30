@@ -1,12 +1,14 @@
 # HTTP Proxy — nginx intermediario hacia Squid
 
+> Actualizado: 2026-05-30
+
 ## Rol Ansible
 
 `minipc/router-setup/roles/captive_portal/` (junto con el portal cautivo)
 
-## Descripción
+## Descripcion
 
-nginx actúa como intermediario HTTP en el Mini PC para clientes autenticados que acceden a internet o servicios externos. Recibe el tráfico en el puerto 8888 y lo reenvía a Squid en la RPi como un forward proxy request, lo que permite que Squid use el `Host` header en lugar de depender de `SO_ORIGINAL_DST`.
+nginx actua como intermediario HTTP en el Mini PC para clientes autenticados de VLAN30 que acceden a internet o servicios externos. Recibe el trafico en el puerto 8888 y lo reenvia a Squid en la RPi (`192.168.20.10:3129`) como un forward proxy request, lo que permite que Squid use el `Host` header en lugar de depender de `SO_ORIGINAL_DST`. Este server block corre dentro de `nginx.service` (no un servicio separado).
 
 ## Por qué es necesario este intermediario
 

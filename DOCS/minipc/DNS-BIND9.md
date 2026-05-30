@@ -1,12 +1,14 @@
 # DNS — Bind9 (`biblioteca.tel`)
 
+> Actualizado: 2026-05-30
+
 ## Rol Ansible
 
 `minipc/router-setup/roles/dns/`
 
-## Descripción
+## Descripcion
 
-Bind9 actúa como servidor DNS autoritativo para el dominio `biblioteca.tel` y como resolver recursivo con forwarding para dominios externos. Reemplaza la resolución DNS en las VLANs internas (el stub de systemd-resolved sigue activo en `127.0.0.53` solo para uso local del Mini PC).
+Bind9 **v9.18.39** actua como servidor DNS autoritativo para el dominio `biblioteca.tel` y como resolver recursivo con forwarding para dominios externos. Reemplaza la resolucion DNS en las VLANs internas (el stub de systemd-resolved sigue activo en `127.0.0.53` solo para uso local del Mini PC).
 
 ## Por qué Bind9 y no systemd-resolved
 

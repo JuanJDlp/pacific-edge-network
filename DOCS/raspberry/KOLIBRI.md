@@ -1,12 +1,31 @@
-# Kolibri — Plataforma educativa offline (Khan Academy)
+# Kolibri — Plataforma educativa offline
+
+> **Ultima actualizacion:** 2026-05-30
 
 ## Rol Ansible
 
 `raspberry/rpi-setup/roles/kolibri/`
 
-## Descripción
+## Descripcion
 
-Kolibri es una plataforma de aprendizaje offline que incluye contenidos de Khan Academy, CK-12, y otras fuentes educativas. Corre en el puerto 8090 del loopback y es accesible vía nginx en `/kolibri/`.
+Kolibri es una plataforma de aprendizaje offline que incluye contenidos de Khan Academy, EiE Familias, Proyecto Biosfera, Biblioteca Elejandria y Ciencia NASA. Corre en el puerto 8090 del loopback y es accesible via nginx en `/kolibri/`.
+
+## Estado actual
+
+- **Usuario del sistema:** `akasicom`
+- **KOLIBRI_HOME:** `/home/akasicom/.kolibri`
+- **Contenido total:** ~41 GB
+- **Disco RPi:** 59G total, 51G usado, 5.6G libre
+
+## Canales instalados
+
+| Canal | Tamano aprox. |
+|-------|---------------|
+| Khan Academy Espanol | ~37 GB |
+| EiE Familias | 0.1 GB |
+| Proyecto Biosfera | 0.2 GB |
+| Biblioteca Elejandria | 0.96 GB |
+| Ciencia NASA | 3.4 GB |
 
 ## Detalles del servicio systemd
 
@@ -34,11 +53,11 @@ location /kolibri/ {
 
 Los buffers grandes son necesarios porque Kolibri carga muchos metadatos de canales en los headers de respuesta.
 
-## Configuración de Kolibri
+## Configuracion de Kolibri
 
-Kolibri almacena su configuración y base de datos en:
+Kolibri almacena su configuracion y base de datos en:
 ```
-/home/kolibri/.kolibri/
+/home/akasicom/.kolibri/
 ├── kolibri.sqlite3     # base de datos principal
 ├── content/            # canales descargados
 └── logs/
@@ -60,12 +79,14 @@ Configurado con `landing_page=learn` y `allow_guest_access=True`. Los usuarios v
 # Desde la interfaz web de Kolibri (recomendado)
 # http://biblioteca.tel/kolibri/ → Gestionar → Canales
 
-# O desde línea de comandos en RPi
-sudo kolibri manage importchannel --channel-id <ID>
-sudo kolibri manage importcontent --channel-id <ID>
+# O desde linea de comandos en RPi (usuario akasicom)
+KOLIBRI_HOME=/home/akasicom/.kolibri sudo -u akasicom kolibri manage importchannel network <ID>
+KOLIBRI_HOME=/home/akasicom/.kolibri sudo -u akasicom kolibri manage importcontent network <ID>
 ```
 
-## Verificación
+**Nota:** La sintaxis correcta es `importchannel network <id>` y `importcontent network <id>` (sin `--channel-id`).
+
+## Verificacion
 
 ```bash
 # Servicio activo
@@ -74,6 +95,9 @@ systemctl status kolibri
 # Puerto 8090 escuchando
 ss -tlnp | grep 8090
 
-# Acceso vía nginx
+# Listar canales instalados
+KOLIBRI_HOME=/home/akasicom/.kolibri sudo -u akasicom kolibri manage listchannels
+
+# Acceso via nginx
 curl -I http://192.168.20.10/kolibri/
 ```

@@ -1,27 +1,26 @@
 # Firewall — nftables avanzado
 
 **Dispositivo:** Mini PC (`plataformas`)
-**Rol Ansible:** `minipc/router-setup/roles/firewall/`
+**Rol Ansible:** `minipc/router-setup/roles/router/` (integrado en el rol router)
 **Servicio systemd:** `nftables`
+**Ultima verificacion:** 2026-05-30
 
 ---
 
-## Qué hace
+## Que hace
 
-El rol `firewall` reemplaza el `nftables.conf` base del rol `router` con una versión más robusta que agrega:
+El firewall nftables provee proteccion completa del router de borde:
 
 - Rate limiting para SSH, DNS e ICMP
-- Bloqueo explícito de puertos peligrosos desde WAN
+- Bloqueo explicito de puertos peligrosos desde WAN
 - Aislamiento estricto entre VLANs
-- Protección anti-spoofing en WAN
+- Proteccion anti-spoofing en WAN
 - Auto-ban temporal por fuerza bruta SSH
 - Logging configurable de paquetes dropeados
 
-> **Nota:** El rol `firewall` debe correr **después** del rol `router`, ya que este último configura las VLANs e ip_forward que firewall presupone.
-
 ---
 
-## Protecciones adicionales sobre el rol `router`
+## Protecciones
 
 ### Anti-spoofing WAN
 
@@ -42,11 +41,10 @@ tcp dport 22 ct state new limit rate over 5/minute burst 10 packets
     add @ssh_bruteforce { ip saddr timeout 1h } drop
 ```
 
-### Rate limiting DNS (anti-amplificación)
+### Rate limiting DNS (anti-amplificacion)
 
 ```
 udp dport 53 limit rate 30/second burst 50 packets accept
-# Rechaza si supera el límite — evita que la red sea usada para ataques de amplificación
 ```
 
 ### Rate limiting ICMP
@@ -82,7 +80,7 @@ Los servidores (VLAN20) no pueden iniciar conexiones hacia los clientes (VLAN30)
 
 ### Logging de drops
 
-Controlado por `enable_drop_logging: true` en `vars/main.yml`. Cada drop incluye prefix `"NFT DROP: "` con rate limit de 5/minuto para no saturar syslog.
+Cada drop incluye prefix `"NFT DROP: "` con rate limit de 5/minuto para no saturar syslog.
 
 ```bash
 # Ver drops en tiempo real
@@ -93,7 +91,7 @@ sudo journalctl -f | grep "NFT DROP:"
 
 ## Sets nftables
 
-| Set | Tipo | Timeout | Propósito |
+| Set | Tipo | Timeout | Proposito |
 |-----|------|---------|-----------|
 | `captive_allowed_mac` | `ether_addr` | 8h | MACs VLAN30 autenticadas en portal cautivo |
 | `ssh_bruteforce` | `ipv4_addr` | 1h | IPs baneadas por exceso de conexiones SSH |
@@ -103,22 +101,29 @@ sudo journalctl -f | grep "NFT DROP:"
 El firewall intercepta tanto HTTP como HTTPS de clientes no autenticados y los redirige al splash del portal:
 
 ```nft
-# HTTP unauthenticated → portal (puerto 2050 SSL)
+# HTTP no autenticado → portal (puerto 2050 SSL)
 iif "enp171s0.30" meta mark != 0x1 tcp dport 80
     dnat to 192.168.30.1:2050
 
-# HTTPS unauthenticated → portal (mismo puerto 2050 SSL)
-# El SSL handshake usa el cert del portal → browser muestra advertencia,
-# pero puede continuar para ver el splash.
+# HTTPS no autenticado → portal (mismo puerto 2050 SSL)
 iif "enp171s0.30" meta mark != 0x1 tcp dport 443
     dnat to 192.168.30.1:2050
 ```
 
-El puerto 443 solía tener una regla `drop` (antes `reject with tcp reset`) que impedía que los clientes HTTPS vieran el splash. Ahora el DNAT lo redirige al portal igual que HTTP.
+Para clientes autenticados:
+```nft
+# HTTP autenticado → proxy nginx (:8888) → Squid RPi
+iif "enp171s0.30" meta mark 0x1 ip daddr != 192.168.20.10 tcp dport 80
+    dnat to 192.168.30.1:8888
+
+# HTTPS autenticado → Squid SNI filter (:3130)
+iif "enp171s0.30" meta mark 0x1 ip daddr != 192.168.20.10 tcp dport 443
+    dnat to 192.168.20.10:3130
+```
 
 ---
 
-## Servicios de gestión (solo VLAN10)
+## Servicios de gestion (solo VLAN10)
 
 ```
 iif "enp171s0.10" tcp dport { 9090, 3000, 8080 } accept
@@ -126,24 +131,28 @@ iif "enp171s0.10" tcp dport { 9090, 3000, 8080 } accept
 
 - `:9090` — Prometheus
 - `:3000` — Grafana
-- `:8080` — Pi-hole web admin
+- `:8080` — reservado (antes Pi-hole)
 
-Solo accesibles desde la VLAN de gestión. No son alcanzables desde VLAN30 (clientes).
+Solo accesibles desde la VLAN de gestion. No son alcanzables desde VLAN30 (clientes).
 
 ---
 
-## Variables de configuración
+## Comandos utiles
 
-Archivo: `roles/firewall/vars/main.yml`
+```bash
+# Ver ruleset completo
+sudo nft list ruleset
 
-| Variable | Valor | Descripción |
-|---|---|---|
-| `ssh_rate_limit` | `5/minute` | Umbral de conexiones SSH |
-| `ssh_rate_burst` | 10 | Burst permitido |
-| `dns_rate_limit` | `30/second` | Umbral UDP DNS |
-| `icmp_rate_limit` | `10/second` | Umbral ICMP |
-| `enable_drop_logging` | `true` | Activa logs de drops |
-| `drop_log_limit` | `5/minute` | Rate de log entries |
+# Ver solo sets
+sudo nft list set inet filter captive_allowed_mac
+sudo nft list set inet filter ssh_bruteforce
+
+# Vaciar MACs del portal cautivo
+sudo nft flush set inet filter captive_allowed_mac
+
+# Recargar reglas
+sudo systemctl restart nftables
+```
 
 ---
 
@@ -151,5 +160,5 @@ Archivo: `roles/firewall/vars/main.yml`
 
 ```bash
 cd minipc/
-ansible-playbook router-setup/playbook.yml -i router-setup/inventory.ini --tags firewall
+ansible-playbook router-setup/playbook.yml -i router-setup/inventory.ini --tags router
 ```

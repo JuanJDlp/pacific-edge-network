@@ -1,12 +1,14 @@
 # DHCP — Kea DHCPv4
 
+> Actualizado: 2026-05-30
+
 ## Rol Ansible
 
 `minipc/router-setup/roles/dhcp/`
 
-## Descripción
+## Descripcion
 
-Kea DHCPv4 asigna IPs a los dispositivos en las tres VLANs. Kea usa raw sockets (en lugar de sockets UDP del sistema) para enviar DHCP Offers, lo que le permite llegar a clientes sin IP previa. Esto requiere el fix de broadcast en nftables (ver más abajo).
+Kea DHCPv4 **v2.4.1** asigna IPs a los dispositivos en las tres VLANs. Kea usa raw sockets (en lugar de sockets UDP del sistema) para enviar DHCP Offers, lo que le permite llegar a clientes sin IP previa. Esto requiere el fix de broadcast en nftables (ver más abajo).
 
 ## Subnets
 

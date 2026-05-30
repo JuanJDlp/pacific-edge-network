@@ -1,12 +1,14 @@
 # NTP — Chrony
 
+> Actualizado: 2026-05-30
+
 ## Rol Ansible
 
 `minipc/router-setup/roles/ntp/`
 
-## Descripción
+## Descripcion
 
-Chrony actúa como servidor NTP para todos los dispositivos de la red interna. Sincroniza el reloj del Mini PC con pools NTP de Colombia/Sudamérica y redistribuye tiempo a las VLANs internas. Si no hay conexión WAN, funciona como reloj local (stratum 10).
+Chrony actua como servidor NTP para todos los dispositivos de la red interna. Sincroniza el reloj del Mini PC con servidores NTP upstream y redistribuye tiempo a las VLANs internas. Actualmente sincronizado a `0.co.ntp.edgeuno.com` en **stratum 3**. Si no hay conexion WAN, funciona como reloj local (stratum 10).
 
 ## Topología
 
@@ -29,7 +31,7 @@ pool 1.south-america.pool.ntp.org iburst maxsources 2
 pool 2.co.pool.ntp.org iburst maxsources 2
 ```
 
-Prioriza servidores del pool colombiano y sudamericano para menor latencia.
+Prioriza servidores del pool colombiano y sudamericano para menor latencia. Al 2026-05-30, la fuente seleccionada es `0.co.ntp.edgeuno.com` y el Mini PC opera en **stratum 3**.
 
 ## Configuración destacada
 

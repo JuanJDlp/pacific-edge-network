@@ -1,6 +1,7 @@
 # Jellyfin — Configuracion y escaneo automatico de biblioteca
 
 > **Implementado:** 2026-05-29
+> **Ultima actualizacion:** 2026-05-30
 > **Estado:** En produccion
 > **Componente:** `raspberry/rpi-setup/roles/jellyfin/`
 
@@ -18,15 +19,32 @@ Se configuro un usuario **"Invitado"** sin password y visible en la pantalla de 
 
 El admin (`admin`) tiene password y esta oculto de la pantalla publica.
 
-## Directorios de media
+## Credenciales Jellyfin
 
-| Directorio | Proposito |
-|------------|-----------|
-| `/var/lib/biblioteca/videos/comunitarios` | Videos de la comunidad |
-| `/var/lib/biblioteca/videos/educativos` | Material educativo |
-| `/var/lib/biblioteca/videos/culturales` | Contenido cultural |
+| Usuario | Password | Visible | Rol |
+|---------|----------|---------|-----|
+| admin | admin2026 | No (oculto) | Administrador |
+| Invitado | (sin password) | Si | Acceso a todo el contenido |
+
+## Bibliotecas configuradas (3)
+
+| Biblioteca | Directorio | Proposito |
+|------------|-----------|-----------|
+| Comunitarios | `/var/lib/biblioteca/videos/comunitarios` | Videos de la comunidad |
+| Educativos | `/var/lib/biblioteca/videos/educativos` | Material educativo |
+| Culturales | `/var/lib/biblioteca/videos/culturales` | Contenido cultural |
 
 Todos propiedad de `jellyfin:jellyfin` (mode 0755).
+
+## Videos actuales (~823 MB total)
+
+| Video | Tamano |
+|-------|--------|
+| test.mp4 | 1.1 MB |
+| Tiburones-Discovery | 133 MB |
+| Tierra Fragil | 293 MB |
+| WOW-Discovery | 290 MB |
+| Cueva de los Tallos | 107 MB |
 
 ### Agregar contenido
 
@@ -47,6 +65,12 @@ Cron: **diario a las 04:30** (`30 4 * * *`)
 
 El script dispara `POST /Library/Refresh` via la API de Jellyfin con un API key dedicado.
 
+## API Key
+
+API key para automatizacion: `1e2ba6b4e3ca45aa95627eddc7f46bf2`
+
+Generada desde el dashboard de Jellyfin (`Dashboard > API Keys`). Almacenada tambien en `group_vars/all.yml` como `jellyfin_api_key`.
+
 ## Archivos
 
 | Archivo | Descripcion |
@@ -54,10 +78,6 @@ El script dispara `POST /Library/Refresh` via la API de Jellyfin con un API key 
 | `roles/jellyfin/templates/scan-jellyfin-library.sh.j2` | Script de escaneo |
 | `roles/jellyfin/tasks/main.yml` | Tasks (dirs, script, cron, logrotate) |
 | `rpi-setup/group_vars/all.yml` | Variables `jellyfin_api_key`, `jellyfin_media_dirs` |
-
-## API Key
-
-API key para automatizacion: almacenada en `group_vars/all.yml` como `jellyfin_api_key`. Generada desde el dashboard de Jellyfin (`Dashboard > API Keys`).
 
 ## Deploy
 
@@ -82,13 +102,6 @@ ssh raspberry "cat /var/log/biblioteca/jellyfin-scan.log"
 # Acceso web
 # Abrir http://biblioteca.tel/videos/ → ver "Invitado" → clic → acceso directo
 ```
-
-## Credenciales Jellyfin
-
-| Usuario | Password | Visible | Rol |
-|---------|----------|---------|-----|
-| admin | admin2026 | No (oculto) | Administrador |
-| Invitado | (sin password) | Si | Acceso a todo el contenido |
 
 ## Schedule de cron completo en la RPi
 

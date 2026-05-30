@@ -1,12 +1,15 @@
 # DNS Secundario — Bind9 slave de biblioteca.tel en RPi
 
+> **Ultima actualizacion:** 2026-05-30
+> BIND 9.18.39
+
 ## Rol Ansible
 
 `raspberry/rpi-setup/roles/dns_secondary/`
 
-## Descripción
+## Descripcion
 
-Bind9 en la RPi actúa como DNS secundario (slave) del dominio `biblioteca.tel`. El DNS primario (master) está en el Mini PC (192.168.10.1). La RPi recibe las zonas vía zone transfer automático y puede responder queries localmente sin depender del Mini PC.
+Bind9 en la RPi actua como DNS secundario (slave) del dominio `biblioteca.tel`. El DNS primario (master) esta en el Mini PC (192.168.10.1). La RPi recibe las zonas via zone transfer automatico y puede responder queries localmente sin depender del Mini PC.
 
 ## Arquitectura DNS
 
@@ -56,11 +59,11 @@ Solo en interfaces internas:
 - `127.0.0.1` (loopback)
 - `192.168.20.10` (VLAN20 — servidores)
 
-**No escucha** en `wlan0` (WiFi backup) ni en `wt0` (Netbird) para no exponer DNS públicamente.
+**No escucha** en `wlan0` (WiFi backup) ni en `wt0` (Netbird) para no exponer DNS publicamente.
 
 ## Forwarders
 
-Queries externas se reenvían al Mini PC primero, luego a DNS público:
+Queries externas se reenvian al Mini PC primero, luego a DNS publico:
 ```
 forward first;
 forwarders { 192.168.10.1; 8.8.8.8; 8.8.4.4; };
@@ -68,9 +71,9 @@ forwarders { 192.168.10.1; 8.8.8.8; 8.8.4.4; };
 
 ## Advertencia — Netplan RPi
 
-El rol `dns_secondary` **no modifica** ningún archivo de red (`/etc/netplan/`, `/etc/resolv.conf`). La RPi usa el DNS del Mini PC (192.168.10.1) vía DHCP para sus propias queries. El Bind9 local solo responde a queries externas (de clientes de la red).
+El rol `dns_secondary` **no modifica** ningun archivo de red (`/etc/netplan/`, `/etc/resolv.conf`). La RPi usa el DNS del Mini PC (192.168.10.1) via DHCP para sus propias queries. El Bind9 local solo responde a queries externas (de clientes de la red).
 
-## Verificación
+## Verificacion
 
 ```bash
 # DNS secundario responde
