@@ -156,6 +156,15 @@
   become: true
   notify: reload squid
 
+- name: Instalar script de purga segura de cache (clear-squid-cache)
+  template:
+    src: clear-squid-cache.sh.j2
+    dest: /usr/local/sbin/clear-squid-cache
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
 - name: Habilitar e iniciar Squid
   systemd:
     name: squid

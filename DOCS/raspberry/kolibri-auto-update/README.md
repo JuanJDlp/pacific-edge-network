@@ -1,7 +1,7 @@
 # Kolibri — Auto-actualizacion de canales educativos
 
 > **Implementado:** 2026-05-29
-> **Ultima actualizacion:** 2026-05-30
+> **Ultima actualizacion:** 2026-06-01
 > **Estado:** En produccion
 > **Componente:** `raspberry/rpi-setup/roles/kolibri/`
 
@@ -14,22 +14,40 @@ Kolibri sirve canales educativos que se publican con actualizaciones periodicas 
 ## Que hace
 
 1. Verifica conectividad a Kolibri Studio
-2. Para cada canal configurado:
+2. **Orphan cleanup:** borra el contenido de cualquier canal instalado que ya no
+   este en `kolibri_channels` (`deletecontent <id> -f`). Invariante: nada en disco
+   que no se este sirviendo.
+3. Para cada canal configurado:
+   - Chequea espacio libre (guard `MIN_FREE_MB`, ver abajo) y se detiene si no hay margen
    - `importchannel network <id>` — descarga metadata (rapido)
-   - `importcontent network <id>` — descarga contenido nuevo (resumable, skip existente)
-3. Kolibri detecta automaticamente el contenido nuevo sin reinicio
+   - `importcontent network <id>` — descarga contenido nuevo (resumable, **skip existente** = idempotente)
+4. Kolibri detecta automaticamente el contenido nuevo sin reinicio
 
-## Canales configurados (5 canales, ~41 GB total)
+## Canales configurados (4 canales, ~38 GB total)
 
 | Canal | ID | Tamano aprox. |
 |-------|----|---------------|
-| Khan Academy Espanol | `c1f2b7e6ac9f56a2bb44fa7a48b66dce` | ~37 GB |
-| EiE Familias | - | 0.1 GB |
-| Proyecto Biosfera | - | 0.2 GB |
-| Biblioteca Elejandria | - | 0.96 GB |
-| Ciencia NASA | - | 3.4 GB |
+| Khan Academy Espanol | `c1f2b7e6ac9f56a2bb44fa7a48b66dce` | ~36.6 GB |
+| EiE Familias | `359e048230974c8f80db1a95dc80d544` | 0.1 GB |
+| Proyecto Biosfera | `f446655247a95c0aa94ca9fa4d66783b` | 0.2 GB |
+| Biblioteca Elejandria | `fed29d60e4d84a1e8dcfc781d920b40e` | 0.9 GB |
 
-**Disco RPi:** 59G total, 51G usado, 5.6G libre. Considerar espacio disponible antes de agregar canales nuevos.
+> **Ciencia NASA** (`da53f90b...`, 3.1 GB) removido el 2026-06-01 por falta de espacio.
+
+**Disco RPi:** 59G total (~62.4 GB), 81% usado, ~12 GB libre.
+
+## Guard de disco vs. alarma del panel (CRITICO)
+
+El panel de estado marca **"Sistema sobrecargado"** al **85%** de disco (ver
+[`../HEALTH-CHECK.md`](../HEALTH-CHECK.md)). El guard del script debe parar de
+descargar **antes** de ese punto:
+
+- `MIN_FREE_MB=10000` → se detiene con <10 GB libres (~84%), bajo el 85% de alarma.
+
+> **Incidente 2026-06-01:** con el guard antiguo (4 GB ≈ 93%) el auto-update lleno
+> el disco al 91%, disparo la alarma y corrompio el diskcache de Kolibri (500). Se
+> subio el guard a 10 GB, se removio NASA y se bajo la reserva ext4 a 1%
+> (`tune2fs -m 1`). Ver [`../KOLIBRI.md`](../KOLIBRI.md) (troubleshooting 500).
 
 ## Diferencias con Kiwix auto-update
 

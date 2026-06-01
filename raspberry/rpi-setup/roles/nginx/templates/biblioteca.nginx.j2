@@ -58,8 +58,17 @@ server {
     }
 
     # ---- Static portal ----------------------------------------------------
+    # El HTML del panel referencia el ZIM activo por fecha (e.g. wikipedia_es_all_mini_2026-05).
+    # Cuando el auto-update de Kiwix cambia esa fecha, el index.html se actualiza, pero Squid
+    # (cache en :443) servia la copia vieja por dias -> link muerto para TODOS los clientes.
+    # no-cache obliga a Squid/navegador a revalidar el HTML siempre (304 si no cambio).
     location = / {
+        add_header Cache-Control "no-cache" always;
         try_files /index.html =404;
+    }
+    location ~* \.html$ {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
     }
     location / {
         try_files $uri $uri/ =404;
@@ -77,15 +86,23 @@ server {
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header Connection        "";
+        proxy_set_header Accept-Encoding   "";   # ver kiwix-proxy.conf: evita variante gzip en cache de Squid
         proxy_buffering off;
         proxy_read_timeout 60s;
         error_page 502 504 = @kiwix_unavailable;
     }
 
-    location /content/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    # Contenido ZIM: la URL lleva la version del ZIM (wikipedia_es_all_mini_2026-05/...),
+    # asi que es INMUTABLE — si el ZIM cambia, cambia la URL. Cache-Control explicito
+    # (no la heuristica de Squid) y se descarta el max-age=3600 conservador de Kiwix.
+    location /content/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
+                           proxy_hide_header Cache-Control; proxy_hide_header Expires;
+                           add_header Cache-Control "public, max-age=31536000, immutable" always; }
     location /catalog/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
     location /viewer     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
-    location /skin/      { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /skin/      { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
+                           proxy_hide_header Cache-Control; proxy_hide_header Expires;
+                           add_header Cache-Control "public, max-age=604800" always; }
     location /search     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
     location /suggest    { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
     location /random     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
@@ -197,8 +214,15 @@ server {
     location = /canonical.html       { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
 
     # ---- Static portal ----------------------------------------------------
+    # Ver nota en el server :80 — no-cache evita que Squid sirva HTML rancio
+    # con links a un ZIM viejo tras un auto-update de Kiwix.
     location = / {
+        add_header Cache-Control "no-cache" always;
         try_files /index.html =404;
+    }
+    location ~* \.html$ {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
     }
     location / {
         try_files $uri $uri/ =404;
@@ -213,15 +237,23 @@ server {
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header Connection        "";
+        proxy_set_header Accept-Encoding   "";   # ver kiwix-proxy.conf: evita variante gzip en cache de Squid
         proxy_buffering off;
         proxy_read_timeout 60s;
         error_page 502 504 = @kiwix_unavailable;
     }
 
-    location /content/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    # Contenido ZIM: la URL lleva la version del ZIM (wikipedia_es_all_mini_2026-05/...),
+    # asi que es INMUTABLE — si el ZIM cambia, cambia la URL. Cache-Control explicito
+    # (no la heuristica de Squid) y se descarta el max-age=3600 conservador de Kiwix.
+    location /content/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
+                           proxy_hide_header Cache-Control; proxy_hide_header Expires;
+                           add_header Cache-Control "public, max-age=31536000, immutable" always; }
     location /catalog/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
     location /viewer     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
-    location /skin/      { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    location /skin/      { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
+                           proxy_hide_header Cache-Control; proxy_hide_header Expires;
+                           add_header Cache-Control "public, max-age=604800" always; }
     location /search     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
     location /suggest    { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
     location /random     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }

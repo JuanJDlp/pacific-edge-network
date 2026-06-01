@@ -110,7 +110,7 @@
   notify: Apply netplan configuration
   tags: networking
 
-- name: Flush handlers to apply netplan before nftables validation
+- name: Flush handlers to apply netplan before VLAN verification
   ansible.builtin.meta: flush_handlers
   tags: networking
 
@@ -130,31 +130,10 @@
   tags: networking
 
 # ─── nftables ─────────────────────────────────────────────────────────────────
-
-- name: Deploy nftables firewall ruleset
-  ansible.builtin.template:
-    src: nftables.conf.j2
-    dest: /etc/nftables.conf
-    owner: root
-    group: root
-    mode: "0640"
-    validate: "nft -c -f %s"
-  notify: Reload nftables service
-  tags: firewall
-
-- name: Enable and start nftables service
-  ansible.builtin.service:
-    name: nftables
-    enabled: true
-    state: started
-  tags: firewall
-
-- name: Disable UFW (conflicts with nftables-based firewall)
-  ansible.builtin.systemd:
-    name: ufw
-    enabled: false
-    state: stopped
-  tags: firewall
+# El ruleset nftables (/etc/nftables.conf) lo gestiona EXCLUSIVAMENTE el rol
+# 'firewall', que corre después de este rol. No se despliega nftables aquí para
+# evitar dos plantillas distintas escribiendo el mismo archivo (el rol firewall
+# lo sobreescribía). Ver roles/firewall/ y DOCS/minipc/FIREWALL-NFTABLES.md.
 
 # ─── Jool NAT64 ───────────────────────────────────────────────────────────────
 
@@ -238,10 +217,5 @@
   failed_when: vlan20_check.rc != 0
   tags: networking
 
-- name: Assert nftables ruleset is not empty
-  ansible.builtin.command:
-    cmd: nft list ruleset
-  register: nft_ruleset
-  changed_when: false
-  failed_when: nft_ruleset.stdout | length == 0
-  tags: firewall
+# La verificación del ruleset nftables se hace en el rol 'firewall'
+# (que es quien despliega /etc/nftables.conf).

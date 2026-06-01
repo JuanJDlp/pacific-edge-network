@@ -13,6 +13,7 @@ flush ruleset
 {% set mgmt_iface   = lan_interface ~ '.10' %}
 {% set srv_iface    = lan_interface ~ '.20' %}
 {% set client_vlan_ip = (vlans | selectattr('id', 'equalto', 30) | first).ipv4_address %}
+{% set dns_redirect_ipv6 = (vlans | selectattr('id', 'equalto', 10) | first).ipv6_address %}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TABLA PRINCIPAL: inet filter
@@ -45,6 +46,29 @@ table inet filter {
     chain captive_mangle {
         type filter hook prerouting priority mangle; policy accept;
         iif "{{ client_iface }}" ether saddr @captive_allowed_mac meta mark set 0x1
+
+        # ── Portal cautivo IPv6/NAT64: cerrar bypass de clientes NO autenticados ──
+        # La red es dual-stack: radvd da IPv6 a VLAN30 y DNS64 sintetiza AAAA hacia
+        # el prefijo NAT64 ({{ nat64_prefix }}), que Jool traduce a IPv4 y saca a
+        # Internet. Jool "roba" el paquete en prerouting ANTES de la cadena forward,
+        # por lo que el control de marca de forward NUNCA aplica al tráfico NAT64.
+        # Sin esta regla, un cliente con DNS64 prefiere IPv6 (Happy Eyeballs/RFC 6724)
+        # y navega —incluida la probe de detección de portal del SO— SIN aceptar el
+        # splash. Este drop corre en mangle (prio -150): tras marcar al autenticado y
+        # ANTES de que Jool procese el paquete. Efecto: la probe IPv6 falla, el SO cae
+        # a IPv4 y ahí el DNAT al portal (80/443) sí lo atrapa.
+        #
+        # OJO con la semántica de 'limit': "limit rate N" (sin 'over') MATCHEA solo
+        # mientras está BAJO el límite. Si se escribe "log ... limit rate N drop" en
+        # una sola regla, el 'drop' solo se ejecuta para los primeros N paq/min y el
+        # resto NO se dropea (la regla deja de matchear y el paquete cae fuera). Por
+        # eso el drop va en su PROPIA regla incondicional, y el log (rate-limited, no
+        # terminante) va en una regla aparte previa.
+{% if enable_drop_logging %}
+        iif "{{ client_iface }}" ip6 daddr {{ nat64_prefix }} meta mark != 0x1 \
+            limit rate {{ drop_log_limit }} log prefix "{{ drop_log_prefix }}CAPTIVE-V6-NAT64: "
+{% endif %}
+        iif "{{ client_iface }}" ip6 daddr {{ nat64_prefix }} meta mark != 0x1 drop
     }
 
     # ── INPUT ─────────────────────────────────────────────────────────────────
@@ -63,11 +87,13 @@ table inet filter {
 
         # ── Protección anti-spoofing: descartar paquetes con IP origen inválida
         # Paquetes desde WAN con IP privada origen = spoofing
-        iif "{{ wan_interface }}" ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } \
+        # NOTA: log (rate-limited, no terminante) + drop INCONDICIONAL en reglas
+        # separadas. Ver gotcha de 'limit' en la cadena captive_mangle.
 {% if enable_drop_logging %}
-            log prefix "{{ drop_log_prefix }}SPOOF-WAN: " limit rate {{ drop_log_limit }} \
+        iif "{{ wan_interface }}" ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } \
+            limit rate {{ drop_log_limit }} log prefix "{{ drop_log_prefix }}SPOOF-WAN: "
 {% endif %}
-            drop
+        iif "{{ wan_interface }}" ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } drop
 
         # ── ICMP (ping) con rate limiting ─────────────────────────────────────
         ip protocol icmp limit rate {{ icmp_rate_limit }} burst {{ icmp_rate_burst }} packets accept
@@ -75,12 +101,12 @@ table inet filter {
         ip6 nexthdr ipv6-icmp accept
 
         # ── SSH con protección anti-fuerza-bruta ──────────────────────────────
-        # Bloquear IPs ya baneadas
-        tcp dport 22 ip saddr @ssh_bruteforce \
+        # Bloquear IPs ya baneadas (log rate-limited + drop incondicional separados)
 {% if enable_drop_logging %}
-            log prefix "{{ drop_log_prefix }}SSH-BAN: " limit rate {{ drop_log_limit }} \
+        tcp dport 22 ip saddr @ssh_bruteforce \
+            limit rate {{ drop_log_limit }} log prefix "{{ drop_log_prefix }}SSH-BAN: "
 {% endif %}
-            drop
+        tcp dport 22 ip saddr @ssh_bruteforce drop
 
         # Rate limit: si supera el límite, agregar al set de baneados y dropear
         iif { {{ vlan_ifaces | join(', ') }}, {{ mgmt_interface }} } \
@@ -123,12 +149,13 @@ table inet filter {
         iif { {{ vlan_ifaces | join(', ') }} } tcp dport { 80, 443 } accept
 
         # ── Bloquear puertos peligrosos desde WAN ────────────────────────────
+        # (log rate-limited + drop incondicional separados por puerto)
 {% for port in blocked_wan_tcp_ports %}
-        iif "{{ wan_interface }}" tcp dport {{ port }} \
 {% if enable_drop_logging %}
-            log prefix "{{ drop_log_prefix }}WAN-BLOCK-{{ port }}: " limit rate {{ drop_log_limit }} \
+        iif "{{ wan_interface }}" tcp dport {{ port }} \
+            limit rate {{ drop_log_limit }} log prefix "{{ drop_log_prefix }}WAN-BLOCK-{{ port }}: "
 {% endif %}
-            drop
+        iif "{{ wan_interface }}" tcp dport {{ port }} drop
 {% endfor %}
 
         # ── Drop final con log ────────────────────────────────────────────────
@@ -164,18 +191,19 @@ table inet filter {
 
         # ── Aislamiento VLAN: VLAN20 NO puede iniciar conexiones a VLAN30 ─────
         # (solo respuestas a conexiones iniciadas por VLAN30 pasan por ct established)
-        iif "{{ srv_iface }}" oif "{{ client_iface }}" \
+        # log rate-limited + drop incondicional separados (ver gotcha de 'limit').
 {% if enable_drop_logging %}
-            log prefix "{{ drop_log_prefix }}VLAN20-TO-30: " limit rate {{ drop_log_limit }} \
+        iif "{{ srv_iface }}" oif "{{ client_iface }}" \
+            limit rate {{ drop_log_limit }} log prefix "{{ drop_log_prefix }}VLAN20-TO-30: "
 {% endif %}
-            drop
+        iif "{{ srv_iface }}" oif "{{ client_iface }}" drop
 
         # ── VLAN10 NO puede llegar a VLAN30 directamente ─────────────────────
-        iif "{{ mgmt_iface }}" oif "{{ client_iface }}" \
 {% if enable_drop_logging %}
-            log prefix "{{ drop_log_prefix }}VLAN10-TO-30: " limit rate {{ drop_log_limit }} \
+        iif "{{ mgmt_iface }}" oif "{{ client_iface }}" \
+            limit rate {{ drop_log_limit }} log prefix "{{ drop_log_prefix }}VLAN10-TO-30: "
 {% endif %}
-            drop
+        iif "{{ mgmt_iface }}" oif "{{ client_iface }}" drop
 
         # ── HTTPS no autenticado: redirigido por DNAT al portal (en prerouting nat). ──
         # Ya no se necesita DROP — el cliente verá el splash HTTPS con advertencia de cert.
@@ -234,6 +262,29 @@ table ip nat {
         type nat hook postrouting priority srcnat; policy accept;
         # NAT masquerade hacia internet
         oif "{{ wan_interface }}" masquerade
+    }
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TABLA NAT IPv6 (redirección DNS)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Fuerza las queries DNS IPv6 de los clientes hacia Bind9 local (que hace DNS64).
+# Sin esto, un cliente con DNS IPv6 hardcodeado evadiría DNS64 y la blocklist RPZ.
+# No hay masquerade IPv6: el WAN no tiene IPv6 global; la salida a IPv4 la maneja
+# NAT64 (Jool). El Internet IPv6 nativo no es alcanzable por diseño.
+
+table ip6 nat {
+
+    chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+
+        # DNS de todas las VLANs → Bind9 en Mini PC (VLAN10 ULA)
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 dnat to [{{ dns_redirect_ipv6 }}]:53
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 dnat to [{{ dns_redirect_ipv6 }}]:53
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
     }
 }
 

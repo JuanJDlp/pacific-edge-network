@@ -1,0 +1,57 @@
+---
+# ── Headroom de disco: bajar reserved blocks de ext4 ──────────────────────────
+# La particion de datos (root) reservaba 4-5% para root (~2.5 GB en 59G), espacio
+# inutil en un servidor de contenido. Bajar al 1% libera ~2 GB de espacio util.
+- name: Asegurar reserved blocks al {{ rpi_reserved_pct }}% en la particion de datos
+  shell: |
+    cur=$(tune2fs -l {{ rpi_data_device }} | awk -F: '/Reserved block count/{r=$2} /^Block count/{b=$2} END{printf "%d", (r*100)/b}')
+    if [ "$cur" != "{{ rpi_reserved_pct }}" ]; then
+      tune2fs -m {{ rpi_reserved_pct }} {{ rpi_data_device }}
+      echo CHANGED
+    fi
+  args:
+    executable: /bin/bash
+  register: _tune2fs
+  changed_when: "'CHANGED' in _tune2fs.stdout"
+
+# ── Health-check / panel de estado ────────────────────────────────────────────
+- name: Crear directorio de scripts de biblioteca
+  file:
+    path: /opt/biblioteca/scripts
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Desplegar health-check.sh
+  template:
+    src: health-check.sh.j2
+    dest: /opt/biblioteca/scripts/health-check.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Desplegar unit biblioteca-health.service
+  template:
+    src: biblioteca-health.service.j2
+    dest: /etc/systemd/system/biblioteca-health.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+
+- name: Desplegar timer biblioteca-health.timer
+  template:
+    src: biblioteca-health.timer.j2
+    dest: /etc/systemd/system/biblioteca-health.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+
+- name: Habilitar e iniciar el timer del health-check
+  systemd:
+    name: biblioteca-health.timer
+    enabled: true
+    state: started
+    daemon_reload: true

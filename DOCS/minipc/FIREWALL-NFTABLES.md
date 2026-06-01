@@ -1,9 +1,18 @@
 # Firewall — nftables avanzado
 
 **Dispositivo:** Mini PC (`plataformas`)
-**Rol Ansible:** `minipc/router-setup/roles/router/` (integrado en el rol router)
-**Servicio systemd:** `nftables`
-**Ultima verificacion:** 2026-05-30
+**Rol Ansible:** `minipc/router-setup/roles/firewall/` — **fuente de verdad** del ruleset desplegado.
+**Servicio systemd:** `nftables` (`ExecStart=/usr/sbin/nft -f /etc/nftables.conf`)
+**Ultima verificacion:** 2026-06-01
+
+> **Importante (sincronización playbook ↔ máquina):** El `/etc/nftables.conf` que corre en
+> el Mini PC lo genera **únicamente** el rol **`firewall`**
+> (`roles/firewall/templates/nftables.conf.j2`). El rol `router` **ya no gestiona nftables**:
+> antes desplegaba su propio `nftables.conf.j2` que el rol `firewall` luego sobreescribía
+> (dos plantillas escribiendo el mismo archivo). Esa plantilla duplicada del rol `router` se
+> eliminó; ahora hay una sola fuente de verdad. El rol `firewall` también deshabilita UFW
+> (que entra en conflicto con nftables). Para editar el firewall, modifica el template del
+> rol `firewall`.
 
 ---
 
@@ -122,6 +131,64 @@ iif "enp171s0.30" meta mark 0x1 ip daddr != 192.168.20.10 tcp dport 80
 # pierde SO_ORIGINAL_DST y termina con TCP_DENIED contra si mismo.
 ```
 
+### Portal cautivo — cierre del bypass IPv6/NAT64 (crítico)
+
+> Añadido: 2026-06-01
+
+**Síntoma:** un cliente VLAN30 nuevo podía navegar a Internet **sin** aceptar el splash.
+
+**Causa raíz:** el portal cautivo solo controlaba **IPv4** (DNAT 80/443 + control de marca
+en `forward`). Pero la red es **dual-stack**:
+
+1. `radvd` entrega IPv6 global a VLAN30.
+2. **DNS64** (Bind9) sintetiza registros AAAA hacia el prefijo NAT64 `64:ff9b::/96` para
+   cualquier sitio, incluso solo-IPv4.
+3. **Jool NAT64** traduce ese IPv6 → IPv4 y lo saca a Internet.
+
+Como Jool **"roba" el paquete en `prerouting` ANTES de la cadena `forward`**, el control de
+marca de `forward` **nunca** aplica al tráfico NAT64. Resultado: el cliente (que por Happy
+Eyeballs / RFC 6724 prefiere IPv6) navega sin autenticarse — y la *probe* de detección de
+portal cautivo del SO también sale por IPv6 y tiene éxito, así que el SO concluye "hay
+Internet, no hay portal" y **nunca muestra el splash**.
+
+**Fix:** bloquear el tráfico NAT64 de clientes VLAN30 no autenticados en la cadena
+`captive_mangle` (prioridad mangle `-150`, que corre antes de Jool y después de marcar al
+autenticado):
+
+```nft
+chain captive_mangle {
+    type filter hook prerouting priority mangle; policy accept;
+    iif "enp171s0.30" ether saddr @captive_allowed_mac meta mark set 0x1     # marca autenticado
+    # log rate-limited (regla NO terminante: solo loguea, deja pasar al siguiente)
+    iif "enp171s0.30" ip6 daddr 64:ff9b::/96 meta mark != 0x1 \
+        limit rate 5/minute log prefix "NFT DROP: CAPTIVE-V6-NAT64: "
+    # drop INCONDICIONAL (regla aparte)
+    iif "enp171s0.30" ip6 daddr 64:ff9b::/96 meta mark != 0x1 drop
+}
+```
+
+La marca se pone primero, así que **los autenticados no se ven afectados**. Al no-autenticado
+se le cae la salida IPv6/NAT64 → su probe IPv6 falla → el SO cae a IPv4 → ahí el DNAT 80/443
+al splash sí lo atrapa.
+
+> ⚠️ **Gotcha de `limit` (importante):** `limit rate N` (sin `over`) es un **matcher** que
+> solo matchea mientras se está **bajo** el límite. Si se escribe todo en una regla
+> —`log ... limit rate 5/minute drop`— el `drop` solo se aplica a los primeros 5 paquetes/min
+> y **el resto se fuga** (la regla deja de matchear). Por eso el `drop` va en su propia regla
+> incondicional y el `log` (rate-limited) va aparte. Se detectó este bug probando en campo: el
+> IPv6 seguía navegando pese a la regla. **Las demás reglas `log ... limit ... drop` del
+> firewall (WAN-BLOCK, SPOOF-WAN, aislamiento VLAN20/10→30, SSH-BAN) tienen el mismo patrón y
+> fugan igual** — pendiente de corregir con la misma estructura de dos reglas.
+
+> El prefijo `64:ff9b::/96` debe coincidir con el `pool6` de Jool (rol `router`,
+> `nat64_prefix`) y con la directiva `dns64` de Bind9. En el rol `firewall` está expuesto
+> como la variable `nat64_prefix` en `roles/firewall/vars/main.yml`.
+
+```bash
+# Ver clientes no autenticados cayendo por este drop
+sudo journalctl -kf | grep "CAPTIVE-V6-NAT64"
+```
+
 ---
 
 ## Servicios de gestion (solo VLAN10)
@@ -161,5 +228,9 @@ sudo systemctl restart nftables
 
 ```bash
 cd minipc/
-ansible-playbook router-setup/playbook.yml -i router-setup/inventory.ini --tags router
+ansible-playbook router-setup/playbook.yml -i router-setup/inventory.ini --tags firewall
 ```
+
+> El handler recarga `nftables` con `nft -f /etc/nftables.conf`, que hace `flush ruleset`.
+> Esto **vacía el set `captive_allowed_mac`**: todos los clientes deberán volver a aceptar el
+> portal (las conexiones ya establecidas siguen vivas por `ct state established,related`).

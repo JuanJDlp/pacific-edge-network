@@ -20,6 +20,14 @@
   become: true
   tags: firewall
 
+- name: Deshabilitar UFW (entra en conflicto con el firewall nftables)
+  ansible.builtin.systemd:
+    name: ufw
+    enabled: false
+    state: stopped
+  become: true
+  tags: firewall
+
 - name: Desplegar ruleset nftables mejorado
   template:
     src: nftables.conf.j2

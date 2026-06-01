@@ -201,7 +201,8 @@ sudo jool stats display
 
 ### 3.6 nftables
 
-**Plantilla:** `minipc/router-setup/roles/router/templates/nftables.conf.j2`
+**Plantilla:** `minipc/router-setup/roles/firewall/templates/nftables.conf.j2`
+(el rol `firewall` es la única fuente del `/etc/nftables.conf` desplegado)
 
 #### Tabla `inet filter` (IPv4 + IPv6)
 

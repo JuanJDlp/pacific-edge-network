@@ -109,10 +109,42 @@ Servicios activos (systemd):
 - `jellyfin.service` — servidor de medios Jellyfin (`127.0.0.1:8096`). Rol: `raspberry/rpi-setup/roles/jellyfin/`. Docs: `raspberry/services/JELLYFIN.md`.
 - `named.service` — DNS Bind9 secundario (zone slave de `biblioteca.tel` desde `192.168.10.1`). Rol: `raspberry/rpi-setup/roles/dns_secondary/`. Docs: `raspberry/services/DNS-SECUNDARIO.md`.
 - `node_exporter.service` — métricas Prometheus. Rol: `raspberry/rpi-setup/roles/node_exporter/`. Docs: `raspberry/services/NODE-EXPORTER.md`.
+- `biblioteca-health.timer` + `biblioteca-health.service` — health-check cada 30s que escribe `/var/www/html/status.json` (servido por nginx en `/status`); alimenta el indicador del panel. Rol: `raspberry/rpi-setup/roles/health_check/` (incluye `tune2fs` para headroom de disco). Docs: `DOCS/raspberry/HEALTH-CHECK.md`.
 - `netbird.service` — cliente NetBird (`100.90.81.168`).
 - `avahi-daemon`, `ssh`, etc.
 
 Ansible para la RPi: `raspberry/rpi-setup/` (`playbook.yml`, `inventory.ini`, `group_vars/all.yml`, `roles/`).
+
+### ⚠️ Gotchas operativos (RPi) — leer antes de diagnosticar
+
+**Squid cachea `biblioteca.tel` (es lo único que cachea).** Squid termina TLS en
+`:443` y hace reverse-proxy a nginx `:80` (que sirve Kiwix/Kolibri/Jellyfin locales),
+cacheando el resultado en `/var/lib/biblioteca/squid-cache`. Existe por **requisito
+del proyecto** (un proxy-cache) y porque cachear internet es inviable (va por HTTPS
+cifrado, requeriría SSL-bump). Beneficio real: descarga a Kiwix de descomprimir el
+ZIM en cada request.
+
+- **Síntoma típico:** una página de la biblioteca sale **rancia, en blanco, o con
+  un link a un ZIM viejo** aunque el servidor esté bien → casi siempre es un **objeto
+  envenenado en la cache de Squid** (variante gzip mal servida, objeto de 0 bytes,
+  HTML viejo). Verifica trazando la URL: Kiwix `:8080` → nginx `:80` → Squid `:443`;
+  si Kiwix/nginx están bien y Squid no, es la cache.
+- **Solución:** `sudo /usr/local/sbin/clear-squid-cache` (en la RPi). NO uses
+  `rm -rf .../squid-cache/*` a mano: el glob lo expande tu shell sin permisos sobre
+  el dir 0750 de `proxy` y **no borra nada en silencio** (esto causó horas de
+  confusión). `systemctl restart squid` tampoco purga el disco.
+- **Gobierno de cache (para que NO se repita el ciclo):** el origen (nginx) manda
+  `Cache-Control` explícito, no la heurística de Squid (que retenía 30 días):
+  HTML del panel = `no-cache`; `/content/<zim-versionado>/` = `immutable` (inmutable:
+  la URL lleva la fecha del ZIM); Kiwix se sirve **sin gzip** (`proxy_set_header
+  Accept-Encoding ""`) para que Squid cachee una sola representación.
+- Detalle completo en `DOCS/raspberry/SQUID.md`, `NGINX.md`, `KIWIX.md`.
+
+**Disco de la RPi (SD 59G) va justo (~81%).** El auto-update de Kolibri llenó el
+disco al 91% (corrompió el diskcache → Kolibri 500). Guard del auto-update =
+`MIN_FREE_MB=10000` (para antes del 85% de alarma); reserva ext4 bajada al 1%.
+Panel de estado (`/status`) marca rojo "Sistema sobrecargado" a ≥85% disco o ≥75°C.
+Ver `DOCS/raspberry/KOLIBRI.md` y `HEALTH-CHECK.md`.
 
 ## Linksys E2500 — Access Point (VLAN 30)
 
@@ -179,7 +211,8 @@ Linksys E2500 en **modo bridge** conectado al **puerto 4** del switch L2 (acceso
 │   │       ├── kolibri/              # Kolibri educativo (:8090)
 │   │       ├── jellyfin/             # Jellyfin medios (:8096)
 │   │       ├── dns_secondary/        # Bind9 slave de biblioteca.tel
-│   │       └── node_exporter/        # Métricas Prometheus
+│   │       ├── node_exporter/        # Métricas Prometheus
+│   │       └── health_check/         # Panel de estado (/status) + tune2fs headroom
 │   └── services/                     # Playbooks individuales por servicio
 │       ├── nginx.yml                 # cd raspberry/ && ansible-playbook -i rpi-setup/inventory.ini services/nginx.yml
 │       ├── squid.yml
@@ -187,7 +220,8 @@ Linksys E2500 en **modo bridge** conectado al **puerto 4** del switch L2 (acceso
 │       ├── kolibri.yml
 │       ├── jellyfin.yml
 │       ├── node_exporter.yml
-│       └── dns_secondary.yml
+│       ├── dns_secondary.yml
+│       └── health_check.yml
 ├── networkDevices/
 │   ├── SwitchCerritoBongo/           # Cisco SG350X-24 / Catalyst 2960
 │   ├── SwitchCocalito/               # Switch nodo Cocalito

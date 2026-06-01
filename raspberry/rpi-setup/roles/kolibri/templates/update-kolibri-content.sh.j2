@@ -2,13 +2,27 @@
 # Managed by Ansible — do not edit manually
 # Updates Kolibri channels from studio.learningequality.org.
 # Designed for cron (Tue/Fri 03:00). Idempotent, resumable.
+#
+# Idempotencia: `kolibri manage importcontent` SALTA los archivos ya presentes,
+# por lo que las corridas nocturnas no re-descargan contenido — solo bajan deltas
+# cuando el canal publica una version nueva.
+#
+# Orphan cleanup: al inicio se borra el contenido de cualquier canal instalado
+# que ya NO este en la lista configurada (kolibri_channels). Asi no queda nada
+# en disco que no se este sirviendo.
+#
+# Guard de disco: MIN_FREE_MB debe ser MAYOR que el espacio libre correspondiente
+# al umbral de alarma del health-check (disk_used_pct_max=85%) para que el
+# auto-update NUNCA empuje el disco al rojo "Sistema sobrecargado". En la SD de
+# ~59G usable, 85% deja ~9.3G libres -> MIN_FREE_MB=10000 detiene las descargas
+# antes (~84%), dejando margen bajo la alarma.
 
 set -euo pipefail
 
 # ── Configuration ────────────────────────────────────────────────────────────
 KOLIBRI_USER="{{ kolibri_user }}"
 KOLIBRI_HOME="{{ kolibri_home }}"
-MIN_FREE_MB=4000
+MIN_FREE_MB=10000
 LOCK="/run/lock/kolibri-update.lock"
 LOG_TAG="kolibri-update"
 STUDIO_URL="https://studio.learningequality.org"
@@ -57,6 +71,25 @@ if ! systemctl is-active --quiet kolibri; then
     systemctl start kolibri
     sleep 5
 fi
+
+# ── Orphan cleanup ────────────────────────────────────────────────────────────
+# Borra el contenido de cualquier canal instalado que ya no este en CHANNELS.
+# Mantiene la invariante: "nada en disco que no se este sirviendo".
+configured_ids=" "
+for entry in "${CHANNELS[@]}"; do
+    configured_ids+="${entry%%:*} "
+done
+installed_ids="$(run_kolibri listchannels 2>/dev/null | grep -oE '[0-9a-f]{32}' | sort -u || true)"
+for cid in $installed_ids; do
+    if [[ "$configured_ids" != *" $cid "* ]]; then
+        log "Orphan channel ${cid} no longer configured — deleting content"
+        if ! run_kolibri deletecontent "$cid" -f 2>&1 | while IFS= read -r line; do
+            echo "$line"; logger -t "$LOG_TAG" "$line"
+        done; then
+            log "WARNING: deletecontent failed for ${cid}"
+        fi
+    fi
+done
 
 UPDATE_COUNT=0
 

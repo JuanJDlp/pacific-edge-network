@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# =============================================================================
+# health-check.sh - Biblioteca system health probe
+# Managed by Ansible — do not edit manually
+# =============================================================================
+# Runs every 30s via systemd timer. Writes a JSON file at
+# /var/www/html/status.json which is served unmodified by Nginx at
+# http://<lan-ip>/status. El frontend (status.js) lee ese JSON y enciende el
+# indicador del panel.
+#
+# Ubuntu/aarch64: lee la temperatura de CPU desde /sys/class/thermal
+# (vcgencmd es solo Raspberry Pi OS, no esta en Ubuntu Server for Pi).
+# =============================================================================
+set -u
+
+readonly OUT=/var/www/html/status.json
+readonly TMP="${OUT}.tmp"
+
+# -----------------------------------------------------------------------------
+# Probe helpers
+# -----------------------------------------------------------------------------
+probe_port() {
+    # $1=host $2=port $3=timeout-seconds
+    local host="$1" port="$2" t="${3:-2}"
+    if timeout "$t" bash -c "</dev/tcp/${host}/${port}" 2>/dev/null; then
+        echo "OK"
+    else
+        echo "FAIL"
+    fi
+}
+
+probe_systemd() {
+    if systemctl is-active --quiet "$1"; then echo "OK"; else echo "FAIL"; fi
+}
+
+# -----------------------------------------------------------------------------
+# Service status
+# -----------------------------------------------------------------------------
+nginx_status=$(probe_systemd nginx.service)
+kiwix_status=$(probe_port 127.0.0.1 {{ kiwix_port }})
+squid_status=$(probe_port 127.0.0.1 3128)
+kolibri_status=$(probe_port 127.0.0.1 {{ kolibri_port }})
+
+# Jellyfin es opcional: reporta "N/A" si el unit no existe (status.js no lo
+# trata como fallo). Antes este bloque tenia un bug que dejaba kolibri_status
+# sin asignar cuando jellyfin no estaba instalado.
+if systemctl list-unit-files | grep -q '^jellyfin\.service'; then
+    jellyfin_status=$(probe_port 127.0.0.1 {{ jellyfin_port }})
+else
+    jellyfin_status="N/A"
+fi
+
+# -----------------------------------------------------------------------------
+# CPU temperature (Ubuntu-compatible)
+# Lee millicelsius de la primera zona termica y convierte; toma la mayor lectura.
+# -----------------------------------------------------------------------------
+cpu_temp_c="0"
+for tz in /sys/class/thermal/thermal_zone*/temp; do
+    [ -r "$tz" ] || continue
+    raw=$(cat "$tz" 2>/dev/null) || continue
+    [ -z "$raw" ] || [ "$raw" = "0" ] && continue
+    c=$(awk -v r="$raw" 'BEGIN{printf "%.1f", r/1000}')
+    cur=$(awk -v a="$cpu_temp_c" -v b="$c" 'BEGIN{print (b>a)?b:a}')
+    cpu_temp_c="$cur"
+done
+
+# -----------------------------------------------------------------------------
+# Disk + memory
+# -----------------------------------------------------------------------------
+disk_used_pct=$(df --output=pcent /var/lib/biblioteca 2>/dev/null \
+    | tail -1 | tr -dc '0-9')
+[ -z "$disk_used_pct" ] && disk_used_pct=$(df --output=pcent / | tail -1 | tr -dc '0-9')
+[ -z "$disk_used_pct" ] && disk_used_pct=0
+
+read mem_total mem_used < <(free -m | awk '/^Mem:/ {print $2, $3}')
+if [ "${mem_total:-0}" -gt 0 ]; then
+    mem_used_pct=$((mem_used * 100 / mem_total))
+else
+    mem_used_pct=0
+fi
+
+# -----------------------------------------------------------------------------
+# ZIM count
+# -----------------------------------------------------------------------------
+zim_count=$(find /var/lib/biblioteca/zim -maxdepth 1 -name '*.zim' 2>/dev/null | wc -l)
+zim_size_mb=$(du -sm /var/lib/biblioteca/zim 2>/dev/null | cut -f1)
+[ -z "$zim_size_mb" ] && zim_size_mb=0
+
+# -----------------------------------------------------------------------------
+# Network info
+# -----------------------------------------------------------------------------
+lan_ip=$(ip -4 -o addr show 2>/dev/null \
+    | awk '!/ lo / && /inet/ {print $4}' | cut -d/ -f1 | head -1)
+[ -z "$lan_ip" ] && lan_ip="unknown"
+
+active_conns=$(ss -tn state established sport = :80 2>/dev/null | tail -n +2 | wc -l)
+
+uptime_secs=$(awk '{print int($1)}' /proc/uptime)
+load_1m=$(awk '{print $1}' /proc/loadavg)
+
+# -----------------------------------------------------------------------------
+# Compose JSON
+# -----------------------------------------------------------------------------
+timestamp=$(date -Iseconds)
+
+mkdir -p "$(dirname "$OUT")"
+cat >"$TMP" <<JSON
+{
+  "timestamp": "${timestamp}",
+  "lan_ip": "${lan_ip}",
+  "services": {
+    "nginx":    "${nginx_status}",
+    "kiwix":    "${kiwix_status}",
+    "squid":    "${squid_status}",
+    "jellyfin": "${jellyfin_status}",
+    "kolibri":  "${kolibri_status}"
+  },
+  "system": {
+    "cpu_temp_c":       ${cpu_temp_c},
+    "disk_used_pct":    ${disk_used_pct},
+    "memory_used_pct":  ${mem_used_pct},
+    "active_http_conns":${active_conns},
+    "uptime_seconds":   ${uptime_secs},
+    "load_1m":          ${load_1m}
+  },
+  "content": {
+    "zim_count":   ${zim_count},
+    "zim_size_mb": ${zim_size_mb}
+  },
+  "thresholds": {
+    "cpu_temp_c_max":      {{ health_cpu_temp_max }},
+    "disk_used_pct_max":   {{ health_disk_pct_max }},
+    "memory_used_pct_max": {{ health_mem_pct_max }}
+  }
+}
+JSON
+
+mv -f "$TMP" "$OUT"
+chmod 0644 "$OUT"

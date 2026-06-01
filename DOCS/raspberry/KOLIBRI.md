@@ -1,6 +1,6 @@
 # Kolibri — Plataforma educativa offline
 
-> **Ultima actualizacion:** 2026-05-30
+> **Ultima actualizacion:** 2026-06-01
 
 ## Rol Ansible
 
@@ -8,24 +8,56 @@
 
 ## Descripcion
 
-Kolibri es una plataforma de aprendizaje offline que incluye contenidos de Khan Academy, EiE Familias, Proyecto Biosfera, Biblioteca Elejandria y Ciencia NASA. Corre en el puerto 8090 del loopback y es accesible via nginx en `/kolibri/`.
+Kolibri es una plataforma de aprendizaje offline que incluye contenidos de Khan Academy, EiE Familias, Proyecto Biosfera y Biblioteca Elejandria. Corre en el puerto 8090 del loopback y es accesible via nginx en `/kolibri/`.
 
 ## Estado actual
 
 - **Usuario del sistema:** `akasicom`
 - **KOLIBRI_HOME:** `/home/akasicom/.kolibri`
-- **Contenido total:** ~41 GB
-- **Disco RPi:** 59G total, 51G usado, 5.6G libre
+- **Contenido total:** ~38 GB
+- **Disco RPi:** 59G total (~62.4 GB), 81% usado, ~12 GB libre (tras quitar NASA y bajar reserva ext4 al 1%)
 
 ## Canales instalados
 
 | Canal | Tamano aprox. |
 |-------|---------------|
-| Khan Academy Espanol | ~37 GB |
+| Khan Academy Espanol | ~36.6 GB |
 | EiE Familias | 0.1 GB |
 | Proyecto Biosfera | 0.2 GB |
-| Biblioteca Elejandria | 0.96 GB |
-| Ciencia NASA | 3.4 GB |
+| Biblioteca Elejandria | 0.9 GB |
+
+> **Ciencia NASA (3.1 GB) removido el 2026-06-01.** En la SD de 59G no caben Khan
+> Academy (36.6G, el canal mas valioso) + el resto + ZIMs de Kiwix sin cruzar el
+> umbral de alarma del disco (85%). Se priorizo Khan Academy y se removio NASA.
+> Para re-agregarlo hace falta liberar espacio o agregar almacenamiento USB.
+
+## Presupuesto de disco y umbral de alarma (CRITICO)
+
+El panel de estado (ver [`HEALTH-CHECK.md`](HEALTH-CHECK.md)) muestra
+**"Sistema sobrecargado · avisar al encargado"** cuando el disco supera el **85%**.
+El auto-update de Kolibri puede llenar el disco, asi que su guard debe parar
+**antes** de ese umbral:
+
+- `MIN_FREE_MB=10000` en `update-kolibri-content.sh.j2` — el script deja de
+  descargar cuando quedan <10 GB libres (~84% usado), por debajo del 85% de alarma.
+  (Antes era 4000 ≈ 93%, lo que permitia llenar el disco y disparar la alarma.)
+- **ext4 reserved blocks** bajados de 4% a 1% (`tune2fs -m 1 /dev/mmcblk0p2`) para
+  recuperar ~2 GB de espacio util en la particion de datos.
+
+> **Incidente 2026-06-01:** el auto-update lleno `/home/akasicom/.kolibri/content`
+> a 41 GB (disco 91%) y disparo la alarma roja. Causa raiz: el guard (4 GB) era mas
+> permisivo que el umbral de alarma (85%). Solucion: remover NASA, subir el guard a
+> 10 GB y bajar la reserva ext4.
+
+## Limpieza de canales huerfanos (idempotencia)
+
+`update-kolibri-content.sh` borra al inicio el contenido de cualquier canal
+**instalado que ya no este en `kolibri_channels`** (`kolibri manage deletecontent <id> -f`).
+Invariante: *nada en disco que no se este sirviendo*. Por eso, para dejar de servir
+un canal basta con quitarlo de `group_vars/all.yml` — el siguiente cron lo borra.
+
+`importcontent` ya es idempotente: salta los archivos ya descargados, no re-baja
+todo en cada corrida (solo deltas cuando el canal publica version nueva).
 
 ## Detalles del servicio systemd
 
@@ -85,6 +117,39 @@ KOLIBRI_HOME=/home/akasicom/.kolibri sudo -u akasicom kolibri manage importconte
 ```
 
 **Nota:** La sintaxis correcta es `importchannel network <id>` y `importcontent network <id>` (sin `--channel-id`).
+
+## Troubleshooting: 500 Server Error / "database disk image is malformed"
+
+Sintoma: `/kolibri/` devuelve **500** y el log (`/home/akasicom/.kolibri/logs/kolibri.txt`)
+muestra `sqlite3.DatabaseError: database disk image is malformed` con un traceback
+que pasa por `diskcache` (`fanout.py` / `core.py`).
+
+**Causa:** corrupcion del *diskcache* de Kolibri (`/home/akasicom/.kolibri/process_cache/`),
+tipicamente porque **el disco se lleno** (ver presupuesto de disco arriba) y un write
+del cache quedo truncado. La DB principal `db.sqlite3` suele estar intacta
+(`PRAGMA integrity_check` = ok); el problema es el cache, que es **desechable**.
+
+**Recuperacion (orden de menos a mas agresivo):**
+
+```bash
+# 1. Reiniciar Kolibri (suele bastar: reconecta a shards ya auto-recuperadas)
+sudo systemctl restart kolibri
+
+# 2. Si persiste: verificar integridad de los shards del cache
+for f in /home/akasicom/.kolibri/process_cache/*/cache.db; do
+    echo "$f"; sudo -u akasicom sqlite3 "$f" "PRAGMA integrity_check;" | head -1
+done
+
+# 3. Si algun shard esta malformed: borrar el cache entero y reiniciar
+#    (Kolibri lo reconstruye solo; no se pierde contenido)
+sudo systemctl stop kolibri
+sudo -u akasicom rm -rf /home/akasicom/.kolibri/process_cache/*
+sudo systemctl start kolibri
+```
+
+> **Incidente 2026-06-01:** el disco lleno (91%) corrompio el diskcache; Kolibri
+> daba 500. `systemctl restart kolibri` lo resolvio. Prevencion: mantener disco
+> bajo el umbral de alarma (guard del auto-update = 10 GB libres).
 
 ## Verificacion
 

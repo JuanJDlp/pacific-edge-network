@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Managed by Ansible — do not edit manually
+# =============================================================================
+# clear-squid-cache — purga COMPLETA y segura de la cache de Squid.
+# =============================================================================
+# Usar tras cambiar un ZIM manualmente, o si el panel/contenido sale rancio,
+# en blanco o con bytes raros (objeto envenenado en cache).
+#
+# OJO — la trampa que motivo este script: `rm -rf <cache_dir>/*` NO funciona si
+# lo corres como usuario sin privilegios, porque el glob `*` lo expande tu shell
+# y no puede listar el dir de `proxy` (modo 0750) → el `*` queda literal y no
+# borra NADA (silenciosamente). Aqui borramos el directorio completo como root.
+# Tampoco sirve `systemctl restart squid` solo: deja la cache en disco intacta.
+set -euo pipefail
+
+CACHE_DIR="/var/lib/biblioteca/squid-cache"
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Debe ejecutarse como root (sudo $0)" >&2
+    exit 1
+fi
+
+echo "[clear-squid-cache] deteniendo squid..."
+systemctl stop squid
+
+echo "[clear-squid-cache] borrando y recreando ${CACHE_DIR}..."
+rm -rf "$CACHE_DIR"
+install -d -o proxy -g proxy -m 0750 "$CACHE_DIR"
+
+# NO correr `squid -z` a mano: choca con systemd (PID/puertos) y deja el
+# servicio caido. Squid crea los swap dirs faltantes solo al arrancar.
+echo "[clear-squid-cache] arrancando squid (crea swap dirs automaticamente)..."
+systemctl start squid
+
+sleep 2
+if systemctl is-active --quiet squid; then
+    echo "[clear-squid-cache] listo. Cache purgada y squid activo."
+else
+    echo "[clear-squid-cache] ERROR: squid no arranco — revisar 'journalctl -u squid'" >&2
+    exit 1
+fi

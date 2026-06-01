@@ -2,6 +2,11 @@
 # ── Firewall avanzado ──────────────────────────────────────────────────────────
 # Variables para el rol firewall (mejoras sobre el nftables base del rol router)
 
+# Prefijo NAT64 (debe coincidir con el pool6 de Jool en el rol router y con DNS64
+# en Bind9). Usado para cerrar el bypass del portal cautivo vía IPv6/NAT64:
+# se bloquea el tráfico NAT64 de clientes VLAN30 no autenticados en captive_mangle.
+nat64_prefix: "64:ff9b::/96"
+
 # Rate limiting SSH — máximo intentos por minuto desde una misma IP
 ssh_rate_limit: "5/minute"
 ssh_rate_burst: 10

@@ -1,0 +1,8 @@
+---
+- name: Deploy health-check / panel de estado en RPi
+  hosts: rpi
+  become: true
+  gather_facts: false
+
+  roles:
+    - health_check

@@ -23,15 +23,23 @@ ExecStart=/usr/local/bin/kiwix-serve \
 - **library.xml**: catálogo de archivos ZIM disponibles
 - **Usuario**: `kiwix` (sin shell, sin home)
 
-## ZIMs actuales
+## ZIMs actuales (snapshot 2026-06-01)
 
-| Archivo ZIM | Version | Tamano |
-|-------------|---------|--------|
-| wikipedia_es_all_mini | 2026-05 | 3.5 GB |
-| wikibooks_es | - | 107 MB |
-| wikinews_es | - | 33 MB |
-| wikiversity_es | - | 18 MB |
-| wikivoyage_es | - | 36 MB |
+| Archivo ZIM | Tamano |
+|-------------|--------|
+| wikipedia_es_all_mini_2026-05.zim | ~3.4 GB |
+| wikibooks_es_all_nopic_2025-10.zim | 107 MB |
+| wikivoyage_es_all_nopic_2026-03.zim | 37 MB |
+| wikinews_es_all_nopic_2026-04.zim | 34 MB |
+| wikiversity_es_all_nopic_2026-04.zim | 18 MB |
+
+> **El nombre del ZIM incluye la fecha**, y la URL de contenido tambien
+> (`/content/wikipedia_es_all_mini_2026-05/`). Cuando el auto-update cambia la
+> version, los links viejos (`.../2026-02/`) dan **404** en Kiwix. El `index.html`
+> del panel se reescribe solo, pero **Squid puede servir el HTML viejo cacheado** y
+> dejar a los clientes con el link muerto. Por eso el HTML del panel se sirve con
+> `Cache-Control: no-cache` (ver [`NGINX.md`](NGINX.md)). Tras un cambio manual de
+> ZIM, purgar la cache de Squid (ver [`SQUID.md`](SQUID.md)).
 
 ## Paths accesibles via nginx
 

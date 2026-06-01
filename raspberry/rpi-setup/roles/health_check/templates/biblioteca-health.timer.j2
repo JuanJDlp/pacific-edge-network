@@ -1,0 +1,14 @@
+# /etc/systemd/system/biblioteca-health.timer
+# Managed by Ansible — do not edit manually
+[Unit]
+Description=Run Biblioteca health-check every 30 seconds
+Requires=biblioteca-health.service
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=5s
+Unit=biblioteca-health.service
+
+[Install]
+WantedBy=timers.target

@@ -77,17 +77,27 @@ El redirect post-autenticacion apunta a `http://biblioteca.tel` (no a `http://19
 
 ### 3. nftables — set `captive_allowed_mac`
 
-El set almacena las IPs autorizadas. Las reglas de nftables permiten tráfico saliente de IPs en este set sin DNAT al portal.
+El set almacena las **MAC** autorizadas (no IPs). Usar MAC evita que un dispositivo herede
+acceso si el DHCP le reasigna una IP que ya estaba autorizada para otro equipo. La cadena
+`captive_mangle` marca (`meta mark 0x1`) los paquetes cuya `ether saddr` está en el set; las
+reglas de `forward`/DNAT usan esa marca para distinguir autenticados de no autenticados.
 
 ```nft
 set captive_allowed_mac {
-    type ipv4_addr
-    flags timeout
+    type ether_addr
+    flags dynamic, timeout
     timeout 8h
 }
 ```
 
-La entrada expira automáticamente después de 8 horas.
+La entrada expira automáticamente después de 8 horas. `captive-accept.py` resuelve la MAC del
+cliente vía ARP (`ip neigh`) a partir de su IP antes de agregarla al set.
+
+> **IPv6/NAT64 (crítico):** el portal por sí solo controla IPv4. La red es dual-stack y un
+> cliente no autenticado podía navegar por IPv6 vía NAT64 (Jool) saltándose el portal. El
+> cierre de ese bypass es una regla extra en `captive_mangle` que bloquea el tráfico NAT64
+> (`ip6 daddr 64:ff9b::/96`) de clientes sin marca. Ver detalle en
+> `DOCS/minipc/FIREWALL-NFTABLES.md` → "Portal cautivo — cierre del bypass IPv6/NAT64".
 
 ### 4. splash.html
 

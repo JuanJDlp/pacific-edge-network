@@ -1,0 +1,11 @@
+# /etc/systemd/system/biblioteca-health.service
+# Managed by Ansible — do not edit manually
+[Unit]
+Description=Biblioteca health-check (writes /var/www/html/status.json)
+After=nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/biblioteca/scripts/health-check.sh
+User=root
+Nice=10

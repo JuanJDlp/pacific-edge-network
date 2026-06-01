@@ -37,12 +37,15 @@ kolibri_user: "akasicom"
 kolibri_home: "/home/akasicom/.kolibri"
 
 # Kolibri channel auto-update: id = UUID del canal en studio.learningequality.org
+# NOTA: en una SD de 59G, Khan Academy (Español) ocupa ~36.6G y es el canal mas
+# pesado. Ciencia NASA (3.1G) se removio (2026-06-01) para mantener el disco bajo
+# el umbral de alarma (85%). El cron de auto-update borra automaticamente el
+# contenido de cualquier canal instalado que ya no este en esta lista (orphan cleanup).
 kolibri_channels:
   - { id: "c1f2b7e6ac9f56a2bb44fa7a48b66dce", name: "Khan Academy (Español)" }
   - { id: "359e048230974c8f80db1a95dc80d544", name: "EiE Familias (español)" }
   - { id: "f446655247a95c0aa94ca9fa4d66783b", name: "Proyecto Biosfera" }
   - { id: "fed29d60e4d84a1e8dcfc781d920b40e", name: "Biblioteca Elejandria" }
-  - { id: "da53f90b1be25752a04682bbc353659f", name: "Ciencia NASA" }
 
 # Jellyfin
 jellyfin_api_key: "1e2ba6b4e3ca45aa95627eddc7f46bf2"
@@ -77,6 +80,18 @@ squid_blocklist_path: "/etc/squid/blocklists/blocked_domains.txt"
 
 # Cuando Squid maneja HTTPS, nginx no debe bindear :443 (queda en 127.0.0.1:8443)
 nginx_serve_https: false
+
+# ---- Health-check / panel de estado ----
+# Umbrales publicados en /status (status.json). NOTA: el frontend status.js tiene
+# su PROPIA copia hardcodeada de estos umbrales (TEMP_WARN/FAIL, DISK_WARN/FAIL);
+# si se cambian aqui, actualizar tambien /var/www/html/js/status.js en la RPi.
+health_cpu_temp_max: 75
+health_disk_pct_max: 85
+health_mem_pct_max: 80
+
+# Particion de datos de la RPi (root) — reserved blocks bajados al 1% para headroom.
+rpi_data_device: "/dev/mmcblk0p2"
+rpi_reserved_pct: 1
 
 # DNS secundario
 dns_primary_ip: "192.168.10.1"

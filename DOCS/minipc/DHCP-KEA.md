@@ -50,7 +50,7 @@ table netdev dhcp_fix {
 }
 ```
 
-Este hook está definido en `roles/router/templates/nftables.conf.j2` y aplica solo a la interfaz VLAN30 (clientes). Se necesita uno por cada interfaz donde haya clientes DHCP.
+Este hook está definido en `roles/firewall/templates/nftables.conf.j2` (tabla `netdev dhcp_fix`) y aplica solo a la interfaz VLAN30 (clientes). Se necesita uno por cada interfaz donde haya clientes DHCP.
 
 ## Archivos de configuración desplegados
 

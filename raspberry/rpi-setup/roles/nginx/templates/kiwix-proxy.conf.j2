@@ -7,6 +7,11 @@ proxy_set_header X-Real-IP         $remote_addr;
 proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header Connection        "";
+# Pedir contenido SIN comprimir a Kiwix. Asi la respuesta no lleva
+# `Content-Encoding: gzip` ni `Vary: Accept-Encoding`, y Squid (reverse-proxy
+# cache enfrente) cachea UNA sola representacion. Con la variante gzip, Squid
+# servia bytes comprimidos mal etiquetados -> pagina en blanco (incidente 2026-06-01).
+proxy_set_header Accept-Encoding   "";
 proxy_buffering off;
 proxy_read_timeout 60s;
 error_page 502 504 = @kiwix_unavailable;

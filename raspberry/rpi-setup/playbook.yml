@@ -12,3 +12,4 @@
     - jellyfin
     - node_exporter
     - dns_secondary
+    - health_check    # panel de estado (/status) + tune2fs headroom de disco
