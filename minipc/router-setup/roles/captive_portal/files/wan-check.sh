@@ -19,6 +19,12 @@
 
 set -euo pipefail
 
+# Si cualquier comando falla inesperadamente, dejar rastro en journal.
+# Antes este script abortaba en silencio (rc!=0 pero systemd lo marcaba
+# "Deactivated successfully" por ser Type=oneshot) y dejaba el sistema a
+# medio configurar — incluido el caso de quedar en RPZ offline sin flag.
+trap 'logger -t wan-check "FATAL: aborted at line $LINENO (rc=$?)"' ERR
+
 GATEWAY="172.16.0.1"
 FLAG="/var/run/wan-offline"
 
@@ -46,13 +52,16 @@ wan_is_up() {
 }
 
 # Eliminar regla nftables por comment. No-op si no existe.
+# OJO: con `set -euo pipefail`, si `grep` no encuentra match retorna rc=1 y
+# pipefail propaga el fallo → `handle=$(...)` aborta el script entero. Por eso
+# el pipeline va dentro de `{ ...; } || true` y la asignación nunca falla.
 nft_delete_by_comment() {
     local comment="$1"
     local handle
-    handle=$(nft -a list chain ${NFT_CHAIN} 2>/dev/null \
+    handle=$( { nft -a list chain ${NFT_CHAIN} 2>/dev/null \
         | grep "comment \"${comment}\"" \
         | grep -oP 'handle \K[0-9]+' \
-        | head -1)
+        | head -1; } || true )
     [ -n "$handle" ] && nft delete rule ${NFT_CHAIN} handle "$handle" 2>/dev/null || true
 }
 
@@ -64,6 +73,13 @@ nft_rule_exists() {
 enter_offline() {
     # No-op si ya estamos offline
     [ -f "$FLAG" ] && return 0
+
+    # Crear el flag PRIMERO. Representa "intención de estar en offline", no
+    # "completitud del trampolín". Si alguno de los pasos siguientes aborta,
+    # el flag queda creado y enter_online() del próximo tick podrá restaurar.
+    # Antes el touch iba al final → si un paso intermedio fallaba, el flag
+    # nunca se creaba y enter_online() retornaba inerte → sistema stuck offline.
+    touch "$FLAG"
 
     logger -t wan-check "WAN DOWN — activando modo offline (RPZ + nginx + nftables HTTPS)"
 
@@ -88,13 +104,18 @@ enter_offline() {
             dnat to ${MINIPC_IP}:443 \
             comment \"${HTTPS_OFFLINE_COMMENT}\" 2>/dev/null || true
     fi
-
-    touch "$FLAG"
 }
 
 enter_online() {
     # No-op si ya estamos online
     [ ! -f "$FLAG" ] && return 0
+
+    # Borrar el flag PRIMERO (simetría con enter_offline). Si un paso intermedio
+    # falla, el siguiente tick verá ! -f $FLAG → enter_online() retorna inerte y
+    # enter_offline() del próximo ciclo restaurará offline si WAN sigue caído, o
+    # se quedará así (cuyo estado coincide con "online intentado"). Lo importante
+    # es no quedar atrapado en offline aunque WAN ya esté arriba.
+    rm -f "$FLAG"
 
     logger -t wan-check "WAN UP — desactivando modo offline"
 
@@ -115,8 +136,6 @@ enter_online() {
         ln -sf "$PROXY_ONLINE" "$PROXY_LINK"
         nginx -s reload 2>/dev/null || true
     fi
-
-    rm -f "$FLAG"
 }
 
 # --- Main ---
