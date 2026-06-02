@@ -4,12 +4,11 @@
 ;
 $TTL    3600
 
-; ── DNSSEC keys ─────────────────────────────────────────────────────────────
-; Estas líneas son generadas por Ansible después de crear las llaves.
-; No editar manualmente.
-{% for key_file in dnssec_key_files | default([]) %}
-$INCLUDE "{{ key_file }}"
-{% endfor %}
+; ── DNSSEC ──────────────────────────────────────────────────────────────────
+; Esta es la zona FUENTE sin firmar. El firmado es automático vía
+; `dnssec-policy` + `inline-signing` (ver named.conf.local). BIND genera las
+; claves en /etc/bind/keys y mantiene la versión firmada; NO se incluyen
+; claves aquí manualmente.
 ; ────────────────────────────────────────────────────────────────────────────
 
 @   IN  SOA {{ dns_primary_ns }}.{{ dns_domain }}. admin.{{ dns_domain }}. (

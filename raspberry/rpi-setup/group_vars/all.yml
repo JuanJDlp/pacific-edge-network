@@ -96,6 +96,16 @@ rpi_reserved_pct: 1
 # DNS secundario
 dns_primary_ip: "192.168.10.1"
 dns_primary_ipv6: "fd00:0:0:10::1"
+
+# IP del Mini PC en la VLAN 20 (gateway en la misma VLAN que la RPi) — origen
+# de las zone transfers (master). La RPi alcanza al master por esta IP.
+dns_master_transfer_ip: "192.168.20.1"
+
+# ── TSIG ──────────────────────────────────────────────────────────────────────
+# MISMA clave que el master (minipc/router-setup/roles/dns/vars/main.yml).
+# Si cambias el secret, cámbialo en AMBOS lados.
+tsig_key_name: "ns1-ns2."
+tsig_secret: "QAY8sEB3xfyFnIbuwLdepnL3CszyywTvmCAuDRzdEsg="
 dns_slave_listen_ips:
   - "127.0.0.1"
   - "192.168.20.10"

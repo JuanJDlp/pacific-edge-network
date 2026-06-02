@@ -9,11 +9,19 @@ include "/etc/bind/named.conf.tsig";
 //
 zone "{{ dns_domain }}" {
     type master;
-    file "/etc/bind/zones/db.{{ dns_domain }}.signed";
+    // Archivo fuente SIN firmar en /var/lib/bind (rw para named bajo AppArmor).
+    // Con inline-signing, BIND mantiene ahí la versión firmada
+    // (db.{{ dns_domain }}.signed) y el journal (.jnl) automáticamente.
+    file "{{ dns_forward_zone_path }}";
+
+    // ── DNSSEC: firmado automático (BIND genera/rota claves y re-firma) ──
+    dnssec-policy {{ dnssec_policy }};
+    inline-signing yes;
+    key-directory "{{ dnssec_key_dir }}";
 
     // Solo el slave autenticado con TSIG puede hacer AXFR
     // Se elimina la IP explícita — la llave es suficiente y más seguro
-    allow-transfer { key "ns1-ns2."; };
+    allow-transfer { key "{{ tsig_key_name }}"; };
 
     // Notificar al slave cuando la zona se re-firme (DNSSEC)
     also-notify {
@@ -32,7 +40,7 @@ zone "{{ rz }}.in-addr.arpa" {
     type master;
     file "/etc/bind/zones/db.{{ rz }}";
 
-    allow-transfer { key "ns1-ns2."; };
+    allow-transfer { key "{{ tsig_key_name }}"; };
 
     also-notify {
         {{ dns_slave_ip }};

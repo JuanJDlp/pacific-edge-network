@@ -1,32 +1,45 @@
 // Managed by Ansible — do not edit manually
 // Zonas slave para {{ dns_domain }} — RPi DNS secundario
 
+// ── TSIG: llave para autenticar las transferencias desde el master ───────────
+include "/etc/bind/named.conf.tsig";
+
 //
-// Zona directa — slave de Mini PC ({{ dns_primary_ip }})
+// Zona directa — slave de Mini PC ({{ dns_master_transfer_ip }})
+// Transferencia autenticada con TSIG (la zona llega ya firmada por DNSSEC).
 //
 zone "{{ dns_domain }}" {
     type slave;
-    masters { 192.168.20.1; };  // Mini PC VLAN20 gateway — misma VLAN que la RPi
+    masters { {{ dns_master_transfer_ip }} key "{{ tsig_key_name }}"; };
     file "/var/cache/bind/db.{{ dns_domain }}";
 };
 
 //
-// Zonas inversas — slave de los tres VLANs
+// Zonas inversas — slave de los tres VLANs (también con TSIG)
 //
 zone "10.168.192.in-addr.arpa" {
     type slave;
-    masters { 192.168.20.1; };  // Mini PC VLAN20 gateway — misma VLAN que la RPi
+    masters { {{ dns_master_transfer_ip }} key "{{ tsig_key_name }}"; };
     file "/var/cache/bind/db.10.168.192";
 };
 
 zone "20.168.192.in-addr.arpa" {
     type slave;
-    masters { 192.168.20.1; };  // Mini PC VLAN20 gateway — misma VLAN que la RPi
+    masters { {{ dns_master_transfer_ip }} key "{{ tsig_key_name }}"; };
     file "/var/cache/bind/db.20.168.192";
 };
 
 zone "30.168.192.in-addr.arpa" {
     type slave;
-    masters { 192.168.20.1; };  // Mini PC VLAN20 gateway — misma VLAN que la RPi
+    masters { {{ dns_master_transfer_ip }} key "{{ tsig_key_name }}"; };
     file "/var/cache/bind/db.30.168.192";
+};
+
+//
+// Zona local de Matrix (Conduit) — fuera del alcance DNS/DNSSEC/TSIG.
+// Se preserva aquí para que este playbook no la elimine al regenerar el archivo.
+//
+zone "praticasaws.dev" {
+    type master;
+    file "/etc/bind/zones/praticasaws.dev.zone";
 };

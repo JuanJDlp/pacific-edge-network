@@ -1,0 +1,10 @@
+# ── TSIG key: autenticación zone transfer ns1 (master) ↔ ns2 (slave) ────────
+# Managed by Ansible — do not edit manually
+# MISMA clave que el master. Permisos 0640 owner bind.
+# El slave la referencia en `masters { <ip> key "ns1-ns2."; }` (named.conf.local)
+# para presentarla al hacer AXFR/IXFR.
+
+key "{{ tsig_key_name }}" {
+    algorithm hmac-sha256;
+    secret "{{ tsig_secret }}";
+};
