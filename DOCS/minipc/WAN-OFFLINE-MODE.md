@@ -184,7 +184,7 @@ Simetricamente en `enter_online`: primero quitamos el DNAT (los clientes vuelven
 - **Cliente no autenticado en modo offline**: las reglas captive (mark != 0x1) siguen DNATeando 80/443 → portal `:2050`. El usuario ve el splash con su mensaje normal. Al hacer click en Aceptar el handler sigue autorizando (no requiere internet). Luego el cliente entra a `biblioteca.tel` y todo funciona localmente.
 - **Cliente autenticado en modo offline**: ya tiene `mark=0x1`. El DNAT offline lo lleva a `offline.html`. Boton "Ir a la biblioteca" → `biblioteca.tel` (passthru) → RPi.
 
-> Caso especial: si la WAN cae *durante* la auth (entre el `/accept` y el meta-refresh), el redirect a `https://biblioteca.tel` funciona porque `biblioteca.tel` resuelve passthru a la RPi.
+> Caso especial: si la WAN cae *durante* la auth (entre el `/accept` y el meta-refresh), el redirect a `http://biblioteca.tel/` funciona porque `biblioteca.tel` resuelve passthru a la RPi.
 
 ## 11. Comandos de verificacion
 

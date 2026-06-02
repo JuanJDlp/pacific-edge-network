@@ -235,12 +235,18 @@ table ip nat {
         iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 dnat to {{ dns_redirect_ip }}:53
 
         # ── Portal cautivo: interceptar HTTP de VLAN30 no autenticados ────────
+        # HTTP va al puerto 80 del Mini PC (NO al :2050 SSL). Allá nginx tiene un
+        # server_name "biblioteca.tel" que sirve el splash y un default_server que
+        # redirige a http://biblioteca.tel/. Resultado: URL bar del cliente queda
+        # siempre en el dominio canónico, sin warnings de cert.
         iif "{{ client_iface }}" meta mark != 0x1 tcp dport 80 \
-            dnat to {{ client_vlan_ip }}:{{ captive_portal_port }}
+            dnat to {{ client_vlan_ip }}:80
 
         # ── Portal cautivo: interceptar HTTPS de VLAN30 no autenticados ───────
-        # El SSL handshake usa el cert del portal (autofirmado). iOS/macOS detectan
-        # el portal vía probe HTTP antes de que el usuario navegue a HTTPS.
+        # HTTPS sigue al :2050 con cert auto-firmado (no hay forma de evitar
+        # warning sin distribuir CA). El splash en :2050 tiene el botón con URL
+        # absoluta a http://biblioteca.tel/accept, así después de aceptar el cert
+        # y autenticarse el usuario aterriza en el dominio HTTP canónico.
         iif "{{ client_iface }}" meta mark != 0x1 tcp dport 443 \
             dnat to {{ client_vlan_ip }}:{{ captive_portal_port }}
 

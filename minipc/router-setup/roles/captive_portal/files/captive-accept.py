@@ -10,7 +10,11 @@ import logging
 import sys
 import re
 
-REDIRECT         = 'https://biblioteca.tel'  # Destino post-autenticación (resuelve via Bind9)
+REDIRECT         = 'https://biblioteca.tel/'  # Destino post-autenticación (resuelve via Bind9)
+# HTTPS aceptado intencionalmente: el cert de la RPi (biblioteca-segura.crt) es
+# auto-firmado, así que el browser muestra warning. El usuario acepta una vez por
+# dispositivo. Razón de preferir HTTPS: consistencia con el resto de servicios
+# expuestos (Kolibri, Jellyfin) que requieren HTTPS para features modernas.
 
 # HTML de éxito: <TITLE>Success</TITLE> hace que macOS/iOS CNA cierre el popup
 # al detectar que la autenticación fue exitosa. El meta-refresh y JS redirigen
@@ -87,21 +91,18 @@ class AcceptHandler(http.server.BaseHTTPRequestHandler):
                     logging.info('Authorized: IP=%s MAC=%s', client_ip, mac)
                 except subprocess.CalledProcessError as e:
                     logging.warning('nft error para %s (%s): %s', client_ip, mac, e.stderr.decode())
-
-                # Eliminar entradas conntrack cacheadas para este cliente.
-                # El DNAT del portal cautivo queda registrado por conexión en conntrack.
-                # Sin este flush, el browser reutiliza la conexión HTTP keep-alive DNAT'd
-                # y sigue llegando al captive portal en lugar de al destino real.
-                try:
-                    subprocess.run(
-                        ['conntrack', '-D', '-s', client_ip],
-                        capture_output=True, timeout=2
-                    )
-                    logging.info('Conntrack flushed for %s', client_ip)
-                except (subprocess.TimeoutExpired, FileNotFoundError):
-                    pass  # degradación graceful si conntrack no está disponible
             else:
                 logging.warning('No se pudo resolver MAC para %s — acceso no concedido', client_ip)
+
+        # NO hacemos `conntrack -D` aquí. Hacerlo MID-respuesta mata el reverse-NAT
+        # de los paquetes en vuelo: la respuesta sale con src=192.168.30.1:80 en
+        # lugar de la IP/puerto que el browser pidió → el TCP del cliente la descarta
+        # → el meta-refresh nunca se procesa → el usuario debe clickear "Aceptar"
+        # de nuevo (el famoso bug del doble-click).
+        #
+        # Es seguro NO flushear porque nginx envía `Connection: close` (keepalive_timeout 0):
+        # el browser cierra el TCP al recibir la respuesta. El meta-refresh abre TCP nuevo
+        # → nftables lo evalúa fresh → mark=0x1 ya está → sin DNAT → llega directo a la RPi.
 
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')

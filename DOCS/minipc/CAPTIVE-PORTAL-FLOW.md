@@ -38,7 +38,7 @@ Splash → click "Aceptar"
     │ captive-accept.py: agrega MAC al set, flush conntrack del cliente
     ▼
 Cliente recibe Success HTML → CNA del OS cierra popup
-    │ Browser sigue meta-refresh / JS a https://biblioteca.tel
+    │ Browser sigue meta-refresh / JS a http://biblioteca.tel/
     ▼
 Nueva conexion: mark = 0x1 → trafico atraviesa forward normal
 ```
@@ -200,7 +200,7 @@ El handler en `127.0.0.1:2051` es un mini servidor Python (BaseHTTPRequestHandle
 2. **Consulta ARP**: `ip neigh show <IP> dev enp171s0.30` y extrae la MAC con regex `lladdr ([0-9a-f]{2}(?::...){5})`. La entrada ARP existe con certeza porque el kernel resolvio la MAC al recibir el SYN.
 3. **Autoriza la MAC**: `nft add element inet filter captive_allowed_mac { <MAC> timeout 8h }`. El set es `dynamic,timeout 8h` → la entrada caduca sola.
 4. **Flush conntrack** para esa IP: `conntrack -D -s <IP>`. Asi las conexiones TCP existentes (que tenian DNAT al portal cacheado) se rompen y el cliente abre nuevas — que ya tendran `mark=0x1`.
-5. **Devuelve HTML Success**: `<TITLE>Success</TITLE>` + `meta-refresh` a `https://biblioteca.tel`. El `<TITLE>Success</TITLE>` es **fundamental** para que el CNA de macOS cierre el popup: el sheet hace polling a `captive.apple.com` y al ver "Success" en el body decide que ya hay internet.
+5. **Devuelve HTML Success**: `<TITLE>Success</TITLE>` + `meta-refresh` a `http://biblioteca.tel/`. El `<TITLE>Success</TITLE>` es **fundamental** para que el CNA de macOS cierre el popup: el sheet hace polling a `captive.apple.com` y al ver "Success" en el body decide que ya hay internet.
 
 ```
 GET /accept HTTP/1.1
