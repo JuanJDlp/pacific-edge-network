@@ -10,10 +10,11 @@ import logging
 import sys
 import re
 
-REDIRECT         = 'http://biblioteca.tel/'  # Destino post-autenticación (resuelve via Bind9)
-# HTTP (no HTTPS) intencional: biblioteca.tel sirve cert auto-firmado que dispara
-# warning en el browser. Como es tráfico VLAN30 interno (no atraviesa internet),
-# HTTP es seguro y evita el "Tu conexión no es privada" post-auth.
+REDIRECT         = 'https://biblioteca.tel/'  # Destino post-autenticación (resuelve via Bind9)
+# HTTPS aceptado intencionalmente: el cert de la RPi (biblioteca-segura.crt) es
+# auto-firmado, así que el browser muestra warning. El usuario acepta una vez por
+# dispositivo. Razón de preferir HTTPS: consistencia con el resto de servicios
+# expuestos (Kolibri, Jellyfin) que requieren HTTPS para features modernas.
 
 # HTML de éxito: <TITLE>Success</TITLE> hace que macOS/iOS CNA cierre el popup
 # al detectar que la autenticación fue exitosa. El meta-refresh y JS redirigen
