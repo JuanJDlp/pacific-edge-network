@@ -1,0 +1,108 @@
+---
+# ============================================================
+# Stack de monitoreo — Mini PC Pacific Edge Network
+#
+# Uso:
+#   cd minipc/
+#   ansible-playbook -i router-setup/inventory.ini router-setup/playbook-monitoring.yml
+#
+# O playbook de servicio:
+#   ansible-playbook -i router-setup/inventory.ini services/monitoring.yml
+# ============================================================
+
+- name: Desplegar observabilidad (Prometheus, Grafana, exporters, nginx, DNS)
+  hosts: minipc
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Actualizar cache apt
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      tags: always
+
+  roles:
+    - role: prometheus
+      tags: [monitoring, prometheus]
+    - role: node_exporter
+      tags: [monitoring, node_exporter]
+    - role: snmp_exporter
+      tags: [monitoring, snmp_exporter]
+    - role: grafana
+      tags: [monitoring, grafana]
+    - role: nginx_monitor
+      tags: [monitoring, nginx_monitor]
+    - role: bind9_dns
+      tags: [monitoring, bind9_dns, dns]
+    - role: nftables
+      tags: [monitoring, nftables, firewall]
+
+- name: Verificar stack de monitoreo
+  hosts: minipc
+  become: true
+  gather_facts: false
+  tags: [monitoring, verify, never]
+
+  tasks:
+    - name: Verificar servicios systemd
+      ansible.builtin.command: "systemctl is-active {{ item }}"
+      loop:
+        - prometheus
+        - prometheus-node-exporter
+        - prometheus-snmp-exporter
+        - grafana-server
+        - nginx
+        - named
+      register: svc_status
+      changed_when: false
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Assert servicios en estado active
+      ansible.builtin.assert:
+        that: item.stdout == 'active'
+        fail_msg: "Servicio {{ item.item }} no está active ({{ item.stdout }})"
+      loop: "{{ svc_status.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Verificar DNS monitor.biblioteca.tel
+      ansible.builtin.command: "dig @127.0.0.1 {{ monitor_nginx_server_name }} +short"
+      register: dig_monitor
+      changed_when: false
+      failed_when: monitor_dns_ip not in dig_monitor.stdout
+
+    - name: Verificar portal Grafana vía nginx
+      ansible.builtin.uri:
+        url: "http://{{ monitor_nginx_server_name }}/login"
+        status_code: 200
+      register: grafana_http
+      failed_when: false
+
+    - name: Verificar Prometheus targets UP
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9090/prometheus/api/v1/targets"
+        return_content: true
+      register: prom_targets
+      failed_when: false
+
+    - name: Assert jobs principales en estado up
+      ansible.builtin.assert:
+        that:
+          - "'\"job\":\"prometheus\"' in prom_targets.content"
+          - "'\"job\":\"minipc_node\"' in prom_targets.content"
+          - "'\"job\":\"rpi_node\"' in prom_targets.content"
+          - "'\"job\":\"switch_snmp\"' in prom_targets.content"
+        fail_msg: >-
+          Revisa http://monitor.biblioteca.tel/prometheus/targets —
+          algún job no está UP (RPi node_exporter o SNMP del switch).
+      when: prom_targets.status == 200
+
+    - name: Resumen verificación monitoreo
+      ansible.builtin.debug:
+        msg:
+          - "Grafana:     http://{{ monitor_nginx_server_name }}/"
+          - "Prometheus:  http://{{ monitor_nginx_server_name }}/prometheus/"
+          - "DNS:         {{ monitor_nginx_server_name }} → {{ dig_monitor.stdout | trim }}"
+          - "Servicios:   todos active"

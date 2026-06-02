@@ -1,0 +1,25 @@
+# Managed by Ansible — do not edit manually
+auths:
+  {{ snmp_exporter_auth_name }}:
+    version: 2
+    community: {{ snmp_exporter_community }}
+
+modules:
+  {{ snmp_exporter_module }}:
+    walk:
+      - 1.3.6.1.2.1.2
+      - 1.3.6.1.2.1.31.1.1
+    lookups:
+      - source_indexes: [ifIndex]
+        lookup: 1.3.6.1.2.1.2.2.1.2
+        name: ifName
+        type: DisplayString
+      - source_indexes: [ifIndex]
+        lookup: 1.3.6.1.2.1.31.1.1.1.1
+        name: ifAlias
+        type: DisplayString
+    overrides:
+      ifAlias:
+        ignore: true
+      ifName:
+        type: DisplayString

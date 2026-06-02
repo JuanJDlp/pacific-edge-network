@@ -64,6 +64,7 @@ dns_reverse_zones:
 # Campo ipv6 opcional: si está presente, se publica AAAA además de A
 dns_hosts:
   - { name: "minipc",      ip: "192.168.10.1",  ipv6: "fd00:0:0:10::1",  vlan_octet: "10" }
+  - { name: "monitor",     ip: "192.168.10.1",  ipv6: "fd00:0:0:10::1",  vlan_octet: "10" }
   - { name: "ns1",         ip: "192.168.10.1",  ipv6: "fd00:0:0:10::1",  vlan_octet: "10" }
   - { name: "switch",      ip: "192.168.10.2",                            vlan_octet: "10" }
   - { name: "biblioteca",  ip: "192.168.20.10", ipv6: "fd00:0:0:20::10", vlan_octet: "20" }

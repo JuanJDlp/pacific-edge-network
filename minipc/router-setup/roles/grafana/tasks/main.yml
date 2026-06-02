@@ -1,0 +1,66 @@
+---
+- name: Agregar clave GPG de Grafana
+  ansible.builtin.apt_key:
+    url: https://apt.grafana.com/gpg.key
+    state: present
+  become: true
+
+- name: Agregar repositorio APT de Grafana
+  ansible.builtin.apt_repository:
+    repo: "deb https://apt.grafana.com stable main"
+    state: present
+    filename: grafana
+  become: true
+
+- name: Instalar Grafana
+  ansible.builtin.apt:
+    name: "{{ grafana_package }}"
+    state: present
+    update_cache: true
+  become: true
+
+- name: Configurar Grafana para escuchar solo en loopback
+  ansible.builtin.lineinfile:
+    path: "{{ grafana_ini_path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backrefs: true
+  loop:
+    - regexp: '^;?http_addr\s*='
+      line: "http_addr = {{ grafana_http_addr }}"
+    - regexp: '^;?http_port\s*='
+      line: "http_port = {{ grafana_http_port }}"
+    - regexp: '^;?domain\s*='
+      line: "domain = {{ grafana_domain }}"
+    - regexp: '^;?root_url\s*='
+      line: "root_url = {{ grafana_root_url }}"
+    - regexp: '^;?serve_from_sub_path\s*='
+      line: "serve_from_sub_path = false"
+  become: true
+  notify: restart grafana-server
+
+- name: Crear directorio de provisioning de datasources
+  ansible.builtin.file:
+    path: "{{ grafana_provisioning_datasources_dir }}"
+    state: directory
+    owner: root
+    group: grafana
+    mode: "0755"
+  become: true
+
+- name: Desplegar datasource Prometheus
+  ansible.builtin.template:
+    src: datasource-prometheus.yml.j2
+    dest: "{{ grafana_provisioning_datasources_dir }}/prometheus.yml"
+    owner: root
+    group: grafana
+    mode: "0640"
+  become: true
+  notify: restart grafana-server
+
+- name: Habilitar e iniciar Grafana
+  ansible.builtin.systemd:
+    name: "{{ grafana_service }}"
+    enabled: true
+    state: started
+  become: true

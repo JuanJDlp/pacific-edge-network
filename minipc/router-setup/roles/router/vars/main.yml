@@ -53,5 +53,5 @@ squid_intercept_https_port: 3130
 # Feature flag: redirigir HTTPS de VLAN30 autenticada hacia Squid para filtrado
 enable_https_filter: true
 
-# Puertos de monitoreo (Grafana, Prometheus, node_exporter)
-monitoring_tcp_ports: [3000, 9090, 9100]
+# Puertos de monitoreo (node_exporter en LAN; Grafana/Prometheus en loopback)
+monitoring_tcp_ports: [9100]

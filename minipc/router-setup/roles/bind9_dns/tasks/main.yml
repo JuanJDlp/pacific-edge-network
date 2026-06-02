@@ -1,0 +1,26 @@
+---
+- name: Verificar registro monitor en dns_hosts
+  ansible.builtin.assert:
+    that:
+      - dns_hosts | selectattr('name', 'equalto', monitor_dns_name) | list | length > 0
+    fail_msg: >-
+      Falta {{ monitor_dns_name }} en roles/dns/vars/main.yml (dns_hosts).
+      Debe apuntar a {{ monitor_dns_ip }}.
+
+- name: Aplicar zona DNS biblioteca.tel (incluye monitor + DNSSEC)
+  ansible.builtin.import_role:
+    name: dns
+
+- name: Validar zona biblioteca.tel
+  ansible.builtin.command: >-
+    named-checkzone {{ dns_domain }}
+    /etc/bind/zones/db.{{ dns_domain }}.signed
+  become: true
+  changed_when: false
+  register: bind9_zone_check
+  failed_when: bind9_zone_check.rc != 0
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Mostrar resultado named-checkzone
+  ansible.builtin.debug:
+    msg: "{{ bind9_zone_check.stdout_lines | default([]) }}"

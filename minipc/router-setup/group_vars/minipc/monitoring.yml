@@ -1,0 +1,36 @@
+---
+# Variables compartidas del stack de monitoreo (Mini PC)
+monitoring_scrape_interval: 15s
+
+# Prometheus
+prometheus_listen_address: "127.0.0.1:9090"
+prometheus_storage_path: "/var/lib/prometheus"
+prometheus_external_url: "http://monitor.biblioteca.tel/prometheus"
+prometheus_route_prefix: "/prometheus"
+
+# Targets
+prometheus_rpi_target: "192.168.20.10:9100"
+prometheus_switch_target: "192.168.10.2"
+prometheus_snmp_exporter_address: "127.0.0.1:9116"
+
+# SNMP Exporter
+snmp_exporter_community: "MONITOR_RO"
+snmp_exporter_auth_name: "public_v2"
+snmp_exporter_module: "if_mib"
+
+# Grafana (solo loopback; publicado vía nginx monitor.biblioteca.tel)
+grafana_http_addr: "127.0.0.1"
+grafana_http_port: 3000
+grafana_listen_address: "127.0.0.1:3000"
+grafana_domain: "monitor.biblioteca.tel"
+grafana_root_url: "http://monitor.biblioteca.tel"
+grafana_prometheus_url: "http://127.0.0.1:9090"
+
+# Nginx reverse proxy
+monitor_nginx_server_name: "monitor.biblioteca.tel"
+monitor_nginx_listen_port: 80
+
+# DNS
+monitor_dns_name: "monitor"
+monitor_dns_ip: "192.168.10.1"
+monitor_dns_ipv6: "fd00:0:0:10::1"

@@ -1,0 +1,4 @@
+---
+prometheus_package: prometheus
+prometheus_config_path: /etc/prometheus/prometheus.yml
+prometheus_defaults_path: /etc/default/prometheus

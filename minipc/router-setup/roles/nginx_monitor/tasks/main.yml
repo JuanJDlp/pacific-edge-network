@@ -1,0 +1,38 @@
+---
+- name: Asegurar nginx instalado
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+  become: true
+
+- name: Desplegar virtual host monitor
+  ansible.builtin.template:
+    src: monitor.nginx.j2
+    dest: "{{ monitor_nginx_site_available }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload nginx
+
+- name: Habilitar sitio monitor en sites-enabled
+  ansible.builtin.file:
+    src: "{{ monitor_nginx_site_available }}"
+    dest: "{{ monitor_nginx_site_enabled }}"
+    state: link
+  become: true
+  notify: reload nginx
+
+- name: Validar configuración nginx
+  ansible.builtin.command: nginx -t
+  become: true
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Asegurar nginx habilitado e iniciado
+  ansible.builtin.systemd:
+    name: nginx
+    enabled: true
+    state: started
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"

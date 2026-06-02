@@ -1,0 +1,45 @@
+---
+- name: Instalar Prometheus
+  ansible.builtin.apt:
+    name: "{{ prometheus_package }}"
+    state: present
+    update_cache: true
+  become: true
+
+- name: Asegurar directorio de almacenamiento local
+  ansible.builtin.file:
+    path: "{{ prometheus_storage_path }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: "0755"
+  become: true
+
+- name: Desplegar /etc/default/prometheus
+  ansible.builtin.template:
+    src: prometheus.default.j2
+    dest: "{{ prometheus_defaults_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: restart prometheus
+
+- name: Desplegar prometheus.yml
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ prometheus_config_path }}"
+    owner: prometheus
+    group: prometheus
+    mode: "0644"
+    validate: "promtool check config %s"
+  become: true
+  notify: restart prometheus
+
+- name: Habilitar e iniciar Prometheus
+  ansible.builtin.systemd:
+    name: prometheus
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true

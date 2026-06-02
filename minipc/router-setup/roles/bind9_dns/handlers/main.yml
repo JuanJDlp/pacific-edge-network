@@ -1,0 +1,12 @@
+---
+- name: reload bind9
+  ansible.builtin.systemd:
+    name: named
+    state: reloaded
+  become: true
+
+- name: restart bind9
+  ansible.builtin.systemd:
+    name: named
+    state: restarted
+  become: true

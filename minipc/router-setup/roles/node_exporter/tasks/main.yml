@@ -1,0 +1,24 @@
+---
+- name: Instalar Node Exporter
+  ansible.builtin.apt:
+    name: "{{ node_exporter_package }}"
+    state: present
+  become: true
+
+- name: Desplegar argumentos de Node Exporter
+  ansible.builtin.template:
+    src: prometheus-node-exporter.j2
+    dest: /etc/default/prometheus-node-exporter
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: restart node_exporter
+
+- name: Habilitar e iniciar Node Exporter
+  ansible.builtin.systemd:
+    name: "{{ node_exporter_service }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true

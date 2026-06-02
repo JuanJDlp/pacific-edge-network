@@ -1,16 +1,6 @@
 ---
-- name: Deploy monitoreo (Prometheus + Grafana + node_exporter) en Mini PC
-  hosts: minipc
-  become: true
-  gather_facts: true
+# Playbook de servicio — stack de monitoreo completo
+# cd minipc/ && ansible-playbook -i router-setup/inventory.ini services/monitoring.yml
 
-  pre_tasks:
-    - name: Actualizar cache apt
-      apt:
-        update_cache: true
-        cache_valid_time: 3600
-      tags: always
-
-  roles:
-    - role: monitoring
-      tags: [monitoring]
+- name: Importar playbook de monitoreo
+  ansible.builtin.import_playbook: ../router-setup/playbook-monitoring.yml

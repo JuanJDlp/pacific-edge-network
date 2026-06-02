@@ -61,9 +61,21 @@
     - role: ntp
       tags: [ntp]
 
-    # 6. Monitoreo — Prometheus + Grafana + node_exporter
-    - role: monitoring
-      tags: [monitoring]
+    # 6. Monitoreo — Prometheus, Grafana, exporters, nginx monitor, DNS monitor
+    - role: prometheus
+      tags: [monitoring, prometheus]
+    - role: node_exporter
+      tags: [monitoring, node_exporter]
+    - role: snmp_exporter
+      tags: [monitoring, snmp_exporter]
+    - role: grafana
+      tags: [monitoring, grafana]
+    - role: nginx_monitor
+      tags: [monitoring, nginx_monitor]
+    - role: bind9_dns
+      tags: [monitoring, bind9_dns, dns]
+    - role: nftables
+      tags: [monitoring, nftables, firewall]
 
     # 7. Firewall mejorado — reemplaza nftables del rol router con reglas
     #    más robustas: rate limiting SSH/DNS/ICMP, bloqueo de puertos WAN,

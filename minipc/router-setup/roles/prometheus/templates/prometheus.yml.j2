@@ -1,0 +1,39 @@
+# Managed by Ansible — do not edit manually
+global:
+  scrape_interval: {{ monitoring_scrape_interval }}
+  evaluation_interval: {{ monitoring_scrape_interval }}
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: minipc_node
+    static_configs:
+      - targets: ['localhost:9100']
+    relabel_configs:
+      - target_label: instance
+        replacement: minipc
+
+  - job_name: rpi_node
+    static_configs:
+      - targets: ['{{ prometheus_rpi_target }}']
+    relabel_configs:
+      - target_label: instance
+        replacement: rpi-servicios
+
+  - job_name: switch_snmp
+    metrics_path: /snmp
+    params:
+      module: ['{{ snmp_exporter_module }}']
+      auth: ['{{ snmp_exporter_auth_name }}']
+    static_configs:
+      - targets:
+          - '{{ prometheus_switch_target }}'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: {{ prometheus_snmp_exporter_address }}

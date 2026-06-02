@@ -39,9 +39,9 @@ internal_subnets:
   - "192.168.30.0/24"   # VLAN30 Clientes
 
 # Puertos de gestión accesibles solo desde VLAN10
+# Prometheus (:9090) y Grafana (:3000) escuchan en loopback; acceso vía
+# http://monitor.biblioteca.tel (nginx :80, rol nginx_monitor).
 mgmt_ports_tcp:
-  - 9090    # Prometheus
-  - 3000    # Grafana
   - 8080    # Pi-hole web admin
 
 # Habilitar logging de paquetes dropeados (útil para diagnóstico)

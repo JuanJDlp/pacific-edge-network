@@ -1,0 +1,5 @@
+---
+grafana_package: grafana
+grafana_service: grafana-server
+grafana_ini_path: /etc/grafana/grafana.ini
+grafana_provisioning_datasources_dir: /etc/grafana/provisioning/datasources

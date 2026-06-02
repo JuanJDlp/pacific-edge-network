@@ -1,0 +1,5 @@
+# Managed by Ansible — do not edit manually
+ARGS="--storage.tsdb.path={{ prometheus_storage_path }} \
+--web.listen-address={{ prometheus_listen_address }} \
+--web.external-url={{ prometheus_external_url }} \
+--web.route-prefix={{ prometheus_route_prefix }}"

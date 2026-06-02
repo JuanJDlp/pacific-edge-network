@@ -1,0 +1,35 @@
+---
+- name: Instalar SNMP Exporter
+  ansible.builtin.apt:
+    name: "{{ snmp_exporter_package }}"
+    state: present
+    update_cache: true
+  become: true
+
+- name: Desplegar snmp.yml
+  ansible.builtin.template:
+    src: snmp.yml.j2
+    dest: "{{ snmp_exporter_config_path }}"
+    owner: root
+    group: prometheus
+    mode: "0640"
+  become: true
+  notify: restart snmp_exporter
+
+- name: Desplegar argumentos de SNMP Exporter
+  ansible.builtin.template:
+    src: prometheus-snmp-exporter.j2
+    dest: /etc/default/prometheus-snmp-exporter
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: restart snmp_exporter
+
+- name: Habilitar e iniciar SNMP Exporter
+  ansible.builtin.systemd:
+    name: "{{ snmp_exporter_service }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
