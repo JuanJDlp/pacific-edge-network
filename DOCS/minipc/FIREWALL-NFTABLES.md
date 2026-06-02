@@ -107,14 +107,19 @@ sudo journalctl -f | grep "NFT DROP:"
 
 ## Portal cautivo — DNAT HTTP y HTTPS
 
-El firewall intercepta tanto HTTP como HTTPS de clientes no autenticados y los redirige al splash del portal:
+El firewall intercepta tanto HTTP como HTTPS de clientes no autenticados y los redirige al splash del portal. **A partir de 2026-06-02**, el HTTP no autenticado va al `:80` (HTTP plano sobre nginx con server_name `biblioteca.tel`) en lugar de al `:2050` (SSL). Esto permite que la URL bar del cliente quede en `http://biblioteca.tel/` (dominio canónico, sin warnings de cert) en lugar de `https://192.168.30.1:2050`.
 
 ```nft
-# HTTP no autenticado → portal (puerto 2050 SSL)
+# HTTP no autenticado → nginx :80 (HTTP plano). nginx tiene:
+#   - server_name biblioteca.tel → sirve splash.html directo
+#   - default_server (otros Host) → 302 a http://biblioteca.tel/
 iif "enp171s0.30" meta mark != 0x1 tcp dport 80
-    dnat to 192.168.30.1:2050
+    dnat to 192.168.30.1:80
 
-# HTTPS no autenticado → portal (mismo puerto 2050 SSL)
+# HTTPS no autenticado → portal :2050 SSL (cert auto-firmado, fallback).
+# Cuando el cliente acepta el cert warning ve el splash. El botón "Entrar"
+# usa URL absoluta a http://biblioteca.tel/accept, así la auth termina
+# en el dominio canónico HTTP sin más warnings.
 iif "enp171s0.30" meta mark != 0x1 tcp dport 443
     dnat to 192.168.30.1:2050
 ```

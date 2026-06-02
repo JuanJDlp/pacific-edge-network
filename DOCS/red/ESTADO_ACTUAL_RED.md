@@ -1,6 +1,8 @@
 # Estado Actual de la Red — Pacific Edge Network
-**Fecha:** 2026-05-30
+**Fecha:** 2026-06-02
 **Actualizado desde:** diagnosticos remotos via SSH a ambos equipos.
+
+> Cambios respecto a 2026-05-30: portal cautivo reubicado a `http://biblioteca.tel/` (antes era `https://192.168.30.1:2050/`). DNAT HTTP unauth ahora va a `:80` en lugar de `:2050`. nginx tiene dos server blocks en `:80` (biblioteca.tel canonico + default 302). Bug del doble-click en `/accept` corregido. Ver `DOCS/minipc/CAPTIVE-PORTAL.md`.
 
 ---
 
@@ -109,8 +111,8 @@ ssh minipc
 
 | Servicio                   | Puerto / Interfaz                          | Estado     | Descripcion                                            |
 |----------------------------|--------------------------------------------|------------|--------------------------------------------------------|
-| nginx (CNA + cert)        | TCP `:80`                                  | activo     | Redirecciones CNA de OS + descarga certificado CA      |
-| nginx (captive splash)    | TCP `:2050` (SSL)                          | activo     | Splash page del portal cautivo + proxy a /accept       |
+| nginx (portal HTTP)       | TCP `:80`                                  | activo     | **Portal cautivo canonico** en `http://biblioteca.tel/` (server_name biblioteca.tel sirve splash; default → 302 a dominio canonico). Probes OS, /accept, descarga CA. |
+| nginx (captive HTTPS)     | TCP `:2050` (SSL)                          | activo     | Fallback HTTPS para clientes que llegan via :443 (cert auto-firmado, warning del browser → splash) |
 | nginx (HTTP proxy)        | TCP `:8888`                                | activo     | Proxy HTTP hacia Squid (192.168.20.10:3129) + probes OS|
 | nginx (monitoreo)         | TCP `:80` vhost monitoreo.biblioteca.tel   | activo     | Reverse proxy hacia Grafana :3000                      |
 | captive-accept.py         | TCP `127.0.0.1:2051`                       | activo     | Handler Python: agrega MAC/IP a nft set captive_allowed|
@@ -142,7 +144,8 @@ ssh minipc
 - `ip nat` -- NAT y redirecciones
   - Chain `prerouting`:
     - DNS DNAT (UDP/TCP 53) desde todas las VLANs hacia 192.168.10.1:53
-    - VLAN 30 sin marca 0x1: HTTP (80) redirigido al portal cautivo 192.168.30.1:2050
+    - VLAN 30 sin marca 0x1: HTTP (80) redirigido a nginx splash 192.168.30.1:80 (server_name biblioteca.tel)
+    - VLAN 30 sin marca 0x1: HTTPS (443) redirigido al portal SSL fallback 192.168.30.1:2050
     - VLAN 30 con marca 0x1: HTTP (80) redirigido al proxy nginx 192.168.30.1:8888 (hacia Squid)
     - VLAN 30 con marca 0x1: HTTPS filtrado via Squid SNI 192.168.20.10:3130
   - Chain `postrouting`: masquerade saliendo por enp170s0
@@ -150,24 +153,30 @@ ssh minipc
 - `netdev dhcp_fix` -- Fix DHCP broadcast para macOS (APIPA)
   - Convierte unicast DHCP Offers a broadcast (dst=255.255.255.255) en egress de enp171s0.30
 
-### 3.3 Arquitectura del portal cautivo
+### 3.3 Arquitectura del portal cautivo (2026-06-02)
 
 ```
-Puerto :80 (nginx)
-+-- CNA probes de OS (generate_204, hotspot-detect, connecttest, etc.)
-+-- Descarga de certificado CA
-+-- monitoreo.biblioteca.tel -> Grafana :3000
+Puerto :80 (nginx, HTTP plano — portal CANONICO en biblioteca.tel)
++-- server_name biblioteca.tel
+|   +-- GET /              -> splash.html (portal cautivo)
+|   +-- GET /accept        -> proxy_pass -> captive-accept.py :2051
+|   |                                       +-- lookup MAC via ARP (ip neigh)
+|   |                                       +-- nft add element captive_allowed_mac { MAC }
+|   |                                       +-- responde 200 con HTML "Success" + meta-refresh a https://biblioteca.tel/
+|   +-- GET /certificado.crt -> descarga del CA Pacific Edge
++-- default_server (cualquier otro Host, incluyendo probes del SO)
+|   +-- /generate_204, /hotspot-detect.html, /connecttest.txt, ... -> 302 http://biblioteca.tel/
+|   +-- GET /             -> 302 http://biblioteca.tel/    (canonicaliza la URL bar)
++-- vhost monitoreo.biblioteca.tel -> Grafana :3000
 
-Puerto :2050 SSL (nginx)
-+-- GET /              -> splash.html (portal cautivo)
+Puerto :2050 SSL (nginx — fallback HTTPS para clientes que llegan via :443)
++-- cert auto-firmado CN portal.pacificedge.local
++-- GET /              -> splash.html (con cert warning del browser)
 +-- GET /accept        -> proxy_pass -> captive-accept.py :2051
-                                        +-- extrae IP/MAC del cliente
-                                        +-- nft add element captive_allowed_mac { MAC }
-                                        +-- responde 200 con HTML "Success"
 
-Puerto :8888 (nginx)
+Puerto :8888 (nginx — HTTP proxy POST-auth)
 +-- HTTP proxy para autenticados -> Squid 192.168.20.10:3129
-+-- Respuestas a probes de OS (para evitar re-trigger del CNA)
++-- Respuestas a probes de OS (para evitar re-trigger del CNA post-auth)
 ```
 
 ### 3.4 Monitoreo (Prometheus + Grafana)
@@ -332,22 +341,33 @@ BIND9 configurado como slave de la zona `biblioteca.tel`, transfiere desde `192.
 ### 6.1 Cliente NO autenticado -- acceso HTTP
 
 ```
-Cliente (192.168.30.x, NO autenticado)
+Cliente (192.168.30.x, NO autenticado) -- arquitectura 2026-06-02
 
 1. DHCP -> obtiene IP en 192.168.30.0/24, GW 192.168.30.1, DNS 192.168.30.1
-2. Browser intenta HTTPS:
+2. Browser intenta HTTPS al sitio que tipeo el usuario:
    TCP SYN -> sitio:443
-   -> nftables forward: REJECT with tcp reset (respuesta inmediata, < 1ms)
-   -> Browser falla rapido, intenta HTTP
-3. DNS: sitio A? -> DNAT -> BIND9 (192.168.10.1:53) -> forwarders
-4. TCP SYN -> sitio:80
-   -> nftables DNAT: mark!=0x1, dport 80 -> 192.168.30.1:2050
-5. nginx :2050 (SSL) responde con splash.html
-6. Usuario hace click "Entrar":
-   GET /accept -> proxy_pass -> captive-accept.py :2051
-   -> nft add element captive_allowed_mac { MAC } (timeout 8h)
-   -> 200 OK con HTML "Success"
-   -> Redireccion a http://biblioteca.tel
+   -> nftables DNAT: mark!=0x1, dport 443 -> 192.168.30.1:2050
+   -> Browser ve cert auto-firmado "portal.pacificedge.local" vs el dominio que pidio
+   -> Cert warning; si usuario acepta, ve splash en :2050
+3. Browser intenta HTTP a cualquier sitio:
+   DNS: sitio A? -> DNAT -> BIND9 (192.168.10.1:53) -> forwarders
+   TCP SYN -> sitio:80
+   -> nftables DNAT: mark!=0x1, dport 80 -> 192.168.30.1:80
+   -> nginx :80 default_server -> 302 http://biblioteca.tel/
+   -> Browser navega: DNS biblioteca.tel -> 192.168.20.10
+   -> TCP SYN -> 192.168.20.10:80
+   -> nftables DNAT: mark!=0x1, dport 80 -> 192.168.30.1:80
+   -> nginx :80 server_name biblioteca.tel -> sirve splash.html (URL bar: http://biblioteca.tel/)
+4. Usuario hace click "Entrar":
+   GET http://biblioteca.tel/accept (URL absoluta del anchor)
+   -> nftables DNAT igual -> 192.168.30.1:80
+   -> nginx :80 location /accept -> proxy_pass -> captive-accept.py :2051
+   -> lookup MAC via ARP, nft add element captive_allowed_mac { MAC } (timeout 8h)
+   -> 200 OK Connection: close + HTML <TITLE>Success</TITLE> + meta-refresh a https://biblioteca.tel/
+5. Browser cierra TCP (Connection: close), meta-refresh dispara:
+   TCP SYN -> 192.168.20.10:443 (RPi HTTPS)
+   -> nftables: ahora mark=0x1, daddr=RPi -> sin DNAT -> directo a la RPi
+   -> RPi nginx :443 sirve landing biblioteca.tel (cert auto-firmado, warning 1 vez por device)
 ```
 
 ### 6.2 Cliente NO autenticado -- probe automatico de OS
@@ -359,10 +379,11 @@ Windows: GET /connecttest.txt       Host: www.msftconnecttest.com
 
 -> DNS resuelve la IP del host externo
 -> TCP SYN a esa IP:80
--> DNAT: mark!=0x1, dport 80 -> 192.168.30.1:2050
--> nginx :2050 responde con redirect 302 a /
--> OS detecta redireccion -> muestra popup "Conectar a red"
--> Usuario acepta -> splash.html -> /accept -> autenticado
+-> DNAT: mark!=0x1, dport 80 -> 192.168.30.1:80
+-> nginx :80 default_server (Host != biblioteca.tel) -> 302 http://biblioteca.tel/
+-> OS recibe 302 en lugar del body esperado (Success/204/Microsoft) -> "captive portal detectado"
+-> OS abre el CNA (Captive Network Assistant) con URL del Location: http://biblioteca.tel/
+-> Browser embebido del CNA hace request a biblioteca.tel -> splash -> click /accept -> auth
 ```
 
 ### 6.3 Cliente autenticado -- navegacion normal

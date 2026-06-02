@@ -1,6 +1,11 @@
 # Estado actual del Mini PC — Router de red comunitaria
 
-> Snapshot al **2026-05-30**. Estado operativo general de la red en `DOCS/red/ESTADO_ACTUAL_RED.md`.
+> Snapshot al **2026-06-02**. Estado operativo general de la red en `DOCS/red/ESTADO_ACTUAL_RED.md`.
+>
+> Cambios recientes (2026-06-02): portal cautivo reubicado a `http://biblioteca.tel/`
+> (antes era `https://192.168.30.1:2050/`). DNAT HTTP unauth a `:80` (no `:2050`).
+> Bug del doble-click en `/accept` corregido eliminando el `conntrack -D` del handler.
+> Detalle en `DOCS/minipc/CAPTIVE-PORTAL.md`.
 
 **Host:** `plataformas` / `100.90.95.134` (NetBird VPN)
 **SO:** Ubuntu Server 24.04.4 LTS, kernel `6.8.0-111-generic`
@@ -73,7 +78,8 @@ table inet filter
 
 table ip nat
   chain prerouting  -> DNAT DNS -> 192.168.10.1:53
-                    -> Captive redirect (VLAN30 sin marca) -> 192.168.30.1:2050 (HTTP+HTTPS)
+                    -> Captive HTTP  (VLAN30 sin marca, dport 80)  -> 192.168.30.1:80   (nginx splash en biblioteca.tel)
+                    -> Captive HTTPS (VLAN30 sin marca, dport 443) -> 192.168.30.1:2050 (nginx SSL fallback)
                     -> HTTP proxy (VLAN30 con marca 0x1) -> 192.168.30.1:8888 -> Squid RPi
                     -> HTTPS autenticado: SIN DNAT (pasa directo a WAN);
                        filtrado porn/gambling via Bind9 RPZ (rpz.blocklist)

@@ -1,6 +1,6 @@
 # Modo WAN offline — deteccion y reroute a `biblioteca.tel`
 
-> Actualizado: 2026-05-30
+> Actualizado: 2026-06-02 (alineado con arquitectura nueva del portal cautivo en `http://biblioteca.tel/`)
 
 Cuando el enlace al ISP (router externo en `172.16.0.0/16`) cae, la red comunitaria debe **seguir funcionando para acceder al contenido local** (biblioteca.tel: Kiwix, Kolibri, Jellyfin). Este documento explica como se detecta la caida y como se reconfiguran Bind9 + nginx + nftables en caliente para que cualquier navegacion del cliente termine en una pagina "WAN offline" o en biblioteca.tel — sin timeouts ni errores del navegador.
 
@@ -181,7 +181,7 @@ Simetricamente en `enter_online`: primero quitamos el DNAT (los clientes vuelven
 
 ## 10. Interaccion con el portal cautivo
 
-- **Cliente no autenticado en modo offline**: las reglas captive (mark != 0x1) siguen DNATeando 80/443 → portal `:2050`. El usuario ve el splash con su mensaje normal. Al hacer click en Aceptar el handler sigue autorizando (no requiere internet). Luego el cliente entra a `biblioteca.tel` y todo funciona localmente.
+- **Cliente no autenticado en modo offline**: las reglas captive (mark != 0x1) siguen interceptando — HTTP va a `:80` (nginx con server_name biblioteca.tel sirve el splash; otros Host → 302 a `http://biblioteca.tel/`); HTTPS va a `:2050` (cert warning → splash). El usuario ve el splash con su mensaje normal (la badge "Red comunitaria · sin internet" en `splash.html` aplica tanto online como offline). Al hacer click en "Entrar" el handler autoriza la MAC (no requiere internet). El meta-refresh va a `https://biblioteca.tel/` que con RPZ offline activa pasa passthru a la RPi → landing local funciona.
 - **Cliente autenticado en modo offline**: ya tiene `mark=0x1`. El DNAT offline lo lleva a `offline.html`. Boton "Ir a la biblioteca" → `biblioteca.tel` (passthru) → RPi.
 
 > Caso especial: si la WAN cae *durante* la auth (entre el `/accept` y el meta-refresh), el redirect a `http://biblioteca.tel/` funciona porque `biblioteca.tel` resuelve passthru a la RPi.

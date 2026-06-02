@@ -1,8 +1,8 @@
 # Portal cautivo — Estado del bloqueo de navegación sin autenticación
 
-> **Última verificación en campo:** 2026-06-01 (prueba real desde un cliente WiFi en
-> "Cerrito Bongo" / VLAN30, sin autenticar).
+> **Última verificación:** 2026-06-02 (arquitectura nueva: portal en `http://biblioteca.tel/`).
 > **Veredicto:** ✅ Un cliente **no autenticado NO puede navegar** — ni por IPv4 ni por IPv6.
+> Toda navegación HTTP/HTTPS termina en el splash con URL bar canónica `biblioteca.tel`.
 
 Este documento resume **cómo se bloquea la navegación de clientes no autenticados**, los
 **hallazgos** que llevaron al estado actual y **cómo verificarlo**. Complementa:
@@ -22,12 +22,12 @@ por **MAC** en el set nftables `captive_allowed_mac` (timeout 8h).
 
 | Vector de un cliente NO autenticado | Comportamiento | Estado |
 |---|---|---|
-| HTTP IPv4 (`tcp/80`) | DNAT → splash `https://192.168.30.1:2050/` | ✅ atrapado |
-| HTTPS IPv4 (`tcp/443`) | DNAT → portal (cert autofirmado / aviso) | ✅ atrapado |
+| HTTP IPv4 (`tcp/80`) | DNAT → nginx `:80` → splash en `http://biblioteca.tel/` (Host=biblioteca.tel) o 302 al canónico (otros Host) | ✅ atrapado |
+| HTTPS IPv4 (`tcp/443`) | DNAT → portal `:2050` SSL (cert autofirmado / aviso → splash) | ✅ atrapado |
 | Cualquier otro IPv4 → WAN | `forward` exige `mark 0x1` → drop | ✅ bloqueado |
 | **IPv6 vía NAT64** (`64:ff9b::/96`) | drop en `captive_mangle` (prerouting) | ✅ bloqueado |
 | IPv6 nativo → WAN | sin ruta v6 + `forward` exige marca | ✅ bloqueado |
-| Probe de detección de portal del SO | falla por IPv6 → el SO cae a IPv4 → ve el splash | ✅ correcto |
+| Probe de detección de portal del SO | recibe 302 → biblioteca.tel → SO detecta portal → abre CNA | ✅ correcto |
 
 Un cliente **autenticado** (su MAC en el set) recibe `meta mark 0x1` y navega normal
 (HTTP por el proxy cache, HTTPS directo, IPv6/NAT64 permitido).
@@ -55,8 +55,12 @@ chain captive_mangle {
 ### 2.2 IPv4 — intercepción HTTP/HTTPS (tabla `ip nat`, prerouting)
 
 ```nft
-# NO autenticado: HTTP y HTTPS → splash del portal (:2050)
-iif "enp171s0.30" meta mark != 0x1 tcp dport 80  dnat to 192.168.30.1:2050
+# NO autenticado: HTTP → nginx :80 (HTTP plano, server_name biblioteca.tel sirve
+# splash; default_server hace 302 a http://biblioteca.tel/ → URL bar canónica)
+iif "enp171s0.30" meta mark != 0x1 tcp dport 80  dnat to 192.168.30.1:80
+# NO autenticado: HTTPS → portal :2050 SSL (cert autofirmado fallback — el
+# usuario debe aceptar warning, después llega al splash y el botón Aceptar
+# usa URL absoluta a http://biblioteca.tel/accept)
 iif "enp171s0.30" meta mark != 0x1 tcp dport 443 dnat to 192.168.30.1:2050
 # Autenticado: HTTP → proxy nginx (:8888) → Squid RPi (cache)
 iif "enp171s0.30" meta mark 0x1 ip daddr != 192.168.20.10 tcp dport 80 dnat to 192.168.30.1:8888
@@ -158,10 +162,12 @@ es efectivo.)
 
 ---
 
-## 4. Resultados de la prueba de campo (2026-06-01)
+## 4. Resultados de la prueba de campo
 
 Cliente real conectado al WiFi **"Cerrito Bongo"** (VLAN30), sin autenticar (set
-`captive_allowed_mac` vacío). IP obtenida `192.168.30.120`.
+`captive_allowed_mac` vacío).
+
+**Pre-2026-06-02** (portal en `https://192.168.30.1:2050`):
 
 | Prueba | Resultado | Veredicto |
 |---|---|---|
@@ -172,6 +178,18 @@ Cliente real conectado al WiFi **"Cerrito Bongo"** (VLAN30), sin autenticar (set
 | `curl -6 http://[64:ff9b::101:101]` (NAT64 forzado) | `HTTP 000` / timeout | ✅ bloqueado |
 | `curl -6 http://example.com` ×5 seguidas | `000` las 5 (sin fuga) | ✅ fix del Hallazgo 2 |
 | `ping 1.1.1.1` | 100% pérdida | ✅ sin salida cruda |
+
+**Post-2026-06-02** (portal canónico en `http://biblioteca.tel/`):
+
+| Prueba | Resultado | Veredicto |
+|---|---|---|
+| `curl -H 'Host: example.com' http://192.168.30.1/` | `302 → http://biblioteca.tel/` | ✅ canonicalización a biblioteca.tel |
+| `curl -H 'Host: biblioteca.tel' http://192.168.30.1/` | `200` con splash.html (3637 bytes) | ✅ splash directo |
+| `curl -H 'Host: captive.apple.com' http://192.168.30.1/hotspot-detect.html` | `302 → http://biblioteca.tel/` | ✅ probe del SO atrapado |
+| `curl http://192.168.30.1/generate_204` | `302 → http://biblioteca.tel/` | ✅ Android probe |
+| `curl http://192.168.30.1/connecttest.txt` | `302 → http://biblioteca.tel/` | ✅ Windows NCSI |
+| `curl -k https://192.168.30.1:2050/` | `200` splash (fallback HTTPS) | ✅ HTTPS sigue atrapado |
+| URL bar después de aceptar | `https://biblioteca.tel/` | ✅ dominio canónico, sin IP visible |
 
 ---
 
@@ -200,9 +218,10 @@ ansible-playbook router-setup/playbook.yml -i router-setup/inventory.ini --tags 
 
 1. Vaciar el set: `sudo nft flush set inet filter captive_allowed_mac`.
 2. Conectarse al WiFi "Cerrito Bongo" (VLAN30) con un equipo cuya MAC no esté autorizada.
-3. `curl -4 -i http://example.com` → debe responder `302` al portal `:2050` (no el sitio).
+3. `curl -4 -i http://example.com` → debe responder `302` a `http://biblioteca.tel/` (no el sitio).
 4. `curl -6 http://example.com` → debe dar timeout (`HTTP 000`), bloqueado por NAT64.
-5. Si **navega** a sitios reales sin aceptar → hay un problema.
+5. Navegar a `http://biblioteca.tel/` → debe mostrar el splash (no la landing real).
+6. Si **navega** a sitios reales sin aceptar → hay un problema.
 
 ---
 

@@ -1,8 +1,10 @@
-# Portal cautivo — flujo tecnico detallado
+# Portal cautivo — flujo técnico detallado
 
-> Actualizado: 2026-05-30 · Aplica a VLAN30 (clientes WiFi via Linksys E2500 AP bridge).
+> Actualizado: 2026-06-02 · Aplica a VLAN30 (clientes WiFi via Linksys E2500 AP bridge).
+>
+> **Arquitectura nueva (2026-06-02)**: el portal vive en `http://biblioteca.tel/` (HTTP plano, estilo aeropuerto). El DNAT para HTTP unauth va a `:80` (no `:2050`), nginx tiene un server_name para biblioteca.tel y un default_server que 302 al dominio canónico. El conntrack flush del handler fue eliminado (rompía la respuesta en vuelo → causaba el bug del doble-click). El meta-refresh post-auth lleva a `https://biblioteca.tel/` (RPi, cert auto-firmado, warning una vez por dispositivo).
 
-Este documento explica **paquete a paquete** como funciona el portal cautivo de Pacific Edge: que pasa desde que un cliente WiFi asocia al AP hasta que navega libremente por internet (o ve el splash). Para la operacion del dia a dia ver `DOCS/minipc/CAPTIVE-PORTAL.md`.
+Este documento explica **paquete a paquete** como funciona el portal cautivo de Pacific Edge: qué pasa desde que un cliente WiFi asocia al AP hasta que navega libremente por internet (o ve el splash). Para la operación del día a día ver `DOCS/minipc/CAPTIVE-PORTAL.md`.
 
 ## 1. Componentes involucrados
 
@@ -30,17 +32,22 @@ Cliente WiFi
     ▼
 Mini PC — nftables prerouting
     │ A. mangle: si MAC ∈ captive_allowed_mac → mark = 0x1
-    │ B. nat: si mark != 0x1 y dport 80/443 → DNAT a 192.168.30.1:2050
-    │    (portal); si mark = 0x1 → posiblemente DNAT a :8888 (HTTP)
+    │ B. nat: si mark != 0x1
+    │       y dport 80  → DNAT a 192.168.30.1:80   (nginx HTTP → splash o 302)
+    │       y dport 443 → DNAT a 192.168.30.1:2050 (nginx SSL fallback)
+    │    si mark = 0x1 y daddr != RPi y dport 80 → DNAT a :8888 (proxy a Squid)
     ▼
-Splash → click "Aceptar"
-    │ POST /accept → nginx :2050 → captive-accept.py :2051
-    │ captive-accept.py: agrega MAC al set, flush conntrack del cliente
+Splash en http://biblioteca.tel/ → click "Entrar a la biblioteca"
+    │ GET http://biblioteca.tel/accept (URL absoluta del anchor)
+    │ → nginx :80 location /accept → proxy_pass 127.0.0.1:2051
+    │ → captive-accept.py: lookup MAC vía ARP, nft add element
+    │ → 200 OK Connection: close + meta-refresh a https://biblioteca.tel/
     ▼
 Cliente recibe Success HTML → CNA del OS cierra popup
-    │ Browser sigue meta-refresh / JS a http://biblioteca.tel/
+    │ Browser cierra TCP (Connection: close)
+    │ Meta-refresh dispara → nuevo TCP a 192.168.20.10:443 (RPi HTTPS)
     ▼
-Nueva conexion: mark = 0x1 → trafico atraviesa forward normal
+Nueva conexión: mark = 0x1 → sin DNAT (daddr=RPi) → RPi nginx :443 sirve landing
 ```
 
 ## 3. Etapa 1 — Asignacion de IP
@@ -110,16 +117,20 @@ chain captive_mangle {
 **Chain `ip nat prerouting` con prioridad dstnat (-100):**
 
 ```nft
-# Captive HTTP
-iif "enp171s0.30" meta mark != 0x00000001 tcp dport 80  dnat to 192.168.30.1:2050
-# Captive HTTPS
+# Captive HTTP — va al :80 plano (no SSL). nginx server_name biblioteca.tel sirve
+# el splash directo; default_server hace 302 a http://biblioteca.tel/ para que la
+# URL bar quede en el dominio canónico.
+iif "enp171s0.30" meta mark != 0x00000001 tcp dport 80  dnat to 192.168.30.1:80
+# Captive HTTPS — fallback con cert auto-firmado en :2050. Browser muestra warning;
+# si el usuario lo acepta, ve el splash. El botón Aceptar usa URL absoluta a
+# http://biblioteca.tel/accept así la auth aterriza en el dominio HTTP canónico.
 iif "enp171s0.30" meta mark != 0x00000001 tcp dport 443 dnat to 192.168.30.1:2050
 # HTTP proxy autenticado (excepto a RPi)
 iif "enp171s0.30" meta mark 0x00000001 ip daddr != 192.168.20.10 tcp dport 80  dnat to 192.168.30.1:8888
 ```
 
-- **Sin auth**: SYN `→ 142.250.218.206:80` se reescribe a `→ 192.168.30.1:2050` (TLS). El cliente envia HTTP plano a un puerto TLS → nginx 2050 retorna **497** → `error_page 497 https://192.168.30.1:2050/;`.
-- **Sin auth, HTTPS**: SYN `→ 142.250.218.206:443` → `→ 192.168.30.1:2050`. nginx negocia TLS con el cert auto-firmado `Pacific Edge`. El cliente, esperando el cert de `google.com`, muestra warning. Si lo acepta, ve el splash.
+- **Sin auth, HTTP**: SYN `→ 142.250.218.206:80` se reescribe a `→ 192.168.30.1:80` (HTTP plano). nginx server_block según `Host` header: si el browser pidió `biblioteca.tel` ve el splash directo; cualquier otro Host (`example.com`, `www.google.com`, probes del SO, etc.) recibe `302 http://biblioteca.tel/` → browser navega → DNS → 192.168.20.10 → DNAT vuelve al mismo `:80` → ahora Host es biblioteca.tel → splash. **URL bar del cliente queda en `http://biblioteca.tel/` sin warnings de cert.**
+- **Sin auth, HTTPS**: SYN `→ 142.250.218.206:443` → `→ 192.168.30.1:2050`. nginx negocia TLS con el cert auto-firmado `Pacific Edge` (CN `portal.pacificedge.local`). El cliente, esperando el cert de `google.com` o `biblioteca.tel`, muestra warning. Si lo acepta, ve el splash.
 - **Con auth (mark=0x1)**: HTTP → `:8888` (intermediario nginx → Squid RPi cache); HTTPS → **sin DNAT**, sale directo a WAN via masquerade. El filtrado de porn/gambling se hace via Bind9 RPZ (no Squid intercept HTTPS — ver `DOCS/minipc/DNS-BIND9.md`).
 
 > El destino `192.168.20.10` se excluye del DNAT para que `biblioteca.tel` (que resuelve a la RPi) llegue directo: la RPi tiene Squid en modo `accel` para HTTP cache y reverse proxy HTTPS.
@@ -142,79 +153,124 @@ Por la politica `drop`, **un cliente sin mark no puede atravesar a otra zona**. 
 
 ## 6. Etapa 4 — Sirviendo el splash
 
-El cliente termina abriendo TCP con `192.168.30.1:2050`.
+El cliente HTTP termina abriendo TCP con `192.168.30.1:80`. El cliente HTTPS (caso fallback) llega a `192.168.30.1:2050`.
 
-### Server block nginx :2050
+### Server block nginx :80 — biblioteca.tel (canónico)
+
+```nginx
+# Server 1: Host == biblioteca.tel → splash directo
+server {
+    listen 80;
+    server_name biblioteca.tel;
+    root /etc/captive-portal;
+
+    location = /certificado.crt {
+        alias /etc/nginx/ssl/captive.crt;
+        add_header Content-Disposition 'attachment; filename="PacificEdge_Cert.crt"';
+        types { application/x-x509-ca-cert crt; }
+    }
+
+    location = /accept {
+        proxy_pass         http://127.0.0.1:2051;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_read_timeout 5s;
+        keepalive_timeout  0;   # Connection: close → ver nota
+    }
+
+    location = / {
+        try_files /splash.html =503;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    location / { return 302 http://biblioteca.tel/; }
+}
+
+# Server 2: cualquier otro Host → 302 a biblioteca.tel
+server {
+    listen 80 default_server;
+    server_name _;
+    root /etc/captive-portal;
+
+    location = /generate_204         { return 302 http://biblioteca.tel/; }
+    location = /hotspot-detect.html  { return 302 http://biblioteca.tel/; }
+    location = /connecttest.txt      { return 302 http://biblioteca.tel/; }
+    location = /ncsi.txt             { return 302 http://biblioteca.tel/; }
+    # … más probes …
+    location = /certificado.crt { alias /etc/nginx/ssl/captive.crt; ... }
+
+    location / { return 302 http://biblioteca.tel/; }
+}
+```
+
+**Por qué `keepalive_timeout 0` en `/accept`**: HTTP/1.1 reutiliza la conexión TCP existente. El meta-refresh post-auth necesita un TCP nuevo para que pase por nftables fresh y obtenga `mark=0x1` (porque la MAC ya está en el set). Forzando `Connection: close`, el browser cierra la conexión actual y abre una nueva para el siguiente request — ese SYN sí es evaluado fresh.
+
+**Por qué dos server blocks**: el `default_server` cubre los probes del SO (que vienen con `Host: captive.apple.com` o similar) y cualquier sitio externo que el usuario haya tipeado. Devuelve `302 http://biblioteca.tel/` → browser navega → DNS → 192.168.20.10 → DNAT vuelve a `:80` pero ahora con `Host: biblioteca.tel` → matchea el server 1 → splash. Resultado: la barra de URL del cliente queda en el dominio canónico, sin warnings de cert.
+
+### Server block nginx :2050 — fallback HTTPS (clientes que llegan vía :443)
 
 ```nginx
 server {
     listen 2050 ssl default_server;
     ssl_certificate     /etc/nginx/ssl/captive.crt;   # CA Pacific Edge
     ssl_certificate_key /etc/nginx/ssl/captive.key;
-    error_page 497 https://192.168.30.1:2050/;        # HTTP-on-HTTPS → splash
-
-    root /etc/captive-portal;
+    error_page 497 http://biblioteca.tel/;            # HTTP-on-HTTPS → portal canónico
 
     location = /accept {
         proxy_pass         http://127.0.0.1:2051;
         proxy_set_header   X-Real-IP $remote_addr;
-        proxy_read_timeout 5s;
-        keepalive_timeout  0;   # fuerza Connection: close (ver nota)
+        keepalive_timeout  0;
     }
 
     location / {
         try_files /splash.html =503;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
     }
 }
 ```
 
-**Por que `keepalive_timeout 0` en `/accept`**: HTTP/1.1 reutiliza la conexion TCP existente. Esa conexion *ya tenia* un DNAT cacheado en conntrack apuntando a `192.168.30.1:2050`. Si el browser hace el meta-refresh sobre la misma conexion, el SYN no se vuelve a evaluar y se queda atascado en el portal. Forzando `Connection: close`, el browser abre TCP fresco para el siguiente request — ese SYN sí pasa por nftables fresh y obtiene `mark=0x1` (porque la MAC ya esta en el set).
+El cert es auto-firmado con CN `portal.pacificedge.local`. El browser muestra `NET::ERR_CERT_AUTHORITY_INVALID` o `_COMMON_NAME_INVALID`. Si el usuario hace "Avanzado → Continuar", ve el splash. El botón "Entrar" usa URL absoluta a `http://biblioteca.tel/accept` así la auth termina en el dominio canónico HTTP sin más warnings.
 
-### Server block nginx :80 (interceptor HTTP plano)
+### Probes del SO — detección de portal cautivo
 
-```nginx
-server {
-    listen 80 default_server;
-    location = /certificado.crt { alias /etc/nginx/ssl/captive.crt; ... }
-    location = /generate_204         { return 302 https://192.168.30.1:2050/; }
-    location = /hotspot-detect.html  { return 302 https://192.168.30.1:2050/; }
-    location = /connecttest.txt      { return 302 https://192.168.30.1:2050/; }
-    location = /ncsi.txt             { return 302 https://192.168.30.1:2050/; }
-    location / { return 302 https://192.168.30.1:2050$request_uri; }
-}
-```
+Cuando el cliente WiFi se asocia, el SO hace probes HTTP a URLs conocidas para detectar conectividad:
 
-- Las locations explicitas son **probes de detección de portal cautivo** del OS:
-  - macOS / iOS: `captive.apple.com/hotspot-detect.html` (espera `<HTML>...<TITLE>Success</TITLE>...`).
-  - Android: `connectivitycheck.gstatic.com/generate_204` (espera HTTP 204 vacio).
-  - Windows: `msftconnecttest.com/connecttest.txt` (espera body `Microsoft Connect Test`).
-- Cuando el OS recibe un `302` en vez del payload esperado, asume "captive portal detectado" y abre el splash en el navegador del sistema (CNA en macOS, sheet de notificacion en Android, etc.).
-- La excepcion `/certificado.crt` permite al cliente descargar el CA `Pacific Edge` para instalarlo y evitar warnings futuros.
+| SO | URL del probe | Body esperado |
+|---|---|---|
+| macOS / iOS | `captive.apple.com/hotspot-detect.html` | `<HTML>…<TITLE>Success</TITLE>…</HTML>` |
+| Android | `connectivitycheck.gstatic.com/generate_204` | HTTP 204 vacío |
+| Windows | `www.msftconnecttest.com/connecttest.txt` | Body `Microsoft Connect Test` |
+
+Como esos hostnames resuelven a sus IPs reales, el SYN sale a la WAN. nftables lo intercepta con el DNAT `dport 80 → 192.168.30.1:80`. nginx default_server matchea el `Host` (no es biblioteca.tel) y devuelve `302 http://biblioteca.tel/`. El SO recibe `302` en lugar del body de éxito → "captive portal detectado" → abre el CNA (Captive Network Assistant) con la URL del Location → `http://biblioteca.tel/` → ve el splash.
+
+> El probe de iOS puede tardar varios minutos en disparar si el dispositivo no detecta cambio de SSID inmediatamente. No es bug del portal.
 
 ## 7. Etapa 5 — captive-accept.py
 
 El handler en `127.0.0.1:2051` es un mini servidor Python (BaseHTTPRequestHandler). Recibe GET `/accept`, ejecuta:
 
 1. **Lee la IP real** del cliente via header `X-Real-IP` (puesto por nginx).
-2. **Consulta ARP**: `ip neigh show <IP> dev enp171s0.30` y extrae la MAC con regex `lladdr ([0-9a-f]{2}(?::...){5})`. La entrada ARP existe con certeza porque el kernel resolvio la MAC al recibir el SYN.
+2. **Consulta ARP**: `ip neigh show <IP> dev enp171s0.30` y extrae la MAC con regex `lladdr ([0-9a-f]{2}(?::...){5})`. La entrada ARP existe con certeza porque el kernel resolvió la MAC al recibir el SYN.
 3. **Autoriza la MAC**: `nft add element inet filter captive_allowed_mac { <MAC> timeout 8h }`. El set es `dynamic,timeout 8h` → la entrada caduca sola.
-4. **Flush conntrack** para esa IP: `conntrack -D -s <IP>`. Asi las conexiones TCP existentes (que tenian DNAT al portal cacheado) se rompen y el cliente abre nuevas — que ya tendran `mark=0x1`.
-5. **Devuelve HTML Success**: `<TITLE>Success</TITLE>` + `meta-refresh` a `http://biblioteca.tel/`. El `<TITLE>Success</TITLE>` es **fundamental** para que el CNA de macOS cierre el popup: el sheet hace polling a `captive.apple.com` y al ver "Success" en el body decide que ya hay internet.
+4. **Devuelve HTML Success** con `Connection: close`: `<TITLE>Success</TITLE>` + `meta-refresh` + JS a `https://biblioteca.tel/`. El `<TITLE>Success</TITLE>` es **fundamental** para que el CNA de macOS cierre el popup: el sheet hace polling a `captive.apple.com` y al ver "Success" en el body decide que ya hay internet.
+
+> **No hay `conntrack -D`** en esta etapa. Una versión anterior del handler ejecutaba `conntrack -D -s <client_ip>` antes del `wfile.write()` final con la intención de invalidar la entrada DNAT cacheada. Pero esto eliminaba el reverse-NAT para los paquetes de respuesta en vuelo — la respuesta salía con `src=192.168.30.1:80` en lugar del `src` que el TCP del cliente esperaba (la IP/puerto que pidió originalmente) → el cliente descartaba la respuesta → el meta-refresh nunca se procesaba → el usuario tenía que clickear "Aceptar" dos veces (bug del doble-click). Se eliminó: con `keepalive_timeout 0` en nginx, el header `Connection: close` ya garantiza que el browser cierra el TCP al recibir la respuesta y abre uno nuevo para el meta-refresh, que es evaluado fresh por nftables.
 
 ```
 GET /accept HTTP/1.1
-Host: 192.168.30.1:2050
+Host: biblioteca.tel
 X-Real-IP: 192.168.30.114
 ↓
 captive-accept.py:
   IP = 192.168.30.114
   MAC = lookup_mac_for_ip(IP)  → 3e:31:b8:b9:0c:d1
   nft add element ... captive_allowed_mac { 3e:31:b8:b9:0c:d1 }
-  conntrack -D -s 192.168.30.114
-  return SUCCESS_HTML
+  return SUCCESS_HTML (Connection: close, meta-refresh a https://biblioteca.tel/)
 ↓
-nginx :2050 → cliente: 200 OK <html>Success...</html>
+nginx :80 → cliente: 200 OK <html><title>Success</title>...
+↓
+browser cierra TCP (Connection: close)
+↓
+meta-refresh dispara → nuevo TCP a 192.168.20.10:443 (RPi)
+  ahora mark=0x1 (MAC en el set) → sin DNAT → cliente HTTPS a la landing
 ```
 
 ## 8. Etapa 6 — Trafico post-autenticacion
@@ -245,7 +301,7 @@ El cliente esta marcado `mark=0x1` en cada paquete proveniente de su MAC. Tres r
 - El set `captive_allowed_mac` es `dynamic, timeout 8h`. Cada entrada se elimina sola tras 8 h.
 - Cuando expira, el siguiente SYN del cliente no obtiene mark → vuelve a caer al portal.
 - Si el cliente cambia de MAC (privacy MAC randomization en iOS/macOS al reasociarse) → re-auth necesaria.
-- Operador puede expulsar manualmente: `sudo nft delete element inet filter captive_allowed_mac '{ <MAC> }'` + `sudo conntrack -D -s <IP>`.
+- Operador puede expulsar manualmente: `sudo nft delete element inet filter captive_allowed_mac '{ <MAC> }'`. (No hace falta `conntrack -D`: las conexiones HTTP/HTTPS post-auth no estaban DNAT'd, así que no hay reverse-NAT que invalidar; simplemente la próxima conexión nueva caerá al portal.)
 
 ## 10. Resumen visual del decision tree (paquete dport 80)
 
@@ -261,12 +317,12 @@ SYN ingresa por enp171s0.30, ether saddr = MAC
             │              │
             ▼              ▼
   ┌──────────────┐   ┌──────────────────────────┐
-  │ DNAT → :2050 │   │ daddr == 192.168.20.10 ? │
-  └──────────────┘   └───┬──────────────┬───────┘
-                         │ no           │ si
-                         ▼              ▼
-                  DNAT → :8888    sin DNAT
-                  (nginx→Squid)   (directo a RPi)
+  │ DNAT → :80   │   │ daddr == 192.168.20.10 ? │
+  │ (nginx       │   └───┬──────────────┬───────┘
+  │  biblioteca  │       │ no           │ si
+  │  .tel splash)│       ▼              ▼
+  └──────────────┘  DNAT → :8888    sin DNAT
+                   (nginx→Squid)   (directo a RPi)
 ```
 
 ## 11. Operacion
@@ -277,7 +333,7 @@ sudo nft list set inet filter captive_allowed_mac
 
 # Forzar deauth a un cliente
 sudo nft delete element inet filter captive_allowed_mac '{ AA:BB:CC:DD:EE:FF }'
-sudo conntrack -D -s 192.168.30.<IP>
+# (No es necesario `conntrack -D`: la próxima conexión nueva del cliente cae al portal por sí sola.)
 
 # Ver reglas DNAT del portal
 sudo nft -a list chain ip nat prerouting
@@ -285,11 +341,21 @@ sudo nft -a list chain ip nat prerouting
 # Logs del handler
 sudo journalctl -u captive-accept -f
 
-# Logs del splash (nginx access)
-sudo tail -f /var/log/nginx/access.log | grep ":2050"
+# Logs del splash (nginx access) — todos los hits al portal
+sudo tail -f /var/log/nginx/access.log | grep -E '/(accept|generate_204|hotspot-detect|connecttest)'
 
-# Test rapido del splash desde el Mini PC
+# Test rápido del splash desde el Mini PC (simulando Host header)
+curl -s -o /dev/null -w "%{http_code} %{size_download}b\n" \
+     -H "Host: biblioteca.tel" http://192.168.30.1/
+# Esperado: 200 ~3637b (splash.html)
+
+curl -s -o /dev/null -w "%{http_code} → %{redirect_url}\n" \
+     -H "Host: example.com" http://192.168.30.1/
+# Esperado: 302 → http://biblioteca.tel/
+
+# Fallback HTTPS (cert auto-firmado)
 curl -k -o /dev/null -w "%{http_code}\n" https://192.168.30.1:2050/
+# Esperado: 200
 
 # Test del handler /accept (simula auth)
 curl -H "X-Real-IP: 192.168.30.42" http://127.0.0.1:2051/accept

@@ -75,7 +75,7 @@ Acceso: `ssh -i ~/.ssh/plats_mini_pc user@100.90.95.134`
 Servicios activos (systemd):
 - `named.service` — DNS Bind9 (`biblioteca.tel`), escucha en las tres VLANs (`:53`). Rol Ansible: `minipc/router-setup/roles/dns/`. Docs: `minipc/services/DNS-BIND9.md`.
 - `kea-dhcp4-server.service` — DHCP IPv4 (Kea), sirve las 3 VLANs. Config: `/etc/kea/kea-dhcp4.conf`. Rol Ansible: `minipc/router-setup/roles/dhcp/`. Docs: `minipc/services/DHCP-KEA.md`.
-- `captive-portal.service` (nginx en `:2050`) y `captive-accept.service` (handler en `127.0.0.1:2051`) — portal cautivo VLAN 30. Rol: `minipc/router-setup/roles/captive_portal/`. Docs: `minipc/services/CAPTIVE-PORTAL.md`, `minipc/services/portalCautivo/`.
+- Portal cautivo VLAN 30 — `nginx.service` (sirve splash en `http://biblioteca.tel/` vía nginx `:80` con server_name biblioteca.tel; fallback HTTPS en `:2050` con cert auto-firmado) + `captive-accept.service` (handler Python en `127.0.0.1:2051`). `captive-portal.service` está **disabled** (legado, peleaba puertos con nginx). Rol: `minipc/router-setup/roles/captive_portal/`. Docs: `DOCS/minipc/CAPTIVE-PORTAL.md`, `DOCS/minipc/CAPTIVE-PORTAL-FLOW.md`.
 - `nginx.service` (`:8888`) — proxy HTTP intermediario que reenvía tráfico autorizado de VLAN 30 hacia Squid en la RPi. Rol: `minipc/router-setup/roles/captive_portal/`. Docs: `minipc/services/HTTP-PROXY-NGINX.md`.
 - `chrony.service` — servidor NTP para las VLANs internas. Rol: `minipc/router-setup/roles/ntp/`. Docs: `minipc/services/NTP-CHRONY.md`.
 - `prometheus.service` + `grafana-server.service` + `node_exporter.service` (`:9100`) — monitoreo. Rol: `minipc/router-setup/roles/monitoring/`. Docs: `minipc/services/MONITORING.md`.
@@ -86,7 +86,7 @@ Routing / NAT (nftables, tabla `ip nat`):
 - `postrouting`: `masquerade` saliendo por `enp170s0` (NAT hacia Internet).
 - `prerouting`:
   - DNAT DNS (UDP/TCP 53) desde VLANs hacia `192.168.10.1:53` (Bind9).
-  - VLAN 30 sin marca `0x1`: HTTP redirigido al portal cautivo `192.168.30.1:2050`.
+  - VLAN 30 sin marca `0x1`: HTTP redirigido a nginx `192.168.30.1:80` (splash en `biblioteca.tel`); HTTPS redirigido a `192.168.30.1:2050` (fallback SSL).
   - VLAN 30 con marca `0x1` (autenticados): HTTP redirigido al proxy nginx `192.168.30.1:8888` → Squid `192.168.20.10:3128`.
 - `net.ipv4.ip_forward = 1`.
 
