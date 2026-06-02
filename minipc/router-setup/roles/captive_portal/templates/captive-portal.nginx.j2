@@ -1,41 +1,98 @@
 # Managed by Ansible — do not edit manually
-# Portal cautivo — Splash page + OS probes
-# Puerto {{ captive_portal_port }}: sirve splash.html, maneja probes de OS, delega /accept al handler Python
+# Portal cautivo — Splash en http://biblioteca.tel/  (HTTP plano, estilo aeropuerto)
+#
+# Arquitectura:
+#   - Cliente NO autenticado: nftables hace DNAT del HTTP/80 → 192.168.30.1:80
+#     (este nginx). El server_name "biblioteca.tel" sirve el splash; cualquier
+#     otro Host se redirige a http://biblioteca.tel/ para que la URL bar quede
+#     siempre en el dominio canónico.
+#   - HTTPS sin auth: nftables sigue DNATeando a :2050 (SSL self-signed). El
+#     usuario verá warning de cert; si lo acepta, el splash redirige al dominio HTTP.
+#   - Cliente autenticado (mark=0x1): HTTP a destinos != RPi DNAT a :8888 (proxy).
+#     HTTP a biblioteca.tel (=RPi) NO se DNATea → llega directo a la RPi.
 
-# ── 1. Interceptor HTTP (Atrapa tráfico en texto plano) ──────────────────────
+# ── 1. biblioteca.tel HTTP — splash + /accept ────────────────────────────────
 server {
-    listen 80 default_server;
-    server_name _;
+    listen 80;
+    listen [::]:80;
+    server_name biblioteca.tel;
 
-    # 1.1 Excepción: Permitir descargar el certificado SIN redirigir a HTTPS
+    root /etc/captive-portal;
+    charset utf-8;
+
+    # Descarga del CA Pacific Edge (para clientes que quieran instalar el cert)
     location = /certificado.crt {
         alias /etc/nginx/ssl/captive.crt;
-        # Esto le dice al navegador que lo descargue en lugar de intentar leerlo como texto
         add_header Content-Disposition 'attachment; filename="PacificEdge_Cert.crt"';
         types { application/x-x509-ca-cert crt; }
     }
 
-    # 1.2 Redirigir las sondas de los OS al puerto seguro
-    location = /generate_204 {
-        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    # Aceptar portal — delega al handler Python (necesita root para nft)
+    # keepalive_timeout 0 hace que nginx envíe `Connection: close`, forzando al
+    # browser a abrir TCP nuevo para el meta-refresh (que entonces evalúa fresh
+    # por nftables y obtiene mark=0x1 sin DNAT).
+    location = /accept {
+        proxy_pass         http://127.0.0.1:{{ captive_accept_port }};
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   Host      $host;
+        proxy_read_timeout 5s;
+        keepalive_timeout  0;
     }
-    location = /hotspot-detect.html {
-        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+
+    # Splash en la raíz
+    location = / {
+        try_files /splash.html =503;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma        no-cache;
     }
-    location = /connecttest.txt {
-        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
-    }
-    location = /ncsi.txt {
-        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
-    }
-    
-    # 1.3 Redirigir cualquier otra cosa al HTTPS
+
+    # Cualquier otra path en biblioteca.tel (cuando estoy unauth) → al splash
     location / {
-        return 302 https://{{ captive_portal_ip }}:{{ captive_portal_port }}$request_uri;
+        return 302 http://biblioteca.tel/;
     }
 }
 
-# ── 2. Portal Seguro HTTPS (Puerto {{ captive_portal_port }}) ────────────────
+# ── 2. Default server HTTP — intercepta probes del SO + cualquier otro Host ──
+# Toda request HTTP que NO tenga Host: biblioteca.tel (ej.: tipeaste example.com,
+# o el SO probe a captive.apple.com) cae acá. Devolvemos 302 a http://biblioteca.tel/
+# para que la barra de URL quede en el dominio canónico Y para que el CNA del SO
+# detecte "captive portal" (cualquier respuesta != Success/204 dispara el sheet).
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    root /etc/captive-portal;
+
+    # Probes explícitos (para que el CNA del SO detecte portal y abra el sheet)
+    location = /generate_204             { return 302 http://biblioteca.tel/; }
+    location = /gen_204                  { return 302 http://biblioteca.tel/; }
+    location = /hotspot-detect.html      { return 302 http://biblioteca.tel/; }
+    location = /library/test/success.html { return 302 http://biblioteca.tel/; }
+    location = /connecttest.txt          { return 302 http://biblioteca.tel/; }
+    location = /ncsi.txt                 { return 302 http://biblioteca.tel/; }
+    location = /success.txt              { return 302 http://biblioteca.tel/; }
+    location = /canonical.html           { return 302 http://biblioteca.tel/; }
+
+    # Cert descargable también acá (por si el browser cae por Host distinto)
+    location = /certificado.crt {
+        alias /etc/nginx/ssl/captive.crt;
+        add_header Content-Disposition 'attachment; filename="PacificEdge_Cert.crt"';
+        types { application/x-x509-ca-cert crt; }
+    }
+
+    # Catch-all → redirige al portal canónico
+    location / {
+        return 302 http://biblioteca.tel/;
+    }
+}
+
+# ── 3. Portal seguro HTTPS — fallback para clientes que llegan vía :443 ─────
+# nftables sigue DNATeando HTTPS no-autenticado al :2050 con SSL self-signed.
+# Caso de uso: alguien tipea https://lo-que-sea o un sitio HSTS-strict.
+# Verán "Tu conexión no es privada" → si proceden, ven el splash. El botón de
+# Aceptar usa URL absoluta a http://biblioteca.tel/accept para salir del HTTPS
+# autofirmado y aterrizar en el dominio canónico HTTP.
 server {
     listen {{ captive_portal_port }} ssl default_server;
     server_name _;
@@ -43,34 +100,28 @@ server {
     root /etc/captive-portal;
     charset utf-8;
 
-    # ── Configuración SSL ────────────────────────────────────────────────────
     ssl_certificate /etc/nginx/ssl/captive.crt;
     ssl_certificate_key /etc/nginx/ssl/captive.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
-    # Fix HTTP-on-HTTPS-port: nftables DNAT envía port 80 unauthenticated → port 2050
-    # (SSL). El cliente habla HTTP plano al puerto SSL → nginx devuelve 497. Este
-    # error_page lo redirige al splash HTTPS para que el browser lo muestre correctamente.
-    error_page 497 https://{{ captive_portal_ip }}:{{ captive_portal_port }}/;
+    # Si el cliente habla HTTP plano a este puerto SSL → 497, redirige al portal HTTP
+    error_page 497 http://biblioteca.tel/;
 
-    # ── Aceptar portal: delegar al handler Python (necesita root para nft) ───
-    # Connection: close fuerza al browser a cerrar el TCP después de esta respuesta.
-    # Sin esto, el browser reutiliza la conexión HTTP/1.1 keep-alive que estaba
-    # DNAT'd al captive portal (conntrack cachea la decisión DNAT por conexión).
-    # Al cerrar el TCP, la siguiente petición (meta-refresh a biblioteca.tel) abre
-    # una nueva conexión que sí pasa por nftables fresh y recibe mark=0x1.
+    location = /certificado.crt {
+        alias /etc/nginx/ssl/captive.crt;
+        add_header Content-Disposition 'attachment; filename="PacificEdge_Cert.crt"';
+        types { application/x-x509-ca-cert crt; }
+    }
+
     location = /accept {
         proxy_pass         http://127.0.0.1:{{ captive_accept_port }};
         proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   Host      $host;
         proxy_read_timeout 5s;
-        # keepalive_timeout 0 hace que nginx envíe Connection: close en esta
-        # respuesta, cerrando el TCP. El browser abre nueva conexión para el
-        # meta-refresh, que pasa por nftables fresh y recibe mark=0x1 (no DNAT).
         keepalive_timeout  0;
     }
 
-    # ── Splash page ──────────────────────────────────────────────────────────
     location / {
         try_files /splash.html =503;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
