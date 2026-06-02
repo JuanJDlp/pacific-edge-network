@@ -2,21 +2,20 @@
 # Managed by Ansible — do not edit manually
 # IMPORTANTE: este archivo contiene el secret HMAC. Permisos 0640 owner bind.
 
-key "ns1-ns2." {
+key "{{ tsig_key_name }}" {
     algorithm hmac-sha256;
     secret "{{ tsig_secret }}";
 };
 
-# Master declara al slave y le asocia la llave
+# Master usa la llave al contactar al slave (NOTIFY/transfer) por IPv4 e IPv6
 server {{ dns_slave_ip }} {
     keys {
-        ns1-ns2.;
+        {{ tsig_key_name }};
     };
 };
 
-# Incluir también la dirección IPv6 del slave
 server {{ dns_slave_ipv6 }} {
     keys {
-        ns1-ns2.;
+        {{ tsig_key_name }};
     };
 };

@@ -18,6 +18,28 @@
     mode: "0755"
   become: true
 
+# ── Preparación DNSSEC (debe correr ANTES de validar named.conf.options) ──────
+# named.conf.options incluye el trust-anchor file; key-directory debe existir
+# para que inline-signing pueda escribir las claves.
+- name: DNSSEC | Crear key-directory (claves auto-gestionadas por BIND)
+  file:
+    path: "{{ dnssec_key_dir }}"
+    state: directory
+    owner: bind
+    group: bind
+    mode: "0750"
+  become: true
+
+- name: DNSSEC | Asegurar trust-anchor file (placeholder si no existe)
+  copy:
+    dest: "{{ dnssec_trust_anchor_file }}"
+    content: "# Trust anchor de {{ dns_domain }} — se completa tras firmar la zona\n"
+    owner: bind
+    group: bind
+    mode: "0644"
+    force: false
+  become: true
+
 # ── Deshabilitar systemd-resolved en interfaces LAN ──────────────────────────
 # Bind9 necesita escuchar en 192.168.10.1/20.1/30.1 (TCP y UDP).
 # El drop-in lan-stub.conf con DNSStubListenerExtra ocupa TCP en esas IPs,
@@ -42,13 +64,16 @@
 
 # ── Configuración Bind9 ───────────────────────────────────────────────────────
 - name: Desplegar named.conf.options
+  # No se valida con `named-checkconf %s` (fragmento aislado): este archivo
+  # incluye named.conf.rpz, cuyo response-policy referencia la zona rpz.blocklist
+  # declarada en named.conf.local. La validación se hace sobre la config COMPLETA
+  # más abajo, una vez desplegados todos los includes.
   template:
     src: named.conf.options.j2
     dest: /etc/bind/named.conf.options
     owner: bind
     group: bind
     mode: "0644"
-    validate: "named-checkconf %s"
   become: true
   notify: reload bind9
 
@@ -62,10 +87,10 @@
   become: true
   notify: reload bind9
 
-- name: Desplegar zona directa biblioteca.tel
+- name: Desplegar zona directa biblioteca.tel (en /var/lib/bind para inline-signing)
   template:
     src: db.forward.j2
-    dest: "/etc/bind/zones/db.{{ dns_domain }}"
+    dest: "{{ dns_forward_zone_path }}"
     owner: bind
     group: bind
     mode: "0644"
@@ -85,13 +110,23 @@
   become: true
   notify: reload bind9
 
+# ── TSIG ─────────────────────────────────────────────────────────────────────
+# Se despliega ANTES de DNSSEC: el firmado fuerza un reload, y named.conf.local
+# incluye named.conf.tsig — debe existir antes de recargar.
+- name: Ejecutar tareas TSIG
+  include_tasks: tsig.yml
+
+# ── Validar config COMPLETA antes del reload que firma la zona ───────────────
+# named.conf + todos los includes (options, local, rpz, tsig, trust-anchor).
+# Si falla, el playbook se detiene y NO se recarga BIND.
+- name: Validar configuración completa de BIND (named-checkconf)
+  command: named-checkconf
+  become: true
+  changed_when: false
+
 # ── DNSSEC ────────────────────────────────────
 - name: Ejecutar tareas DNSSEC
-  include_tasks: dnssec.yml  
-
-# ── TSIG ─────────────────────────────────────────────────────────────────────
-- name: Ejecutar tareas TSIG
-  include_tasks: tsig.yml 
+  include_tasks: dnssec.yml
 
 # ── RPZ offline zone (para wan-check.sh) ────────────────────────────────────
 - name: Desplegar RPZ offline zone file
@@ -199,7 +234,7 @@
   when: rpz_bootstrap is succeeded
 
 - name: Validar zona directa con named-checkzone
-  command: "named-checkzone {{ dns_domain }} /etc/bind/zones/db.{{ dns_domain }}"
+  command: "named-checkzone {{ dns_domain }} {{ dns_forward_zone_path }}"
   become: true
   changed_when: false
   ignore_errors: "{{ ansible_check_mode }}"

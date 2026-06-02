@@ -1,32 +1,47 @@
-# Managed by Ansible — do not edit manually
+// Managed by Ansible — do not edit manually
+// Bind9 options para Mini PC — Biblioteca Digital Ladrilleros
+// Dual-stack: IPv4 + IPv6 (ULA). DNS64 sintetiza AAAA para NAT64 (Jool).
+
+// ── DNSSEC trust anchor de biblioteca.tel ────────────────────────────────────
+// Como biblioteca.tel es un TLD local (sin cadena de confianza desde la raíz),
+// se ancla la KSK de la zona aquí para que el resolver valide y marque AD.
+// El archivo lo (re)genera el rol DNS tras firmar la zona. Empieza vacío.
+include "{{ dnssec_trust_anchor_file }}";
 
 options {
     directory "/var/cache/bind";
 
-    # ── Escucha ───────────────────────────────────────────────────────────────
-    listen-on {
+    // Reenviar queries externas al ISP / DNS público
+    forwarders {
+{% for fw in dns_forwarders %}
+        {{ fw }};
+{% endfor %}
+    };
+    forward only;
+
+    // ── DNSSEC ───────────────────────────────────────────────────────────────
+    // Validación activa: necesaria para validar la zona local firmada (trust
+    // anchor arriba) y marcar AD. Los forwarders (Google/Cloudflare) entregan
+    // los registros DNSSEC, así que BIND valida las respuestas reenviadas.
+    dnssec-validation auto;
+
+    // Escuchar IPv4 en loopback y VLANs
+    listen-on port 53 {
 {% for ip in dns_listen_ips %}
         {{ ip }};
 {% endfor %}
     };
 
-    listen-on-v6 {
+    // Escuchar IPv6 en loopback y VLANs (dual-stack)
+    listen-on-v6 port 53 {
 {% for ip in dns_listen_ips_v6 %}
         {{ ip }};
 {% endfor %}
     };
 
-    # ── Queries permitidas ────────────────────────────────────────────────────
-    allow-query {
-{% for net in dns_allow_query %}
-        {{ net }};
-{% endfor %}
-{% for net in dns_allow_query_v6 %}
-        {{ net }};
-{% endfor %}
-    };
+    // Recursión habilitada solo para redes internas (IPv4 + IPv6)
+    recursion yes;
 
-    # ── Recursión permitida solo a redes internas ─────────────────────────────
     allow-recursion {
 {% for net in dns_allow_query %}
         {{ net }};
@@ -36,26 +51,44 @@ options {
 {% endfor %}
     };
 
-    # ── Zone transfers: denegar globalmente (solo por llave TSIG en cada zona)
-    allow-transfer { none; };
-
-    # ── Forwarders ────────────────────────────────────────────────────────────
-    forwarders {
-{% for fw in dns_forwarders %}
-        {{ fw }};
+    allow-query {
+{% for net in dns_allow_query %}
+        {{ net }};
+{% endfor %}
+{% for net in dns_allow_query_v6 %}
+        {{ net }};
 {% endfor %}
     };
-    forward only;
 
-    # ── DNSSEC ────────────────────────────────────────────────────────────────
-    dnssec-validation auto;
+    // ── Zone transfers: denegar globalmente; cada zona autoriza por TSIG ──────
+    // La autenticación de AXFR/IXFR la hace la llave ns1-ns2. en named.conf.local
+    // (allow-transfer { key "ns1-ns2."; }). Aquí se niega por defecto.
+    allow-transfer { none; };
 
-    # Fix dual-stack: evita timeouts IPv6 que rompen validación DNSSEC
-    # BIND en dual-stack intenta resolver DS/DNSKEY por IPv6 y falla.
-    filter-aaaa-on-v4 yes;
+    auth-nxdomain no;
 
-    # ── DNS64 → NAT64 (Jool) ─────────────────────────────────────────────────
+    // ─── DNS64 ────────────────────────────────────────────────────────────
+    // Sintetiza 64:ff9b::<ipv4> para destinos externos sin AAAA real,
+    // y reemplaza AAAA reales con sintéticos porque no hay IPv6 nativo en el WAN.
+    //
+    // mapped:  excluye RFC1918 → no sintetiza para hosts internos IPv4-only
+    // exclude: excluye ULA fd00::/8 → preserva AAAA reales de la red interna
+    //          (biblioteca.tel y demás hosts dual-stack locales)
     dns64 {{ dns64_prefix }} {
         clients { any; };
+        mapped {
+            !10.0.0.0/8;
+            !172.16.0.0/12;
+            !192.168.0.0/16;
+            any;
+        };
+        exclude {
+            !fd00::/8;
+            any;
+        };
     };
+
+    // RPZ offline — wan-check.sh intercambia entre .enabled y .disabled
+    // Cuando WAN esta caido, response-policy redirige dominios externos a 192.168.30.1
+    include "/etc/bind/named.conf.rpz";
 };

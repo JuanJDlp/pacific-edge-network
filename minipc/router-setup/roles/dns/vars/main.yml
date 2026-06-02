@@ -65,6 +65,7 @@ dns_reverse_zones:
 dns_hosts:
   - { name: "minipc",      ip: "192.168.10.1",  ipv6: "fd00:0:0:10::1",  vlan_octet: "10" }
   - { name: "ns1",         ip: "192.168.10.1",  ipv6: "fd00:0:0:10::1",  vlan_octet: "10" }
+  - { name: "monitoreo",   ip: "192.168.10.1",                           vlan_octet: "10" }
   - { name: "switch",      ip: "192.168.10.2",                            vlan_octet: "10" }
   - { name: "biblioteca",  ip: "192.168.20.10", ipv6: "fd00:0:0:20::10", vlan_octet: "20" }
   - { name: "rpi",         ip: "192.168.20.10", ipv6: "fd00:0:0:20::10", vlan_octet: "20" }
@@ -72,6 +73,31 @@ dns_hosts:
 # IP del DNS secundario (RPi) para zone transfers
 dns_slave_ip: "192.168.20.10"
 dns_slave_ipv6: "fd00:0:0:20::10"
+
+# ── TSIG ──────────────────────────────────────────────────────────────────────
+# Clave compartida master↔slave para autenticar AXFR/IXFR/NOTIFY.
+# Nombre: ns1-ns2.  Algoritmo: hmac-sha256.
+# El MISMO secret debe estar en raspberry/rpi-setup/group_vars/all.yml (slave).
+# Pre-generado con `tsig-keygen` / `openssl rand -base64 32` para que ambos
+# playbooks (inventarios separados) lo desplieguen sin delegación cross-host.
+tsig_key_name: "ns1-ns2."
+tsig_secret: "QAY8sEB3xfyFnIbuwLdepnL3CszyywTvmCAuDRzdEsg="
+
+# ── DNSSEC ────────────────────────────────────────────────────────────────────
+# Firmado automático con dnssec-policy + inline-signing (BIND 9.18).
+# BIND genera/rota las claves en dnssec_key_dir y re-firma antes de expirar.
+#
+# IMPORTANTE (AppArmor): el perfil usr.sbin.named deja /etc/bind como SOLO
+# LECTURA y solo /var/lib/bind y /var/cache/bind como rw. inline-signing debe
+# escribir el .signed, el journal (.jnl) y las claves → todo va en /var/lib/bind.
+dnssec_policy: "default"
+dnssec_key_dir: "/var/lib/bind/keys"
+dnssec_trust_anchor_file: "/etc/bind/named.conf.trust-anchors"
+
+# Zona directa FUENTE (sin firmar) de biblioteca.tel. En /var/lib/bind para que
+# BIND pueda escribir junto a ella db.biblioteca.tel.signed + .jnl (AppArmor).
+# Las zonas inversas (master estático, sin firmar) siguen en /etc/bind/zones.
+dns_forward_zone_path: "/var/lib/bind/db.{{ dns_domain }}"
 
 # CNAME: servicios educativos → biblioteca (RPi)
 dns_aliases:

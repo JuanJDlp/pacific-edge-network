@@ -17,6 +17,17 @@
   become: true
   notify: restart named
 
+# named.conf.local incluye named.conf.tsig → debe existir antes del reload.
+- name: TSIG | Desplegar named.conf.tsig (slave)
+  template:
+    src: named.conf.tsig.j2
+    dest: /etc/bind/named.conf.tsig
+    owner: root
+    group: bind
+    mode: "0640"
+  become: true
+  notify: restart named
+
 - name: Desplegar named.conf.local (slave zones)
   template:
     src: named.conf.local.j2
