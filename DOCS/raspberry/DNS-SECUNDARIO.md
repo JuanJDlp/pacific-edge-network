@@ -1,7 +1,10 @@
 # DNS Secundario — Bind9 slave de biblioteca.tel en RPi
 
-> **Ultima actualizacion:** 2026-05-30
+> **Ultima actualizacion:** 2026-06-02
 > BIND 9.18.39
+>
+> 📚 Teoría + porqué de master/slave, TSIG y DNSSEC en [`dns/`](../../dns/) (raíz del
+> repo), en especial [`dns/04-master-slave-tsig.md`](../../dns/04-master-slave-tsig.md).
 
 ## Rol Ansible
 
@@ -14,35 +17,52 @@ Bind9 en la RPi actua como DNS secundario (slave) del dominio `biblioteca.tel`. 
 ## Arquitectura DNS
 
 ```
-[Mini PC — 192.168.10.1]         [RPi — 192.168.20.10]
-  Bind9 master                      Bind9 slave
-  zona: biblioteca.tel    ──→     zona: biblioteca.tel (copia)
-  zonas inversas VLAN10/20/30 ──→  zonas inversas (copia)
+[Mini PC — master]                       [RPi — 192.168.20.10 — slave]
+  Bind9 master                             Bind9 slave
+  zona: biblioteca.tel (firmada DNSSEC) ─▶  zona: biblioteca.tel (copia firmada)
+  zonas inversas VLAN10/20/30 ───────────▶  zonas inversas (copia)
 
-  AXFR zone transfer
-  (allow-transfer { 192.168.20.10; })
+  AXFR/IXFR + NOTIFY autenticados con TSIG (clave ns1-ns2.)
+  La RPi pide al master por su IP en la VLAN20: 192.168.20.1
 ```
 
-## Zone transfer: Mini PC → RPi
+## Zone transfer: Mini PC → RPi (autenticado con TSIG)
 
-El Mini PC fue actualizado para permitir transfers a la RPi en `named.conf.local.j2`:
+Las transferencias están **autenticadas con TSIG** (clave compartida `ns1-ns2.`,
+`hmac-sha256`), no por IP. El master autoriza por clave en `named.conf.local.j2`:
 
 ```bind
 zone "biblioteca.tel" {
     type master;
-    allow-transfer { 192.168.20.10; };  // RPi DNS secundario
+    allow-transfer { key "ns1-ns2."; };          // solo quien presente la clave
+    also-notify { 192.168.20.10; fd00:0:0:20::10; };
+    notify yes;
 };
 ```
 
-La RPi declara las zonas como slave:
+La RPi declara las zonas como slave, presentando la clave al master:
 
 ```bind
 zone "biblioteca.tel" {
     type slave;
-    masters { 192.168.10.1; };
+    masters { 192.168.20.1 key "ns1-ns2."; };    // ← IP del master en la VLAN20
     file "/var/cache/bind/db.biblioteca.tel";
 };
 ```
+
+> **Ojo con la IP del master:** la RPi transfiere desde **`192.168.20.1`** (la IP del
+> Mini PC en la VLAN20, mismo segmento que la RPi), no desde `192.168.10.1`. Variable:
+> `dns_master_transfer_ip` en `group_vars/all.yml`.
+
+### TSIG y DNSSEC
+
+- **TSIG:** la clave (`tsig_key_name` / `tsig_secret`) está en
+  `raspberry/rpi-setup/group_vars/all.yml` y **debe ser idéntica** a la del master
+  (`minipc/router-setup/roles/dns/vars/main.yml`). El slave la despliega en
+  `/etc/bind/named.conf.tsig` (solo el bloque `key`).
+- **DNSSEC:** la zona llega a la RPi **ya firmada** por el master. El slave **no firma**
+  (no tiene las claves privadas), solo sirve la copia firmada. Por eso el master hace
+  `also-notify` explícito: cuando re-firma la zona (las RRSIG expiran), avisa al slave.
 
 ## Zonas replicadas
 
@@ -99,4 +119,24 @@ sudo named-checkconf
 | Template | Destino en RPi |
 |----------|----------------|
 | `templates/named.conf.options.j2` | `/etc/bind/named.conf.options` |
+| `templates/named.conf.tsig.j2` | `/etc/bind/named.conf.tsig` (0640) |
 | `templates/named.conf.local.j2` | `/etc/bind/named.conf.local` |
+
+## Zona ajena: `praticasaws.dev` (Matrix/Conduit)
+
+`named.conf.local.j2` del slave también declara `zone "praticasaws.dev" { type master; }`.
+**No es parte del DNS de la red comunitaria** (es del homeserver Matrix/Conduit); se
+preserva en este template solo para que al regenerar el archivo no se borre. Fuera del
+alcance DNS/DNSSEC/TSIG de este doc.
+
+## Verificación de TSIG (extra)
+
+```bash
+# Re-transferir desde el master (en la RPi)
+sudo rndc retransfer biblioteca.tel
+sudo rndc zonestatus biblioteca.tel        # serial == al del master
+
+# Demostrar que TSIG protege: con clave funciona, sin clave es rechazado
+dig @192.168.20.1 biblioteca.tel AXFR -y hmac-sha256:ns1-ns2.:<secret>   # OK
+dig @192.168.20.1 biblioteca.tel AXFR                                     # REFUSED
+```
