@@ -1,0 +1,143 @@
+{# Managed by Ansible — do not edit on the RPi directly.
+   Las tarjetas de Kiwix NO embeben la versión del ZIM: library.js consulta
+   /catalog/v2/entries y reescribe los href al nombre versionado actual.
+   Eso permite que el cron de update-kiwix-content YA NO toque este archivo. #}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1f6f43">
+    <title>Biblioteca Digital Ladrilleros</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/library.css?v={{ library_css_version | default('dev') }}">
+</head>
+<body>
+    <header class="hero">
+        <div class="hero__inner">
+            <span class="hero__badge">Red comunitaria</span>
+            <h1 class="hero__title">Biblioteca Digital<br><em>Ladrilleros</em></h1>
+            <p class="hero__lead">Conocimiento, salud y cultura, sin necesidad de internet.</p>
+            <div class="hero__status" id="systemStatus" aria-live="polite">
+                <span class="status-dot status-dot--unknown"></span>
+                <span class="status-text">Consultando estado del sistema…</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section aria-labelledby="buscar">
+            <h2 id="buscar" class="section__title">Buscar en la biblioteca</h2>
+            <form class="library-search" id="library-search" action="/search" method="get" role="search">
+                <input
+                    type="search"
+                    name="pattern"
+                    id="library-search-input"
+                    placeholder="Buscar artículos, libros, viajes, lecciones…"
+                    aria-label="Buscar en la biblioteca"
+                    autocomplete="off"
+                    required>
+                <button type="submit">Buscar</button>
+                <p class="library-search__hint">Busca en todos los ZIMs de Kiwix a la vez (Wikipedia, Wikilibros, Wikiviajes, Wikinoticias, Wikiversidad).</p>
+            </form>
+        </section>
+
+        <section aria-labelledby="descubre">
+            <h2 id="descubre" class="section__title">Descubre al azar</h2>
+            <div id="descubre-cards" class="descubre" data-state="loading" aria-live="polite">
+                {% for zim in kiwix_zim_sources %}
+                <article class="descubre__card descubre__card--skeleton" data-zim-category="{{ zim.category }}">
+                    <span class="descubre__source">{{ zim.category | capitalize }}</span>
+                    <span class="descubre__title">Buscando un artículo al azar…</span>
+                </article>
+                {% endfor %}
+            </div>
+            <p class="hint">Se recargan cada vez que entras: cada tarjeta es un artículo aleatorio del contenido local.</p>
+        </section>
+
+        <section aria-labelledby="contenido">
+            <h2 id="contenido" class="section__title">Explora el contenido</h2>
+            <div class="grid">
+
+                <a class="card card--wiki" href="/viewer" data-zim-category="wikipedia">
+                    <div class="card__icon" aria-hidden="true">📚</div>
+                    <h3 class="card__title">Wikipedia en español</h3>
+                    <p class="card__desc">Versión compacta: introducción y ficha de cada artículo.</p>
+                    <span class="card__cta">Abrir →</span>
+                </a>
+
+                <a class="card card--books" href="/viewer" data-zim-category="wikibooks">
+                    <div class="card__icon" aria-hidden="true">📖</div>
+                    <h3 class="card__title">Libros y manuales</h3>
+                    <p class="card__desc">Wikibooks: textos escolares, manuales prácticos y guías técnicas.</p>
+                    <span class="card__cta">Abrir →</span>
+                </a>
+
+                <a class="card card--travel" href="/viewer" data-zim-category="wikivoyage">
+                    <div class="card__icon" aria-hidden="true">🌎</div>
+                    <h3 class="card__title">Wikiviajes</h3>
+                    <p class="card__desc">Guías de viaje de ciudades y regiones en español.</p>
+                    <span class="card__cta">Abrir →</span>
+                </a>
+
+                <a class="card card--news" href="/viewer" data-zim-category="wikinews">
+                    <div class="card__icon" aria-hidden="true">📰</div>
+                    <h3 class="card__title">Wikinoticias</h3>
+                    <p class="card__desc">Noticias archivadas en español.</p>
+                    <span class="card__cta">Abrir →</span>
+                </a>
+
+                <a class="card card--learn" href="/viewer" data-zim-category="wikiversity">
+                    <div class="card__icon" aria-hidden="true">🎓</div>
+                    <h3 class="card__title">Wikiversidad</h3>
+                    <p class="card__desc">Cursos y materiales educativos abiertos.</p>
+                    <span class="card__cta">Abrir →</span>
+                </a>
+
+                <a class="card card--kolibri" href="/kolibri/">
+                    <div class="card__icon" aria-hidden="true">🎓</div>
+                    <h3 class="card__title">Kolibri (cursos)</h3>
+                    <p class="card__desc">Plataforma educativa: Khan Academy, OpenStax, recursos curriculares.</p>
+                    <span class="card__cta">Abrir →</span>
+                </a>
+
+                <a class="card card--video" href="/videos/">
+                    <div class="card__icon" aria-hidden="true">🎬</div>
+                    <h3 class="card__title">Videos (Jellyfin)</h3>
+                    <p class="card__desc">Videos educativos, comunitarios y culturales.</p>
+                    <span class="card__cta">Abrir →</span>
+                </a>
+
+            </div>
+            <p class="hint">Catálogo completo: <a href="/wikipedia/">/wikipedia/</a> &middot; OPDS: <a href="/catalog/v2/root.xml">/catalog/v2/root.xml</a></p>
+        </section>
+
+        <section class="info" aria-labelledby="ayuda">
+            <h2 id="ayuda" class="section__title">¿Cómo funciona esta red?</h2>
+            <div class="info__grid">
+                <div>
+                    <h3>📡 Sin internet</h3>
+                    <p>Esta página la sirve un servidor en tu red local. Todo el contenido está guardado adentro: no necesita internet.</p>
+                </div>
+                <div>
+                    <h3>🔋 Funciona siempre</h3>
+                    <p>Mientras el servidor esté encendido, la biblioteca está disponible para todos los dispositivos conectados a la red.</p>
+                </div>
+                <div>
+                    <h3>🤝 De la comunidad</h3>
+                    <p>Cuida el equipo y reporta cualquier problema al encargado de la biblioteca.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Biblioteca Digital Ladrilleros · Operada por la comunidad</p>
+        <p class="footer__tech">Universidad ICESI · Raspberry Pi 5 · Software libre</p>
+        <p class="footer__diag"><a href="/status">Estado técnico (JSON)</a></p>
+    </footer>
+
+    <script src="/js/status.js" defer></script>
+    <script src="/js/library.js?v={{ library_js_version | default('dev') }}" defer></script>
+</body>
+</html>

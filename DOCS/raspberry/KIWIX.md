@@ -35,11 +35,14 @@ ExecStart=/usr/local/bin/kiwix-serve \
 
 > **El nombre del ZIM incluye la fecha**, y la URL de contenido tambien
 > (`/content/wikipedia_es_all_mini_2026-05/`). Cuando el auto-update cambia la
-> version, los links viejos (`.../2026-02/`) dan **404** en Kiwix. El `index.html`
-> del panel se reescribe solo, pero **Squid puede servir el HTML viejo cacheado** y
-> dejar a los clientes con el link muerto. Por eso el HTML del panel se sirve con
-> `Cache-Control: no-cache` (ver [`NGINX.md`](NGINX.md)). Tras un cambio manual de
-> ZIM, purgar la cache de Squid (ver [`SQUID.md`](SQUID.md)).
+> version, los links viejos (`.../2026-02/`) dan **404** en Kiwix.
+>
+> **Cambio 2026-06-02:** el `index.html` del portal YA NO embebe las versiones
+> de los ZIMs y el cron de auto-update YA NO lo muta con `sed`. Las tarjetas
+> llevan `data-zim-category` y `/js/library.js` consulta `/catalog/v2/entries`
+> para resolver el href al nombre versionado actual (ver [`NGINX.md`](NGINX.md)).
+> El HTML del panel sigue saliendo con `Cache-Control: no-cache` para que Squid
+> no sirva una version vieja del propio HTML.
 
 ## Paths accesibles via nginx
 
@@ -48,8 +51,10 @@ ExecStart=/usr/local/bin/kiwix-serve \
 | `http://biblioteca.tel/wikipedia/` | Rewrite a `/` y proxea a Kiwix — URL amigable para usuarios |
 | `http://biblioteca.tel/content/` | Proxy transparente (archivos ZIM internos) |
 | `http://biblioteca.tel/skin/` | Assets CSS/JS de la interfaz Kiwix |
-| `http://biblioteca.tel/search` | Búsqueda de artículos |
-| `http://biblioteca.tel/catalog/` | Catálogo de libros |
+| `http://biblioteca.tel/search` | Búsqueda global multi-ZIM — destino del buscador del homepage |
+| `http://biblioteca.tel/suggest` | Sugerencias para autocomplete (no usado aun) |
+| `http://biblioteca.tel/random` | Articulo al azar — alimenta la fila "Descubre" del homepage |
+| `http://biblioteca.tel/catalog/` | Catalogo OPDS — leido por `/js/library.js` para resolver versiones |
 
 ## Archivos importantes en RPi
 

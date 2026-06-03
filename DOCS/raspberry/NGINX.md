@@ -104,12 +104,46 @@ una **sola** representacion (plano). En LAN el costo de no comprimir es irreleva
 > nginx `gzip on` global no afecta el trafico hacia Squid porque Squid manda header
 > `Via` y `gzip_proxied` esta en su default (`off`) → nginx no recomprime para Squid.
 
+## Homepage `index.html` — buscador + Descubre
+
+> **Cambio 2026-06-02:** el homepage del portal ahora vive en Ansible como
+> template + assets estaticos, y NO embebe la version del ZIM en los links.
+
+Antes el `index.html` era hand-rolled en la RPi y el cron
+`update-kiwix-content` lo mutaba con `sed` cada vez que cambiaba la version de
+un ZIM (riesgoso: si el sed fallaba, la pagina quedaba con links muertos para
+*todos* los clientes). Ahora:
+
+- `templates/index.html.j2` se renderiza con `kiwix_zim_sources` y los `<a>` de
+  las tarjetas de Kiwix llevan `data-zim-category="<wikipedia|wikibooks|...>"`
+  con `href="/viewer"` como fallback.
+- `files/library.js` corre en el cliente: hace `GET /catalog/v2/entries`
+  (OPDS), extrae el `<link type="text/html">` versionado de cada `<entry>` y
+  reescribe el `href` de la tarjeta al path actual (`/content/<name-versionado>/`).
+- Lo mismo alimenta la seccion **"Descubre"**: por cada categoria pide
+  `/random?content=<name-versionado>`, sigue el 302 al articulo y muestra el
+  `<title>` como recomendacion (con timeout de 4s y skeleton mientras carga).
+- El form `#library-search` envia a `/search?pattern=…` — la busqueda global de
+  Kiwix que ya estaba proxiada (no requiere cambios al vhost).
+
+**Fallbacks:** si `/catalog/v2/entries` falla o la categoria no aparece, las
+tarjetas conservan `href="/viewer"` (lleva al book picker de Kiwix). Si todas
+las llamadas a `/random` fallan, la seccion "Descubre" se oculta entera.
+
+**Cache:** el catalogo se memoriza 5 min en `sessionStorage`
+(`biblioteca:catalog:v1`) — un refresh dentro de ese tiempo no re-pide. Tras un
+update-kiwix-content (Lun/Jue 02:00) el TTL caduca y la siguiente carga refleja
+las versiones nuevas sin necesidad de tocar Squid ni nginx.
+
 ## Archivos desplegados
 
-| Template Ansible | Destino en RPi |
+| Origen en repo | Destino en RPi |
 |---|---|
 | `templates/biblioteca.nginx.j2` | `/etc/nginx/sites-available/biblioteca` |
 | `templates/kiwix-proxy.conf.j2` | `/etc/nginx/snippets/kiwix-proxy.conf` |
+| `templates/index.html.j2` | `/var/www/html/index.html` |
+| `files/library.js` | `/var/www/html/js/library.js` |
+| `files/library.css` | `/var/www/html/css/library.css` |
 
 ## Verificacion
 

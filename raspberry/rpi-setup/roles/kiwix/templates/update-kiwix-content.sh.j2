@@ -9,7 +9,6 @@ set -euo pipefail
 # ── Configuration ────────────────────────────────────────────────────────────
 ZIM_DIR="{{ kiwix_library | dirname }}"
 LIBRARY="{{ kiwix_library }}"
-HOMEPAGE="/var/www/html/index.html"
 KIWIX_USER="{{ kiwix_user }}"
 RATE_LIMIT="2M"         # curl --limit-rate (2 MB/s ≈ 7 GB/hora)
 MIN_FREE_MB=4000        # mínimo 4 GB libres antes de descargar
@@ -165,10 +164,13 @@ for entry in "${ZIMS[@]}"; do
     fi
 
     # 7. Atomic swap
+    # NOTA: el homepage /var/www/html/index.html YA NO se muta aqui. Las tarjetas
+    # son resueltas en el cliente por /js/library.js consultando
+    # /catalog/v2/entries, asi que reflejan automaticamente la nueva version
+    # del ZIM apenas kiwix-serve la reporte (paso 8).
     log "${prefix}: installing ${latest}"
 
     current_stem="${current%.zim}"
-    new_stem="${latest%.zim}"
 
     # 7a. Rename temp → final
     mv "$tmp_path" "${ZIM_DIR}/${latest}"
@@ -186,13 +188,7 @@ for entry in "${ZIMS[@]}"; do
         sudo -u "$KIWIX_USER" kiwix-manage "$LIBRARY" remove "$old_id" 2>/dev/null || true
     fi
 
-    # 7d. Actualizar homepage links
-    if [ -f "$HOMEPAGE" ]; then
-        sed -i "s|${current_stem}|${new_stem}|g" "$HOMEPAGE"
-        log "${prefix}: homepage updated (${current_stem} → ${new_stem})"
-    fi
-
-    # 7e. Eliminar ZIM viejo
+    # 7d. Eliminar ZIM viejo
     if [ -f "${ZIM_DIR}/${current}" ]; then
         rm -f "${ZIM_DIR}/${current}"
         log "${prefix}: removed old file ${current}"
