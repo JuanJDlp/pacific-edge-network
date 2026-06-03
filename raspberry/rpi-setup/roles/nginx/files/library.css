@@ -1,0 +1,148 @@
+/* ============================================================================
+   library.css — Buscador + sección "Descubre"
+   Layered on top of style.css (uses its CSS vars). Managed by Ansible.
+   ============================================================================ */
+
+/* ----- Search bar --------------------------------------------------------- */
+.library-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: .5rem;
+    background: var(--crema-suave);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: .9rem 1rem;
+    box-shadow: var(--sombra-sm);
+    margin-bottom: 2rem;
+}
+.library-search input[type="search"] {
+    flex: 1 1 200px;
+    min-width: 0;
+    padding: .65rem .85rem;
+    font-size: 1rem;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--texto);
+    font-family: inherit;
+}
+.library-search input[type="search"]:focus {
+    outline: none;
+    border-color: var(--verde-claro);
+    box-shadow: 0 0 0 3px rgba(78,163,117,.22);
+}
+.library-search button {
+    flex: 0 0 auto;
+    padding: .65rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: var(--verde-selva);
+    color: var(--crema);
+    border: 1px solid var(--verde-oscuro);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .15s, transform .15s;
+    font-family: inherit;
+}
+.library-search button:hover { background: var(--verde-oscuro); }
+.library-search button:active { transform: translateY(1px); }
+.library-search__hint {
+    flex: 1 0 100%;
+    margin: 0;
+    font-size: .8rem;
+    color: var(--texto-suave);
+    font-style: italic;
+}
+
+/* ----- Descubre row ------------------------------------------------------- */
+.descubre {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .85rem;
+    margin-bottom: 1.5rem;
+}
+@media (min-width: 560px) { .descubre { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 880px) { .descubre { grid-template-columns: 1fr 1fr 1fr; } }
+
+.descubre__card {
+    display: block;
+    background: var(--crema-suave);
+    border: 1px solid var(--borde);
+    border-left: 4px solid var(--verde-claro);
+    border-radius: var(--radio);
+    padding: .9rem 1rem;
+    min-height: 84px;
+    box-shadow: var(--sombra-sm);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    position: relative;
+}
+.descubre__card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sombra-md);
+    border-color: var(--verde-claro);
+}
+
+/* Skeleton shimmer mientras carga */
+.descubre__card--skeleton {
+    color: transparent;
+    background:
+        linear-gradient(90deg,
+            var(--crema-suave) 0%,
+            rgba(255,255,255,.55) 50%,
+            var(--crema-suave) 100%);
+    background-size: 200% 100%;
+    animation: descubre-shimmer 1.4s ease-in-out infinite;
+}
+.descubre__card--skeleton .descubre__source,
+.descubre__card--skeleton .descubre__title { color: transparent; user-select: none; }
+@keyframes descubre-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Color por categoría (override del border-left) */
+.descubre__card[data-zim-category="wikipedia"]    { border-left-color: var(--verde-selva); }
+.descubre__card[data-zim-category="wikibooks"]    { border-left-color: var(--azul); }
+.descubre__card[data-zim-category="wikivoyage"]   { border-left-color: var(--naranja); }
+.descubre__card[data-zim-category="wikinews"]     { border-left-color: var(--rojo); }
+.descubre__card[data-zim-category="wikiversity"]  { border-left-color: var(--morado); }
+
+.descubre__link {
+    display: block;
+    color: var(--texto);
+    text-decoration: none;
+}
+.descubre__link:hover { text-decoration: none; }
+
+.descubre__source {
+    display: block;
+    font-size: .72rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--texto-suave);
+    margin-bottom: .25rem;
+}
+.descubre__title {
+    display: block;
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--verde-oscuro);
+    line-height: 1.3;
+    margin-bottom: .35rem;
+    /* Recortar a 2 líneas si el título es muy largo */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.descubre__cta {
+    display: inline-block;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--verde-selva);
+}
+
+/* Si todo falló, ocultamos la sección via JS (hideDescubre). El estado "error"
+   queda como hint visual por si quieres depurarlo en DevTools. */
+.descubre[data-state="error"] .descubre__card { opacity: .6; }

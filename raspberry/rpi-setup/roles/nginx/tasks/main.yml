@@ -52,6 +52,67 @@
   become: true
   notify: reload nginx
 
+- name: Asegurar directorios de assets estaticos del portal
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+  loop:
+    - /var/www/html/js
+    - /var/www/html/css
+  become: true
+
+- name: Calcular checksum de library.js (cache-busting)
+  stat:
+    path: "{{ role_path }}/files/library.js"
+    checksum_algorithm: sha1
+  register: library_js_src
+  delegate_to: localhost
+  become: false
+
+- name: Calcular checksum de library.css (cache-busting)
+  stat:
+    path: "{{ role_path }}/files/library.css"
+    checksum_algorithm: sha1
+  register: library_css_src
+  delegate_to: localhost
+  become: false
+
+- name: Desplegar library.js (buscador + recomendaciones)
+  copy:
+    src: library.js
+    dest: /var/www/html/js/library.js
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+
+- name: Desplegar library.css (estilos buscador + Descubre)
+  copy:
+    src: library.css
+    dest: /var/www/html/css/library.css
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+
+# Despues del copy de library.{js,css} para que sus checksums esten al dia.
+# Las URLs en index.html llevan ?v=<sha1-corto> -> al cambiar el archivo
+# cambia la URL y el navegador no sirve la version cacheada (immutable).
+- name: Desplegar index.html del portal (con asset version-bust)
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  vars:
+    library_js_version: "{{ library_js_src.stat.checksum[:8] }}"
+    library_css_version: "{{ library_css_src.stat.checksum[:8] }}"
+  become: true
+
 - name: Validar configuración nginx
   command: nginx -t
   become: true
