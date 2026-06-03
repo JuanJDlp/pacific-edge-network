@@ -8,7 +8,8 @@
   gather_facts: true
 
   vars_files:
-    - router-setup/roles/router/vars/main.yml
+    # Ruta relativa al playbook (minipc/services/), por eso el ../
+    - ../router-setup/roles/router/vars/main.yml
 
   pre_tasks:
     - name: Actualizar cache apt

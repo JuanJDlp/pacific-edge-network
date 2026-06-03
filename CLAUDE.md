@@ -1,5 +1,7 @@
 # Pacific Edge Network
 
+> **Convención de commits — OBLIGATORIA:** NUNCA agregues un trailer `Co-Authored-By` (ni a Claude ni a ninguna herramienta de IA) en los commits ni en los PRs de este repositorio. Los commits van firmados únicamente por el autor humano.
+
 Red comunitaria de borde (Pacific Edge) desplegada con un Mini PC como router/servicios y una Raspberry Pi como servidor de contenido offline, interconectados por un switch capa 2 con VLANs. La salida a Internet la provee un router externo conectado al Mini PC. Un Linksys E2500 en modo bridge provee WiFi a los clientes en VLAN 30.
 
 ## Topología física
