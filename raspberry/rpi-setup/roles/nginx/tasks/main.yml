@@ -113,6 +113,27 @@
     library_css_version: "{{ library_css_src.stat.checksum[:8] }}"
   become: true
 
+# Wiki estatica del proyecto (single-page) servida en /docs por nginx.
+# El panel (index.html) enlaza aqui con el boton "Documentacion de la red".
+- name: Asegurar directorio /var/www/html/docs
+  file:
+    path: /var/www/html/docs
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+  become: true
+
+- name: Desplegar wiki del proyecto (/docs)
+  copy:
+    src: docs.html
+    dest: /var/www/html/docs/index.html
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+  notify: reload nginx
+
 - name: Validar configuración nginx
   command: nginx -t
   become: true

@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacific Edge Network — Wiki</title>
+    <style>
+        :root {
+            --primary: #1a7f64;
+            --primary-dark: #145f4a;
+            --primary-light: #e8f5f1;
+            --accent: #f0a500;
+            --text: #1a1a2e;
+            --text-muted: #6b7280;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+            --sidebar-w: 256px;
+            --header-h: 60px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.65;
+        }
+
+        /* ── Header ─────────────────────────────────────────────────────────── */
+        header {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--primary); color: white;
+            height: var(--header-h);
+            display: flex; align-items: center;
+            padding: 0 24px; gap: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .logo { font-size: 1.1rem; font-weight: 700; white-space: nowrap; }
+        .logo span { opacity: 0.65; font-weight: 400; font-size: 0.88em; }
+
+        nav.tabs { display: flex; gap: 4px; }
+        .tab-btn {
+            padding: 7px 18px; border: none; border-radius: 6px;
+            cursor: pointer; font-size: 0.88rem; font-weight: 500;
+            background: rgba(255,255,255,0.15); color: white;
+            transition: background 0.2s;
+        }
+        .tab-btn:hover  { background: rgba(255,255,255,0.28); }
+        .tab-btn.active { background: white; color: var(--primary); }
+
+        /* ── Tabs ────────────────────────────────────────────────────────────── */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           TAB 1 — USUARIO
+        ══════════════════════════════════════════════════════════════════════ */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white; padding: 56px 24px; text-align: center;
+        }
+        .hero h2 { font-size: 1.9rem; margin-bottom: 12px; }
+        .hero p  { font-size: 1rem; opacity: 0.9; max-width: 580px; margin: 0 auto; }
+
+        .user-section { max-width: 880px; margin: 0 auto; padding: 44px 24px; }
+
+        .section-title {
+            font-size: 1.3rem; font-weight: 700; color: var(--primary);
+            margin-bottom: 20px; padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary-light);
+        }
+
+        .steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 40px; }
+        .step {
+            display: flex; gap: 16px; align-items: flex-start;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 18px 20px;
+        }
+        .step-num {
+            width: 34px; height: 34px; background: var(--primary); color: white;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+        }
+        .step-body h4 { font-size: 0.97rem; margin-bottom: 3px; }
+        .step-body p  { color: var(--text-muted); font-size: 0.88rem; }
+
+        .cards {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 18px; margin-bottom: 44px;
+        }
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 16px; padding: 26px 22px;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.09); transform: translateY(-2px); }
+        .card-icon { font-size: 2.4rem; margin-bottom: 10px; }
+        .card h3   { font-size: 1.05rem; margin-bottom: 4px; }
+        .card .svc { font-size: 0.75rem; color: var(--primary); font-weight: 600;
+                     text-transform: uppercase; margin-bottom: 7px; }
+        .card p    { color: var(--text-muted); font-size: 0.88rem; }
+
+        .tip {
+            background: var(--primary-light); border-left: 4px solid var(--primary);
+            border-radius: 0 8px 8px 0; padding: 14px 18px;
+            margin-bottom: 28px; font-size: 0.91rem;
+        }
+        .tip strong { color: var(--primary); }
+
+        .faq { display: flex; flex-direction: column; gap: 10px; margin-bottom: 40px; }
+        .faq-item {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; overflow: hidden;
+        }
+        .faq-q {
+            padding: 14px 18px; font-weight: 600; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            user-select: none; font-size: 0.93rem;
+        }
+        .faq-q:hover { background: var(--primary-light); }
+        .faq-q .arr { font-size: 0.75rem; transition: transform 0.2s; color: var(--primary); }
+        .faq-item.open .faq-q .arr { transform: rotate(180deg); }
+        .faq-a {
+            display: none; padding: 0 18px 14px;
+            color: var(--text-muted); font-size: 0.9rem; line-height: 1.65;
+        }
+        .faq-item.open .faq-a { display: block; }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           TAB 2 — TÉCNICO
+        ══════════════════════════════════════════════════════════════════════ */
+        .tech-layout { display: flex; height: calc(100vh - var(--header-h)); overflow: hidden; }
+
+        /* Sidebar ────────────────────────────────────────────────────────── */
+        .sidebar {
+            width: var(--sidebar-w); background: var(--surface);
+            border-right: 1px solid var(--border); overflow-y: auto;
+            padding: 12px 0; flex-shrink: 0;
+        }
+
+        /* Collapsible groups */
+        .sg {
+            font-size: 0.67rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-muted);
+            padding: 10px 14px 5px 14px; margin-top: 6px;
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; user-select: none;
+            transition: color 0.15s;
+        }
+        .sg:hover { color: var(--primary); }
+        .sg .arr { font-size: 0.6rem; transition: transform 0.2s; opacity: 0.5; flex-shrink: 0; }
+        .sg.collapsed .arr { transform: rotate(-90deg); }
+        .sg-items.hidden { display: none; }
+
+        .sidebar a {
+            display: block; padding: 6px 14px 6px 22px;
+            color: var(--text); text-decoration: none; font-size: 0.85rem;
+            border-left: 3px solid transparent;
+            transition: background 0.13s, border-color 0.13s;
+        }
+        .sidebar a:hover { background: var(--primary-light); }
+        .sidebar a.active {
+            border-left-color: var(--primary); color: var(--primary);
+            font-weight: 600; background: var(--primary-light);
+        }
+
+        /* Right panel: breadcrumb bar + content ──────────────────────────── */
+        .tech-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+        .page-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 9px 48px; background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.78rem; color: var(--text-muted);
+            flex-shrink: 0; white-space: nowrap;
+        }
+        .page-bar-group { font-weight: 600; }
+        .page-bar-sep   { opacity: 0.4; }
+        .page-bar-title { color: var(--text); }
+        .page-bar-count { margin-left: auto; background: var(--bg); border: 1px solid var(--border);
+                          border-radius: 20px; padding: 1px 9px; font-size: 0.72rem; }
+
+        .tech-content { flex: 1; overflow-y: auto; padding: 36px 48px 48px; }
+
+        /* Prev/Next navigation ───────────────────────────────────────────── */
+        .page-nav {
+            display: flex; justify-content: space-between; align-items: stretch;
+            margin-top: 48px; padding-top: 24px;
+            border-top: 1px solid var(--border); gap: 12px;
+        }
+        .pnav-btn {
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 11px 16px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--surface);
+            cursor: pointer; text-decoration: none; transition: all 0.15s;
+            max-width: 48%;
+        }
+        .pnav-btn:hover { background: var(--primary-light); border-color: var(--primary); }
+        .pnav-btn.right { text-align: right; margin-left: auto; }
+        .pnav-dir  { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px; }
+        .pnav-name { font-size: 0.87rem; font-weight: 600; color: var(--text); }
+        .pnav-btn:hover .pnav-name { color: var(--primary); }
+
+        /* Tech sections — one visible at a time ──────────────────────────── */
+        .tech-section { display: none; }
+        .tech-section.active { display: block; animation: fadeIn 0.13s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .tech-section h2 {
+            font-size: 1.5rem; color: var(--primary);
+            margin-bottom: 6px; padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+        .sec-meta {
+            font-size: 0.8rem; color: var(--text-muted);
+            margin-bottom: 18px; display: flex; gap: 12px; flex-wrap: wrap;
+        }
+        .tech-section h3 { font-size: 1.05rem; margin: 28px 0 10px; color: var(--text); font-weight: 600; }
+        .tech-section h4 { font-size: 0.95rem; margin: 18px 0 8px; color: var(--text); font-weight: 600; }
+        .tech-section p  { margin-bottom: 10px; font-size: 0.91rem; }
+        .tech-section ul, .tech-section ol { margin-left: 20px; margin-bottom: 12px; }
+        .tech-section li { margin-bottom: 5px; font-size: 0.91rem; }
+
+        /* Badges */
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 9px; border-radius: 20px;
+            font-size: 0.73rem; font-weight: 600;
+        }
+        .badge::before { content: '●'; font-size: 0.6em; }
+        .bg { background: #dcfce7; color: #15803d; }
+        .bb { background: #dbeafe; color: #1d4ed8; }
+        .by { background: #fef9c3; color: #a16207; }
+        .br { background: #fee2e2; color: #dc2626; }
+
+        /* Code */
+        pre {
+            background: var(--code-bg); color: var(--code-text);
+            border-radius: 8px; padding: 16px 18px;
+            overflow-x: auto; font-size: 0.79rem; line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        code { font-family: 'Courier New', Courier, monospace; }
+        p code, li code, td code {
+            background: #f1f5f9; color: #e11d48;
+            padding: 1px 5px; border-radius: 3px; font-size: 0.84em;
+        }
+
+        /* Tables */
+        .t { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 0.86rem; }
+        .t th {
+            text-align: left; background: var(--primary-light);
+            color: var(--primary-dark); padding: 9px 13px; font-weight: 600;
+        }
+        .t td { padding: 8px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+        .t tr:last-child td { border-bottom: none; }
+        .t tr:hover td { background: var(--bg); }
+
+        /* Alert boxes */
+        .warn {
+            background: #fff7ed; border-left: 4px solid #f97316;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px; margin-bottom: 16px; font-size: 0.88rem;
+        }
+        .warn strong { color: #ea580c; }
+        .warn pre { margin: 10px 0 0; font-size: 0.77rem; }
+
+        .info {
+            background: #eff6ff; border-left: 4px solid #3b82f6;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px; margin-bottom: 16px; font-size: 0.88rem;
+        }
+        .info strong { color: #1d4ed8; }
+
+        .success {
+            background: #f0fdf4; border-left: 4px solid #22c55e;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px; margin-bottom: 16px; font-size: 0.88rem;
+        }
+
+        /* Diagram */
+        .diag {
+            background: var(--code-bg); color: #94a3b8; border-radius: 8px;
+            padding: 18px; overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.76rem; line-height: 1.5; margin-bottom: 18px;
+        }
+
+        /* Horizontal rule between subsections */
+        .sep { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+        @media (max-width: 768px) {
+            .tech-layout  { flex-direction: column; }
+            .sidebar      { width: 100%; height: auto; position: static; }
+            .tech-content { padding: 20px 16px; }
+            .cards        { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">Pacific Edge Network <span>— Wiki</span></div>
+    <nav class="tabs">
+        <button class="tab-btn active" onclick="switchTab('user',this)">Para ti</button>
+        <button class="tab-btn"        onclick="switchTab('tech',this)">Documentación Técnica</button>
+    </nav>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     TAB 1 — USUARIO
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-user" class="tab-content active">
+
+    <div class="hero">
+        <h2>Bienvenido a Pacific Edge Network</h2>
+        <p>Una biblioteca digital y plataforma educativa comunitaria que funciona sin necesidad de internet.</p>
+    </div>
+
+    <div class="user-section">
+
+        <h2 class="section-title">¿Qué es esta red?</h2>
+        <p style="margin-bottom:14px;font-size:0.97rem;">
+            Pacific Edge Network es una <strong>red WiFi comunitaria local</strong>. A diferencia de internet normal,
+            todo el contenido (libros, cursos, películas) está guardado en servidores físicos instalados en tu comunidad.
+            No necesitas pagar por datos ni tener señal móvil para usarla.
+        </p>
+        <div class="tip">
+            <strong>En palabras simples:</strong> Es como una mini-internet privada dentro de tu comunidad,
+            con libros de Wikipedia, cursos educativos y películas — todo gratis y sin internet.
+        </div>
+
+        <h2 class="section-title">¿Cómo conectarme?</h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <div class="step-body">
+                    <h4>Activa el WiFi en tu dispositivo</h4>
+                    <p>En tu celular, tablet o computador, abre la configuración de WiFi.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-body">
+                    <h4>Conéctate a la red de Pacific Edge</h4>
+                    <p>Busca y conéctate a la red WiFi comunitaria. Si no sabes el nombre exacto, pregúntale al encargado de la red.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-body">
+                    <h4>Aparece la página de bienvenida</h4>
+                    <p>Al abrir el navegador verás automáticamente la bienvenida de <strong>biblioteca.tel</strong>.
+                       Si no aparece sola, escribe <strong>http://biblioteca.tel</strong> en la barra de tu navegador.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">4</div>
+                <div class="step-body">
+                    <h4>Haz clic en "Entrar a la biblioteca"</h4>
+                    <p>Lee los términos si deseas y presiona el botón para acceder a todos los servicios.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">5</div>
+                <div class="step-body">
+                    <h4>¡Listo! Explora la biblioteca</h4>
+                    <p>Ya puedes navegar a <strong>http://biblioteca.tel</strong> y elegir qué quieres ver o aprender.</p>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">¿Qué puedo hacer?</h2>
+        <div class="cards">
+            <div class="card">
+                <div class="card-icon">📚</div>
+                <div class="svc">Kiwix</div>
+                <h3>Biblioteca Digital</h3>
+                <p>Lee artículos de Wikipedia completa en español, enciclopedias, libros de texto y artículos educativos. Todo sin internet.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🎓</div>
+                <div class="svc">Kolibri</div>
+                <h3>Plataforma Educativa</h3>
+                <p>Cursos, videos educativos y ejercicios interactivos de Khan Academy, Proyecto Biosfera y más. Ideal para todas las edades.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🎬</div>
+                <div class="svc">Jellyfin</div>
+                <h3>Películas y Videos</h3>
+                <p>Documentales, videos culturales y educativos disponibles en la red local. Desde tu navegador, sin instalar nada.</p>
+            </div>
+        </div>
+
+        <h2 class="section-title">¿Cómo acceder a los servicios?</h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">→</div>
+                <div class="step-body">
+                    <h4>Abre tu navegador y ve a <code>http://biblioteca.tel</code></h4>
+                    <p>Desde ahí verás el menú principal con acceso a todos los servicios disponibles en la red.</p>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Preguntas frecuentes</h2>
+        <div class="faq">
+            <div class="faq-item">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    ¿Por qué no puedo abrir Facebook, YouTube u otras páginas? <span class="arr">▼</span>
+                </div>
+                <div class="faq-a">
+                    Esta red está diseñada para contenido educativo local. El acceso a internet externo depende de si hay conexión disponible en tu comunidad.
+                    Además, sitios de pornografía y apuestas están bloqueados a nivel de red como medida de protección comunitaria.
+                    Si no puedes abrir páginas externas, es normal — la red funciona perfectamente para todo el contenido local.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    Veo un aviso de "Conexión no segura" o "Tu conexión no es privada". ¿Es peligroso? <span class="arr">▼</span>
+                </div>
+                <div class="faq-a">
+                    No es peligroso. La red usa un certificado de seguridad propio (no emitido por Google u otras empresas).
+                    Cuando veas ese aviso, puedes hacer clic en "Avanzado" y luego "Ir al sitio de todas formas".
+                    Es completamente seguro dentro de esta red local. Solo tendrás que aceptarlo una vez por dispositivo.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    La página de bienvenida no aparece sola. ¿Qué hago? <span class="arr">▼</span>
+                </div>
+                <div class="faq-a">
+                    1. Asegúrate de estar conectado a la red WiFi correcta.<br>
+                    2. Abre tu navegador y escribe exactamente: <strong>http://biblioteca.tel</strong> (con http://, sin www).<br>
+                    3. Si sigue sin funcionar, desconéctate del WiFi y vuelve a conectarte.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    ¿Puedo usar la red desde cualquier dispositivo? <span class="arr">▼</span>
+                </div>
+                <div class="faq-a">
+                    Sí. Cualquier dispositivo con WiFi funciona: celular Android o iPhone, tablet, laptop con Windows, Mac o Linux.
+                    Solo necesitas un navegador web (Chrome, Firefox, Safari...).
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    Una página salió en blanco o con un error raro. ¿Qué hago? <span class="arr">▼</span>
+                </div>
+                <div class="faq-a">
+                    Prueba recargando la página (F5 o el botón de refrescar). Si el problema persiste,
+                    contacta al administrador de la red — puede que sea necesario limpiar la caché interna del servidor.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    La red no funciona o está muy lenta. ¿Qué hago? <span class="arr">▼</span>
+                </div>
+                <div class="faq-a">
+                    Primero verifica que estás dentro del rango del WiFi. Si estás cerca y sigue lento, puede que muchos usuarios estén conectados.
+                    Si el panel en <strong>http://biblioteca.tel/status</strong> muestra un aviso rojo de "Sistema sobrecargado", avísale al encargado de la red.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    ¿Mis datos personales están seguros? <span class="arr">▼</span>
+                </div>
+                <div class="faq-a">
+                    Sí. La red no guarda información personal tuya. Solo registra que un dispositivo se conectó (por su dirección MAC de hardware)
+                    para gestionar el acceso al portal durante 8 horas. No se comparte información con terceros.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     TAB 2 — TÉCNICO
+═══════════════════════════════════════════════════════════════════════════ -->
+<div id="tab-tech" class="tab-content">
+    <div class="tech-layout">
+
+        <nav class="sidebar">
+            <div class="sg" onclick="toggleGroup(this)">Visión General <span class="arr">▼</span></div>
+            <div class="sg-items">
+                <a href="#topologia">Topología</a>
+                <a href="#ips">Direccionamiento IP</a>
+            </div>
+
+            <div class="sg" onclick="toggleGroup(this)">Mini PC — plataformas <span class="arr">▼</span></div>
+            <div class="sg-items">
+                <a href="#router">Routing y NAT</a>
+                <a href="#firewall">Firewall — nftables</a>
+                <a href="#dns">DNS — Bind9</a>
+                <a href="#dhcp">DHCP — Kea</a>
+                <a href="#captive">Portal Cautivo</a>
+                <a href="#proxy">Proxy HTTP</a>
+                <a href="#ntp">NTP — Chrony</a>
+                <a href="#monitoring">Monitoreo</a>
+            </div>
+
+            <div class="sg" onclick="toggleGroup(this)">Raspberry Pi — akasicom2 <span class="arr">▼</span></div>
+            <div class="sg-items">
+                <a href="#nginx-rpi">Nginx</a>
+                <a href="#squid">Squid</a>
+                <a href="#kiwix">Kiwix</a>
+                <a href="#kolibri">Kolibri</a>
+                <a href="#jellyfin">Jellyfin</a>
+                <a href="#dns-sec">DNS Secundario</a>
+                <a href="#health">Health Check</a>
+            </div>
+
+            <div class="sg" onclick="toggleGroup(this)">Dispositivos de Red <span class="arr">▼</span></div>
+            <div class="sg-items">
+                <a href="#switch">Switch Cisco L2</a>
+                <a href="#ap">Linksys E2500 AP</a>
+            </div>
+
+            <div class="sg" onclick="toggleGroup(this)">Operaciones <span class="arr">▼</span></div>
+            <div class="sg-items">
+                <a href="#ssh">Accesos SSH</a>
+                <a href="#ansible">Ansible</a>
+                <a href="#gotchas">Gotchas conocidos</a>
+            </div>
+        </nav>
+
+        <div class="tech-body">
+        <div class="page-bar">
+            <span class="page-bar-group" id="pg-group"></span>
+            <span class="page-bar-sep" id="pg-sep">›</span>
+            <span class="page-bar-title" id="pg-title"></span>
+            <span class="page-bar-count" id="pg-count"></span>
+        </div>
+        <div class="tech-content" id="tech-scroll">
+
+            <!-- ── TOPOLOGÍA ─────────────────────────────────────────────── -->
+            <div class="tech-section" id="topologia">
+                <h2>Topología de la red</h2>
+                <p>Red comunitaria de borde con un <strong>Mini PC</strong> como router/servicios
+                   y una <strong>Raspberry Pi</strong> como servidor de contenido offline,
+                   interconectados por un switch capa 2 con VLANs.</p>
+                <pre class="diag">
+              Internet
+                 │
+       ┌─────────┴──────────┐
+       │  Router externo    │   uplink WAN · red 172.16.0.0/16
+       └─────────┬──────────┘
+                 │ enp170s0 · 172.16.0.11/16
+       ┌─────────┴──────────┐
+       │     Mini PC        │   AZW EQ · Ubuntu 24.04 · hostname: plataformas
+       │  plataformas       │   NetBird: 100.90.95.134
+       │  DHCP/DNS/NAT/     │
+       │  Captive/Firewall  │
+       └─────────┬──────────┘
+                 │ enp171s0 trunk 802.1Q (VLAN 10/20/30)
+                 │
+       ┌─────────┴──────────┐
+       │  Switch L2 Cisco   │   Puerto 24 ── Mini PC (trunk)
+       │  SG350X-24 / 2960  │   Puerto  1 ── Raspberry Pi  (VLAN 20)
+       └────────┬────────┬──┘   Puerto  4 ── Linksys E2500 (VLAN 30)
+                │        │
+      Puerto 1  │        │  Puerto 4
+     ┌──────────┘        └──────────┐
+     │                              │
+┌────┴────────┐              ┌──────┴──────┐
+│ Raspberry   │              │ Linksys     │
+│ akasicom2   │              │ E2500 AP    │
+│192.168.20.10│              │ (bridge)    │
+│100.90.81.168│              └──────┬──────┘
+└─────────────┘                     │
+                            Clientes WiFi VLAN 30</pre>
+
+                <table class="t">
+                    <thead><tr><th>Puerto</th><th>Dispositivo</th><th>Modo</th></tr></thead>
+                    <tbody>
+                        <tr><td>1</td><td>Raspberry Pi (akasicom2)</td><td>Acceso — VLAN 20 (Servidores)</td></tr>
+                        <tr><td>4</td><td>Linksys E2500 (AP bridge)</td><td>Acceso — VLAN 30 (Clientes WiFi)</td></tr>
+                        <tr><td>24</td><td>Mini PC (plataformas)</td><td>Trunk 802.1Q — VLAN 10/20/30</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ── DIRECCIONAMIENTO ──────────────────────────────────────── -->
+            <div class="tech-section" id="ips">
+                <h2>Direccionamiento IP y VLANs</h2>
+                <table class="t">
+                    <thead><tr><th>Interfaz</th><th>IPv4</th><th>IPv6 ULA</th><th>Uso</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>enp170s0</code></td><td>172.16.0.11/16</td><td>—</td><td>WAN — uplink Internet</td></tr>
+                        <tr><td><code>enp171s0.10</code></td><td>192.168.10.1/24</td><td>fd00:0:0:10::1/64</td><td>VLAN 10 — Gestión</td></tr>
+                        <tr><td><code>enp171s0.20</code></td><td>192.168.20.1/24</td><td>fd00:0:0:20::1/64</td><td>VLAN 20 — Servidores (RPi .10)</td></tr>
+                        <tr><td><code>enp171s0.30</code></td><td>192.168.30.1/24</td><td>fd00:0:0:30::1/64</td><td>VLAN 30 — Clientes WiFi + portal</td></tr>
+                        <tr><td><code>wt0</code></td><td>100.90.95.134/16</td><td>—</td><td>NetBird — gestión remota</td></tr>
+                    </tbody>
+                </table>
+                <p>La red es <strong>dual-stack</strong>: los clientes reciben IPv4 vía DHCP e IPv6 vía SLAAC
+                   (radvd). NAT64/DNS64 permite acceder a destinos IPv4-only desde IPv6.</p>
+            </div>
+
+            <!-- ── ROUTING Y NAT ─────────────────────────────────────────── -->
+            <div class="tech-section" id="router">
+                <h2>Routing y NAT</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> nftables · jool-nat64 · systemd-networkd</span>
+                    <span>Rol Ansible: <code>minipc/router-setup/roles/router/</code></span>
+                </div>
+
+                <p>El Mini PC actúa como router de borde. IP forwarding habilitado para IPv4 e IPv6.
+                   Las reglas de NAT las gestiona nftables.</p>
+
+                <h3>Reglas de prerouting (DNAT)</h3>
+                <table class="t">
+                    <thead><tr><th>Origen</th><th>Condición</th><th>Acción</th></tr></thead>
+                    <tbody>
+                        <tr><td>Todas las VLANs</td><td>UDP/TCP :53</td><td>DNAT → 192.168.10.1:53 (DNS forzado al Mini PC)</td></tr>
+                        <tr><td>VLAN 30, sin marca</td><td>TCP :80</td><td>DNAT → 192.168.30.1:80 (splash portal — HTTP plano)</td></tr>
+                        <tr><td>VLAN 30, sin marca</td><td>TCP :443</td><td>DNAT → 192.168.30.1:2050 (portal SSL fallback)</td></tr>
+                        <tr><td>VLAN 30, marca 0x1</td><td>TCP :80, dst != RPi</td><td>DNAT → 192.168.30.1:8888 (proxy nginx → Squid)</td></tr>
+                        <tr><td>VLAN 30, marca 0x1</td><td>TCP :443</td><td>Sin DNAT — pasa directo a WAN</td></tr>
+                    </tbody>
+                </table>
+                <p><strong>Postrouting:</strong> <code>masquerade</code> saliendo por <code>enp170s0</code> — NAT hacia Internet.</p>
+
+                <h3>NAT64 — Jool</h3>
+                <p>Permite que clientes con IPv6 ULA alcancen destinos IPv4 en internet sin asignar IPv4 a cada cliente.</p>
+                <pre class="diag">
+Cliente IPv6 (fd00:0:0:30::X)
+  → DNS query → Bind9 DNS64 sintetiza AAAA: 64:ff9b::&lt;ipv4_destino&gt;
+  → cliente envía paquete a 64:ff9b::&lt;ipv4&gt;
+  → Jool (módulo kernel) intercepta y traduce IPv6 → IPv4
+  → sale por enp170s0 como IPv4 normal (masquerade)</pre>
+            </div>
+
+            <!-- ── FIREWALL ──────────────────────────────────────────────── -->
+            <div class="tech-section" id="firewall">
+                <h2>Firewall — nftables</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> nftables.service</span>
+                    <span>Rol Ansible: <code>minipc/router-setup/roles/firewall/</code></span>
+                </div>
+                <div class="info">
+                    <strong>Fuente de verdad única:</strong> el rol <code>firewall</code> es quien gestiona
+                    <code>/etc/nftables.conf</code>. El rol <code>router</code> ya no toca nftables.
+                    Para editar el firewall, modificar <code>roles/firewall/templates/nftables.conf.j2</code>.
+                </div>
+
+                <h3>Protecciones activas</h3>
+
+                <h4>Anti-spoofing en WAN</h4>
+                <pre><code>iif "enp170s0" ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } drop</code></pre>
+                <p>Descarta paquetes desde WAN con IP de origen privada — indica spoofing o routing incorrecto del ISP.</p>
+
+                <h4>Rate limiting SSH + auto-ban por fuerza bruta</h4>
+                <pre><code>set ssh_bruteforce {
+    type ipv4_addr; flags dynamic, timeout; timeout 1h;
+}
+tcp dport 22 ct state new limit rate over 5/minute burst 10 packets
+    add @ssh_bruteforce { ip saddr timeout 1h } drop</code></pre>
+                <p>Más de 5 conexiones SSH nuevas por minuto desde una IP → ban temporal de 1 hora.</p>
+
+                <h4>Rate limiting DNS (anti-amplificación)</h4>
+                <pre><code>udp dport 53 limit rate 30/second burst 50 packets accept</code></pre>
+
+                <h4>Aislamiento entre VLANs</h4>
+                <pre><code># Servidores (VLAN20) no pueden iniciar conexiones hacia clientes (VLAN30)
+iif "enp171s0.20" oif "enp171s0.30" drop
+# Gestión (VLAN10) tampoco puede llegar directamente a VLAN30
+iif "enp171s0.10" oif "enp171s0.30" drop</code></pre>
+
+                <h4>Bloqueo de puertos peligrosos desde WAN</h4>
+                <table class="t">
+                    <thead><tr><th>Puerto</th><th>Servicio bloqueado</th></tr></thead>
+                    <tbody>
+                        <tr><td>23</td><td>Telnet</td></tr>
+                        <tr><td>135, 137–139</td><td>RPC / NetBIOS</td></tr>
+                        <tr><td>445</td><td>SMB</td></tr>
+                        <tr><td>1433 / 3306</td><td>MSSQL / MySQL</td></tr>
+                        <tr><td>3389 / 5900</td><td>RDP / VNC</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Sets de nftables</h3>
+                <table class="t">
+                    <thead><tr><th>Set</th><th>Tipo</th><th>Timeout</th><th>Propósito</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>captive_allowed_mac</code></td><td>ether_addr</td><td>8h</td><td>MACs de VLAN30 autenticadas en el portal</td></tr>
+                        <tr><td><code>ssh_bruteforce</code></td><td>ipv4_addr</td><td>1h</td><td>IPs baneadas por exceso de conexiones SSH</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Bypass IPv6/NAT64 del portal cautivo (fix crítico)</h3>
+                <div class="warn">
+                    <strong>Síntoma:</strong> un cliente VLAN30 nuevo podía navegar a Internet <em>sin</em> aceptar el splash.<br><br>
+                    <strong>Causa raíz:</strong> el portal controlaba solo IPv4. Los clientes usan dual-stack:
+                    DNS64 sintetizaba AAAA vía prefijo <code>64:ff9b::/96</code> y Jool NAT64 los sacaba a Internet
+                    sin pasar por el DNAT del portal. Como la probe de detección de portal del SO también salía por IPv6
+                    y tenía éxito, el SO concluía "hay internet, no hay portal" y nunca mostraba el splash.<br><br>
+                    <strong>Fix (2026-06-01):</strong> en la cadena <code>captive_mangle</code> se bloquea
+                    tráfico NAT64 de clientes no autenticados:
+                </div>
+                <pre><code>chain captive_mangle {
+    type filter hook prerouting priority mangle; policy accept;
+    # Primero: marcar clientes ya autenticados (no los afecta el drop de abajo)
+    iif "enp171s0.30" ether saddr @captive_allowed_mac meta mark set 0x1
+    # Log (rate-limited, NO terminante)
+    iif "enp171s0.30" ip6 daddr 64:ff9b::/96 meta mark != 0x1 \
+        limit rate 5/minute log prefix "NFT DROP: CAPTIVE-V6-NAT64: "
+    # Drop incondicional (regla separada del log — ver gotcha abajo)
+    iif "enp171s0.30" ip6 daddr 64:ff9b::/96 meta mark != 0x1 drop
+}</code></pre>
+
+                <div class="warn">
+                    <strong>Gotcha nftables:</strong> <code>limit rate N</code> (sin <code>over</code>) solo matchea
+                    mientras se está <em>bajo</em> el límite. Si se combina <code>log ... limit rate N ... drop</code>
+                    en una sola regla, el <code>drop</code> solo aplica a los primeros N paquetes/min —
+                    el resto se <strong>fuga en silencio</strong>. Por eso el log y el drop van en reglas separadas.
+                </div>
+
+                <h3>Comandos útiles</h3>
+                <pre><code># Ver ruleset completo
+sudo nft list ruleset
+
+# Ver MACs autenticadas en el portal
+sudo nft list set inet filter captive_allowed_mac
+
+# Vaciar todas las auth (todos vuelven al splash)
+sudo nft flush set inet filter captive_allowed_mac
+
+# Ver IPs baneadas por fuerza bruta
+sudo nft list set inet filter ssh_bruteforce
+
+# Ver drops en tiempo real
+sudo journalctl -kf | grep "NFT DROP:"
+
+# Recargar firewall
+sudo systemctl restart nftables</code></pre>
+                <div class="warn">
+                    <strong>Atención:</strong> recargar nftables hace <code>flush ruleset</code>,
+                    lo que vacía <code>captive_allowed_mac</code>. Todos los clientes deberán volver
+                    a aceptar el portal (las conexiones ya establecidas siguen activas por <code>ct state established</code>).
+                </div>
+            </div>
+
+            <!-- ── DNS ───────────────────────────────────────────────────── -->
+            <div class="tech-section" id="dns">
+                <h2>DNS — Bind9</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> named.service · Bind9 v9.18.39</span>
+                    <span>Rol Ansible: <code>minipc/router-setup/roles/dns/</code></span>
+                </div>
+
+                <p>Bind9 actúa como servidor DNS <strong>autoritativo primario</strong> para <code>biblioteca.tel</code>
+                   y como resolver recursivo con forwarding para dominios externos.
+                   Escucha en las tres VLANs, dual-stack (IPv4 + IPv6 ULA).</p>
+
+                <div class="info">
+                    Todo el tráfico DNS de las VLANs es interceptado por nftables y redirigido a
+                    <code>192.168.10.1:53</code>, independientemente del DNS que el cliente tenga configurado.
+                    El DNS secundario de la RPi nunca es consultado directamente por los clientes.
+                </div>
+
+                <h3>Registros del dominio <code>biblioteca.tel</code></h3>
+                <table class="t">
+                    <thead><tr><th>Nombre</th><th>Tipo</th><th>Valor</th><th>Descripción</th></tr></thead>
+                    <tbody>
+                        <tr><td>minipc, ns1</td><td>A</td><td>192.168.10.1</td><td>Mini PC — gateway / nameserver primario</td></tr>
+                        <tr><td>biblioteca, rpi</td><td>A</td><td>192.168.20.10</td><td>Raspberry Pi — servidor de servicios</td></tr>
+                        <tr><td>switch</td><td>A</td><td>192.168.10.2</td><td>Switch Cisco</td></tr>
+                        <tr><td>wikipedia, wiki</td><td>CNAME</td><td>biblioteca</td><td>Kiwix Wikipedia</td></tr>
+                        <tr><td>educacion, kolibri</td><td>CNAME</td><td>biblioteca</td><td>Kolibri educativo</td></tr>
+                        <tr><td>videos, jellyfin, media</td><td>CNAME</td><td>biblioteca</td><td>Jellyfin medios</td></tr>
+                        <tr><td>squid</td><td>CNAME</td><td>biblioteca</td><td>Squid proxy</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>DNSSEC</h3>
+                <p>La zona <code>biblioteca.tel</code> está <strong>firmada con DNSSEC</strong>
+                   (solo la directa; las inversas no). Firmado automático vía <code>dnssec-policy default</code>
+                   + <code>inline-signing</code>. Las claves viven en <code>/var/lib/bind/keys/</code>.</p>
+                <pre><code># ¿Está firmada?
+sudo rndc zonestatus biblioteca.tel | grep -i secure   # → secure: yes
+
+# ¿El resolver valida?
+dig @192.168.10.1 biblioteca.tel +dnssec | grep -i flags   # busca el flag "ad"
+
+# Validación completa
+delv @127.0.0.1 biblioteca.tel A   # → "; fully validated"</code></pre>
+
+                <h3>RPZ — Blocklist de contenido adulto y apuestas</h3>
+                <p>Bind9 usa <strong>Response Policy Zones (RPZ)</strong> para bloquear dominios a nivel DNS.
+                   Cualquier consulta a un dominio en la lista retorna <code>NXDOMAIN</code>, bloqueando
+                   el acceso tanto por HTTP como por HTTPS.</p>
+                <table class="t">
+                    <thead><tr><th>Zona RPZ</th><th>Cuándo activa</th><th>Contenido</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>rpz.blocklist</code></td><td>Siempre</td><td>~82.800 dominios de pornografía y apuestas (StevenBlack). Se actualiza domingos a las 03:00.</td></tr>
+                        <tr><td><code>rpz.offline</code></td><td>Solo cuando WAN cae</td><td>Redirige todos los dominios externos a 192.168.30.1 — informa al usuario que no hay internet.</td></tr>
+                    </tbody>
+                </table>
+                <pre><code># Verificar bloqueo activo
+dig @192.168.10.1 bet365.com +short    # → NXDOMAIN (bloqueado)
+dig @192.168.10.1 google.com +short    # → resuelve normal
+
+# Forzar actualización de blocklist
+sudo systemctl start bind-rpz-update.service
+
+# Ver estado de las zonas RPZ
+sudo rndc zonestatus rpz.blocklist</code></pre>
+
+                <h3>Forwarding externo</h3>
+                <p>Para dominios no locales, Bind9 hace forwarding a <code>8.8.8.8</code>,
+                   <code>8.8.4.4</code> (Google) y <code>1.1.1.1</code> (Cloudflare).</p>
+
+                <h3>Verificación</h3>
+                <pre><code># Desde cualquier cliente en VLAN30
+dig @192.168.10.1 biblioteca.tel +short      # → 192.168.20.10
+dig @192.168.10.1 wikipedia.biblioteca.tel   # → CNAME → 192.168.20.10
+
+# Estado del servicio
+systemctl status named
+named-checkconf
+named-checkzone biblioteca.tel /var/lib/bind/db.biblioteca.tel</code></pre>
+            </div>
+
+            <!-- ── DHCP ──────────────────────────────────────────────────── -->
+            <div class="tech-section" id="dhcp">
+                <h2>DHCP — Kea</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> kea-dhcp4-server.service · Kea v2.4.1</span>
+                    <span>Rol Ansible: <code>minipc/router-setup/roles/dhcp/</code></span>
+                </div>
+
+                <p>Kea DHCPv4 sirve las tres VLANs. Usa raw sockets (<code>AF_PACKET</code>) para
+                   enviar DHCP Offers, lo que requiere un fix especial en nftables.</p>
+
+                <h3>Subnets y pools</h3>
+                <table class="t">
+                    <thead><tr><th>VLAN</th><th>Red</th><th>Pool dinámico</th><th>Gateway</th><th>DNS entregado</th></tr></thead>
+                    <tbody>
+                        <tr><td>10 (Gestión)</td><td>192.168.10.0/24</td><td>.50 — .99</td><td>192.168.10.1</td><td>192.168.10.1</td></tr>
+                        <tr><td>20 (Servidores)</td><td>192.168.20.0/24</td><td>.50 — .99</td><td>192.168.20.1</td><td>192.168.10.1</td></tr>
+                        <tr><td>30 (Clientes)</td><td>192.168.30.0/24</td><td>.100 — .200</td><td>192.168.30.1</td><td>192.168.10.1</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Reserva estática</h3>
+                <table class="t">
+                    <thead><tr><th>MAC</th><th>IP reservada</th><th>Hostname</th><th>Motivo</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>2c:cf:67:d2:f0:98</code></td><td>192.168.20.10</td><td>rpi5-servicios</td><td>La RPi necesita IP fija para nftables y nginx</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Timers de lease</h3>
+                <table class="t">
+                    <thead><tr><th>Timer</th><th>Valor</th><th>Significado</th></tr></thead>
+                    <tbody>
+                        <tr><td>valid-lifetime</td><td>4000 s (~66 min)</td><td>Duración total del lease</td></tr>
+                        <tr><td>renew-timer (T1)</td><td>1000 s (~16 min)</td><td>Cuándo el cliente intenta renovar con el mismo servidor</td></tr>
+                        <tr><td>rebind-timer (T2)</td><td>2000 s (~33 min)</td><td>Cuándo acepta renovar con cualquier servidor</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Fix de broadcast DHCP — nftables netdev</h3>
+                <p>Kea envía DHCP Offers con destino unicast antes de que el cliente tenga IP asignada.
+                   macOS en estado APIPA solo acepta Offers con <code>dst=255.255.255.255</code>.
+                   Fix en nftables <code>egress</code>:</p>
+                <pre><code>table netdev dhcp_fix {
+    chain out_vlan30 {
+        type filter hook egress device "enp171s0.30" priority filter;
+        udp sport 67 udp dport 68 ip daddr != 255.255.255.255 \
+            ip daddr set 255.255.255.255 ether daddr set ff:ff:ff:ff:ff:ff
+    }
+}</code></pre>
+
+                <h3>Comandos útiles</h3>
+                <pre><code># Ver leases actuales
+cat /var/lib/kea/kea-leases4.csv
+
+# Logs en tiempo real
+journalctl -u kea-dhcp4-server -f
+
+# Reiniciar tras cambios de config
+systemctl restart kea-dhcp4-server</code></pre>
+            </div>
+
+            <!-- ── PORTAL CAUTIVO ────────────────────────────────────────── -->
+            <div class="tech-section" id="captive">
+                <h2>Portal Cautivo</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> nginx.service + captive-accept.service</span>
+                    <span>Rol: <code>minipc/router-setup/roles/captive_portal/</code></span>
+                    <span>Actualizado: 2026-06-02</span>
+                </div>
+
+                <p>Portal estilo aeropuerto: hasta que el usuario acepte, todo HTTP de VLAN30
+                   es redirigido al splash en <code>http://biblioteca.tel/</code>.</p>
+
+                <h3>Arquitectura</h3>
+                <pre class="diag">
+┌─────────────────────────────────────────────────────────┐
+│ Cliente VLAN30 NO autenticado · tipea cualquier URL     │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│ nftables prerouting                                     │
+│  HTTP  :80  sin marca → DNAT 192.168.30.1:80            │
+│  HTTPS :443 sin marca → DNAT 192.168.30.1:2050          │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│ nginx :80                                               │
+│  server_name biblioteca.tel → sirve splash.html (200)  │
+│  default_server (otros Host) → 302 a biblioteca.tel/   │
+│  probes del SO (/generate_204, …) → 302 idem            │
+└──────────────────────────┬──────────────────────────────┘
+                           │ clic "Entrar" → GET /accept
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│ captive-accept.py :2051                                 │
+│  1. lookup MAC via ip neigh (X-Real-IP del cliente)     │
+│  2. nft add element captive_allowed_mac { MAC }         │
+│     (timeout 8h — el cliente vuelve al splash tras 8h)  │
+│  3. devuelve 200 + Connection: close + meta-refresh     │
+│     → https://biblioteca.tel/                           │
+└──────────────────────────┬──────────────────────────────┘
+                           │ browser abre TCP nuevo
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│ MAC en captive_allowed_mac → mark=0x1 → sin DNAT        │
+│ → RPi nginx :443 → landing de biblioteca.tel            │
+└─────────────────────────────────────────────────────────┘</pre>
+
+                <h3>Componentes</h3>
+                <table class="t">
+                    <thead><tr><th>Componente</th><th>Puerto</th><th>Archivo</th><th>Estado</th></tr></thead>
+                    <tbody>
+                        <tr><td>nginx splash</td><td>:80</td><td>captive-portal.nginx.j2</td><td><span class="badge bg">enabled</span></td></tr>
+                        <tr><td>nginx SSL fallback</td><td>:2050</td><td>captive-portal.nginx.j2</td><td><span class="badge bg">enabled</span></td></tr>
+                        <tr><td>captive-accept.py</td><td>127.0.0.1:2051</td><td>captive-accept.service</td><td><span class="badge bg">enabled</span></td></tr>
+                        <tr><td>captive-portal.service</td><td>—</td><td>legado</td><td><span class="badge br">disabled — NO usar</span></td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Por qué se eliminó el conntrack flush</h3>
+                <p>La versión anterior ejecutaba <code>conntrack -D -s &lt;ip&gt;</code> durante el handler de <code>/accept</code>
+                   para invalidar el DNAT cacheado. <strong>El problema:</strong> corría antes del <code>write()</code>
+                   final de la respuesta HTTP — los paquetes salientes perdían el reverse-NAT y el meta-refresh
+                   nunca llegaba al browser. El usuario tenía que hacer clic dos veces.</p>
+                <p><strong>Fix:</strong> <code>keepalive_timeout 0</code> en la location <code>/accept</code>
+                   hace que nginx envíe <code>Connection: close</code>. El browser cierra el TCP al recibir
+                   la respuesta y abre uno nuevo que evalúa nftables fresh con la MAC ya marcada. Sin conntrack.</p>
+
+                <h3>Comandos de gestión de auth</h3>
+                <pre><code># Ver clientes autorizados (MACs)
+sudo nft list set inet filter captive_allowed_mac
+
+# Desautorizar un cliente puntual
+sudo nft delete element inet filter captive_allowed_mac { aa:bb:cc:dd:ee:ff }
+
+# Desautorizar TODOS (todos vuelven al splash)
+sudo nft flush set inet filter captive_allowed_mac
+
+# Smoke test del portal (desde el Mini PC)
+curl -s -o /dev/null -w '%{http_code} %{size_download}b\n' \
+     -H 'Host: biblioteca.tel' http://192.168.30.1/
+# Esperado: 200 &lt;size&gt;b
+
+curl -s -o /dev/null -w '%{http_code} → %{redirect_url}\n' \
+     -H 'Host: example.com' http://192.168.30.1/
+# Esperado: 302 → http://biblioteca.tel/
+
+# Ver auth en vivo
+sudo journalctl -u captive-accept -f</code></pre>
+            </div>
+
+            <!-- ── PROXY HTTP ─────────────────────────────────────────────── -->
+            <div class="tech-section" id="proxy">
+                <h2>Proxy HTTP — Nginx intermediario</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> nginx.service en :8888</span>
+                    <span>Rol: <code>minipc/router-setup/roles/captive_portal/</code></span>
+                </div>
+
+                <h3>Por qué existe este intermediario</h3>
+                <p>Sin él, el flujo era <code>Cliente → DNAT → 192.168.20.10:3128 (Squid intercept)</code>.
+                   Squid intercept necesita <code>SO_ORIGINAL_DST</code> para saber el destino real, pero como
+                   el DNAT ocurrió en el Mini PC, el kernel de la RPi devuelve <code>192.168.20.10:3128</code>
+                   (el propio Squid). Squid detecta un loop → <strong>403 Access Denied</strong>.</p>
+                <p>La solución: nginx recibe el tráfico en el Mini PC, construye el <code>Host</code>
+                   header correctamente y lo reenvía a Squid en modo forward proxy (que lee el destino
+                   del <code>Host</code> header, sin necesitar <code>SO_ORIGINAL_DST</code>).</p>
+
+                <h3>Configuración nginx</h3>
+                <pre><code>server {
+    listen 8888;
+    resolver 192.168.10.1 valid=30s ipv6=off;
+
+    location / {
+        proxy_pass         http://192.168.20.10:3129;
+        proxy_http_version 1.0;          # Squid forward maneja mejor HTTP/1.0
+        proxy_set_header   Host $http_host;    # preserva el Host original del cliente
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   Connection "";
+    }
+}</code></pre>
+
+                <h3>Verificación</h3>
+                <pre><code># nginx escucha en 8888
+ss -tlnp | grep 8888
+
+# Probar el intermediario desde el Mini PC
+curl -v --proxy http://192.168.30.1:8888 http://example.com
+
+# Desde cliente VLAN30 autenticado
+curl http://example.com   # pasa por nftables → nginx :8888 → Squid :3129
+
+# Logs
+tail -f /var/log/nginx/access.log
+ssh raspberry "sudo tail -f /var/log/squid/access.log"</code></pre>
+            </div>
+
+            <!-- ── NTP ───────────────────────────────────────────────────── -->
+            <div class="tech-section" id="ntp">
+                <h2>NTP — Chrony</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> chrony.service · Stratum 3</span>
+                    <span>Rol: <code>minipc/router-setup/roles/ntp/</code></span>
+                </div>
+
+                <p>Chrony sincroniza el Mini PC con pools NTP colombianos y redistribuye
+                   tiempo a todos los dispositivos de las VLANs. Si no hay WAN, sirve tiempo
+                   local en stratum 10 para que los clientes sigan sincronizados.</p>
+
+                <pre class="diag">
+[Internet — pools NTP Colombia/Sudamérica]
+    │ upstream sync (actualmente: 0.co.ntp.edgeuno.com, stratum 3)
+    ▼
+[Mini PC — chrony :123]
+    │ allow 192.168.0.0/16
+    ├── VLAN10 clientes de gestión
+    ├── VLAN20 RPi
+    └── VLAN30 clientes WiFi</pre>
+
+                <h3>Fuentes NTP upstream</h3>
+                <pre><code>pool 0.south-america.pool.ntp.org iburst maxsources 2
+pool 1.south-america.pool.ntp.org iburst maxsources 2
+pool 2.co.pool.ntp.org             iburst maxsources 2</code></pre>
+
+                <h3>Directivas clave</h3>
+                <table class="t">
+                    <thead><tr><th>Directiva</th><th>Valor</th><th>Efecto</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>allow 192.168.0.0/16</code></td><td>—</td><td>Permite queries de todas las VLANs internas</td></tr>
+                        <tr><td><code>local stratum 10</code></td><td>10</td><td>Sirve tiempo local si no hay WAN (clave para redes inestables)</td></tr>
+                        <tr><td><code>makestep 1 3</code></td><td>1s / 3 updates</td><td>Corrección de tiempo grande al inicio (no espera ajuste gradual)</td></tr>
+                        <tr><td><code>rtcsync</code></td><td>—</td><td>Sincroniza el RTC del hardware</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Verificación</h3>
+                <pre><code># Estado y fuentes
+chronyc sources -v      # * = fuente seleccionada
+chronyc tracking        # stratum actual, offset, drift
+
+# Verificar que escucha en UDP 123
+ss -ulnp | grep 123
+
+# Desde cliente VLAN30
+ntpdate -q 192.168.30.1
+
+# Forzar sincronización inmediata
+chronyc makestep</code></pre>
+            </div>
+
+            <!-- ── MONITOREO ─────────────────────────────────────────────── -->
+            <div class="tech-section" id="monitoring">
+                <h2>Monitoreo — Prometheus + Grafana</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> prometheus · grafana-server · node_exporter · snmp_exporter</span>
+                    <span>Rol: <code>minipc/router-setup/roles/monitoring/</code></span>
+                </div>
+
+                <table class="t">
+                    <thead><tr><th>Componente</th><th>Puerto</th><th>Rol</th></tr></thead>
+                    <tbody>
+                        <tr><td>node_exporter</td><td>:9100</td><td>Métricas del sistema Mini PC (CPU, RAM, disco, red)</td></tr>
+                        <tr><td>Prometheus</td><td>:9090</td><td>Recolección y almacenamiento de métricas (scraping cada 15s)</td></tr>
+                        <tr><td>snmp_exporter</td><td>:9116</td><td>Métricas del switch Cisco L2 vía SNMP</td></tr>
+                        <tr><td>Grafana v13.0.1</td><td>:3000</td><td>Dashboards — acceso desde VLAN10</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Targets de Prometheus</h3>
+                <table class="t">
+                    <thead><tr><th>Job</th><th>Target</th><th>Qué monitorea</th></tr></thead>
+                    <tbody>
+                        <tr><td>minipc_node</td><td>localhost:9100</td><td>Mini PC</td></tr>
+                        <tr><td>rpi_node</td><td>192.168.20.10:9100</td><td>Raspberry Pi</td></tr>
+                        <tr><td>switch_snmp</td><td>192.168.10.2 (via :9116)</td><td>Switch Cisco L2</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Acceso</h3>
+                <table class="t">
+                    <thead><tr><th>Servicio</th><th>URL</th></tr></thead>
+                    <tbody>
+                        <tr><td>Grafana</td><td>http://192.168.10.1:3000 o http://monitoreo.biblioteca.tel</td></tr>
+                        <tr><td>Prometheus</td><td>http://192.168.10.1:9090</td></tr>
+                        <tr><td>node_exporter</td><td>http://192.168.10.1:9100/metrics</td></tr>
+                    </tbody>
+                </table>
+                <p>Todos accesibles <strong>solo desde VLAN10</strong> (gestión). No son alcanzables desde VLAN30.</p>
+
+                <h3>Configurar Grafana (primera vez)</h3>
+                <pre><code># 1. Abrir http://192.168.10.1:3000 desde VLAN10
+# 2. Login: admin / admin  (cambiar contraseña al entrar)
+# 3. Agregar datasource:
+#    Connections → Data sources → Add → Prometheus → URL: http://localhost:9090
+# 4. Importar dashboard Node Exporter Full:
+#    + → Import → ID: 1860</code></pre>
+
+                <h3>Verificación</h3>
+                <pre><code>curl -s http://localhost:9090/-/healthy      # → Prometheus is Healthy.
+curl -s http://localhost:9100/metrics | head -5
+curl -s http://localhost:3000/api/health    # → {"database":"ok","version":"13.0.1"}</code></pre>
+            </div>
+
+            <!-- ── NGINX RPi ──────────────────────────────────────────────── -->
+            <div class="tech-section" id="nginx-rpi">
+                <h2>Nginx — Raspberry Pi</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> nginx.service · nginx 1.24.0</span>
+                    <span>Rol: <code>raspberry/rpi-setup/roles/nginx/</code></span>
+                </div>
+
+                <p>Nginx es la puerta de entrada única a todos los servicios de la RPi.
+                   Escucha en :80 y enruta por URL hacia Kiwix, Kolibri y Jellyfin.</p>
+
+                <h3>Tabla de routing</h3>
+                <table class="t">
+                    <thead><tr><th>URL</th><th>Destino</th><th>Nota</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>/</code></td><td>Panel HTML estático</td><td><code>Cache-Control: no-cache</code></td></tr>
+                        <tr><td><code>/wikipedia/</code></td><td>Kiwix :8080</td><td>Rewrite: strip <code>/wikipedia/</code></td></tr>
+                        <tr><td><code>/content/</code></td><td>Kiwix :8080</td><td>Transparente — URLs de ZIM versionadas</td></tr>
+                        <tr><td><code>/skin/</code>, <code>/search</code>, <code>/catalog/</code></td><td>Kiwix :8080</td><td>Assets y catálogo OPDS</td></tr>
+                        <tr><td><code>/kolibri/</code></td><td>Kolibri :8090</td><td>Buffers grandes para metadatos de canales</td></tr>
+                        <tr><td><code>/videos/</code></td><td>Jellyfin :8096</td><td>Timeout 6h para streaming largo</td></tr>
+                        <tr><td><code>/status</code></td><td>status.json (health check)</td><td><code>Cache-Control: no-store</code></td></tr>
+                        <tr><td>Probes del SO</td><td>302 → 192.168.30.1:2050</td><td>Fuerza detección de portal cautivo</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Fix: <code>Cache-Control: no-cache</code> en el HTML del panel</h3>
+                <div class="warn">
+                    <strong>Incidente 2026-06-01:</strong> al hacer clic en "Wikipedia" los clientes
+                    veían <em>"Page not found — /content/wikipedia_es_all_mini_2026-02/"</em> aunque
+                    el ZIM actual era de 2026-05.<br><br>
+                    <strong>Causa:</strong> Squid cacheaba el <code>index.html</code> del panel sin <code>Cache-Control</code>
+                    y lo servía días después con el link al ZIM viejo (ya inexistente).<br><br>
+                    <strong>Fix:</strong> nginx envía <code>Cache-Control: no-cache</code> en todos los
+                    archivos <code>.html</code> — Squid revalida el HTML en cada request pero sigue cacheando
+                    el contenido pesado de los ZIMs.
+                </div>
+                <pre><code>location = / {
+    add_header Cache-Control "no-cache" always;
+    try_files /index.html =404;
+}</code></pre>
+
+                <h3>Fix: <code>Accept-Encoding: ""</code> para Kiwix</h3>
+                <div class="warn">
+                    <strong>Incidente 2026-06-01:</strong> páginas de Kiwix cargaban <strong>en blanco</strong>
+                    con HTTP 200 pero ~0.7 kB — el browser recibía bytes gzip como si fueran HTML plano.<br><br>
+                    <strong>Causa:</strong> Kiwix sirve con <code>Content-Encoding: gzip</code> + <code>Vary: Accept-Encoding</code>.
+                    Squid manejaba mal las variantes de compresión y servía objetos con cabeceras inconsistentes.<br><br>
+                    <strong>Fix:</strong> el snippet <code>kiwix-proxy.conf</code> envía
+                    <code>proxy_set_header Accept-Encoding ""</code> — Kiwix responde sin comprimir y
+                    Squid cachea solo una representación plana.
+                </div>
+
+                <h3>Homepage dinámico (<code>library.js</code>)</h3>
+                <p>El panel ya no embebe fechas de ZIM hardcodeadas. El archivo <code>/js/library.js</code>
+                   consulta <code>/catalog/v2/entries</code> (OPDS de Kiwix) y reescribe los links de cada
+                   tarjeta al path versionado actual. La sección "Descubre" llama a <code>/random</code>
+                   para mostrar artículos recomendados en tiempo real.</p>
+
+                <h3>Verificación</h3>
+                <pre><code>ss -tlnp | grep :80
+
+curl -s http://192.168.20.10/ | head -5
+curl -I http://192.168.20.10/wikipedia/
+curl -I http://192.168.20.10/kolibri/
+curl -I http://192.168.20.10/videos/
+
+# Probe redirect (debe dar 302 al portal)
+curl -I http://192.168.20.10/generate_204
+
+# Logs
+tail -f /var/log/nginx/biblioteca-error.log</code></pre>
+            </div>
+
+            <!-- ── SQUID ─────────────────────────────────────────────────── -->
+            <div class="tech-section" id="squid">
+                <h2>Squid — Proxy / Cache</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> squid.service · Squid 6.14</span>
+                    <span>Rol: <code>raspberry/rpi-setup/roles/squid/</code></span>
+                </div>
+
+                <h3>Modos por puerto</h3>
+                <table class="t">
+                    <thead><tr><th>Puerto</th><th>Modo</th><th>Propósito</th></tr></thead>
+                    <tbody>
+                        <tr><td>:3129</td><td><code>accel vhost allow-direct</code></td><td>Recibe del nginx intermediario del Mini PC. Lee el destino del <code>Host</code> header (no necesita <code>SO_ORIGINAL_DST</code>).</td></tr>
+                        <tr><td>:3128</td><td><code>intercept</code></td><td>Captura tráfico HTTP local de la RPi</td></tr>
+                        <tr><td>:443</td><td><code>accel</code> (reverse proxy)</td><td>Termina TLS de biblioteca.tel y cachea con backend nginx :80</td></tr>
+                        <tr><td>:3130</td><td>ssl-bump (peek+splice)</td><td><span class="badge br">No en producción</span> — cross-host DNAT pierde <code>SO_ORIGINAL_DST</code>. El filtrado HTTPS se hace vía Bind9 RPZ.</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Configuración de caché</h3>
+                <pre><code>cache_dir aufs /var/lib/biblioteca/squid-cache 10240 16 256
+cache_mem 512 MB
+maximum_object_size 128 MB
+refresh_pattern . 43200 90% 525600   # retención muy larga (offline-first)</code></pre>
+                <p>10 GB en disco, 512 MB en RAM. El contenido de ZIMs se cachea normalmente.
+                   El HTML del panel se revalida siempre (<code>Cache-Control: no-cache</code> desde nginx).</p>
+
+                <h3>Purga de caché — <code>clear-squid-cache</code></h3>
+                <pre><code>sudo /usr/local/sbin/clear-squid-cache   # ejecutar en la RPi</code></pre>
+                <p>El script hace: <code>stop</code> → borra y recrea <code>/var/lib/biblioteca/squid-cache</code>
+                   como root → <code>start</code>. Squid recrea los swap dirs al arrancar.</p>
+
+                <div class="warn">
+                    <strong>Trampa 1 — el glob silencioso:</strong><br>
+                    <code>sudo rm -rf /var/lib/biblioteca/squid-cache/*</code> <strong>no borra nada</strong>
+                    si lo ejecutas con un usuario sin privilegios. El glob <code>*</code> lo expande la shell,
+                    que no puede listar el directorio <code>0750</code> del usuario <code>proxy</code>.
+                    El <code>*</code> queda literal y <code>rm</code> no borra nada, <strong>en silencio</strong>.
+                    Resultado: crees que limpiaste la caché pero los objetos envenenados siguen ahí.<br><br>
+                    <strong>Trampa 2 — restart no purga:</strong><br>
+                    <code>systemctl restart squid</code> no toca el disco. La caché persiste después del restart.<br><br>
+                    <strong>Usa siempre el script.</strong>
+                </div>
+
+                <h3>Verificación</h3>
+                <pre><code># Puertos escuchando
+ss -tlnp | grep squid    # esperado: 3128, 3129, 3130, 443
+
+# Test forward proxy desde el Mini PC
+curl --proxy http://192.168.20.10:3129 http://example.com
+# Primera vez: TCP_MISS; segunda vez: TCP_HIT
+
+# Logs
+tail -f /var/log/squid/access.log
+tail -f /var/log/squid/cache.log</code></pre>
+            </div>
+
+            <!-- ── KIWIX ─────────────────────────────────────────────────── -->
+            <div class="tech-section" id="kiwix">
+                <h2>Kiwix — Biblioteca Digital</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> kiwix-serve.service · :8080</span>
+                    <span>Rol: <code>raspberry/rpi-setup/roles/kiwix/</code></span>
+                </div>
+
+                <p>Kiwix sirve archivos ZIM (contenido offline comprimido) en el loopback.
+                   Los clientes acceden siempre a través de nginx — nunca directamente a :8080.</p>
+
+                <h3>ZIMs instalados (snapshot 2026-06-01)</h3>
+                <table class="t">
+                    <thead><tr><th>Archivo ZIM</th><th>Tamaño</th></tr></thead>
+                    <tbody>
+                        <tr><td>wikipedia_es_all_mini_2026-05.zim</td><td>~3.4 GB</td></tr>
+                        <tr><td>wikibooks_es_all_nopic_2025-10.zim</td><td>107 MB</td></tr>
+                        <tr><td>wikivoyage_es_all_nopic_2026-03.zim</td><td>37 MB</td></tr>
+                        <tr><td>wikinews_es_all_nopic_2026-04.zim</td><td>34 MB</td></tr>
+                        <tr><td>wikiversity_es_all_nopic_2026-04.zim</td><td>18 MB</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Auto-actualización de ZIMs</h3>
+                <p>Cron los lunes y jueves a las 02:00. El script descarga la versión más reciente
+                   de cada ZIM configurado en <code>group_vars/all.yml</code> y actualiza <code>library.xml</code>.</p>
+
+                <h3>Agregar un ZIM nuevo</h3>
+                <pre><code># 1. Descargar el ZIM (en la RPi)
+wget -P /var/lib/biblioteca/zim/ https://download.kiwix.org/zim/...
+
+# 2. Agregar al catálogo
+sudo -u kiwix kiwix-manage /var/lib/biblioteca/zim/library.xml \
+    add /var/lib/biblioteca/zim/archivo.zim
+
+# 3. Reiniciar kiwix
+sudo systemctl restart kiwix-serve
+
+# 4. Agregar la entrada en group_vars/all.yml (para auto-update)</code></pre>
+
+                <h3>Hardening del servicio</h3>
+                <pre><code># /etc/systemd/system/kiwix-serve.service
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/var/lib/biblioteca/zim
+MemoryMax=1G
+CPUQuota=200%</code></pre>
+
+                <h3>Verificación</h3>
+                <pre><code>systemctl status kiwix-serve
+ss -tlnp | grep 8080
+curl -s http://127.0.0.1:8080/ | head -5         # acceso directo (desde RPi)
+curl -I http://192.168.20.10/wikipedia/           # acceso vía nginx</code></pre>
+            </div>
+
+            <!-- ── KOLIBRI ───────────────────────────────────────────────── -->
+            <div class="tech-section" id="kolibri">
+                <h2>Kolibri — Plataforma Educativa</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> kolibri.service · :8090</span>
+                    <span>Rol: <code>raspberry/rpi-setup/roles/kolibri/</code></span>
+                </div>
+
+                <h3>Canales instalados</h3>
+                <table class="t">
+                    <thead><tr><th>Canal</th><th>Tamaño aprox.</th></tr></thead>
+                    <tbody>
+                        <tr><td>Khan Academy Español</td><td>~36.6 GB</td></tr>
+                        <tr><td>Biblioteca Elejandria</td><td>0.9 GB</td></tr>
+                        <tr><td>Proyecto Biosfera</td><td>0.2 GB</td></tr>
+                        <tr><td>EiE Familias</td><td>0.1 GB</td></tr>
+                        <tr><td><strong>Total</strong></td><td><strong>~38 GB</strong></td></tr>
+                    </tbody>
+                </table>
+                <div class="info">
+                    El canal NASA (3.1 GB) fue removido el 2026-06-01 para liberar espacio.
+                    El disco de la RPi (SD 59GB) estaba al 91% tras descargarlo junto a Khan Academy.
+                    Para re-agregarlo hace falta liberar espacio o agregar almacenamiento USB.
+                </div>
+
+                <h3>Presupuesto de disco — crítico</h3>
+                <div class="warn">
+                    <strong>Incidente 2026-06-01:</strong> el auto-update llenó el disco al 91%,
+                    corrompió el diskcache de Kolibri y el servicio daba <strong>500 en toda la plataforma</strong>.<br><br>
+                    <strong>Solución de emergencia:</strong> <code>systemctl restart kolibri</code> (resolvió reconectando los shards del cache).<br><br>
+                    <strong>Fix permanente:</strong>
+                    <ul style="margin-top:8px; margin-left:16px;">
+                        <li><code>MIN_FREE_MB=10000</code> en el script de auto-update — se detiene cuando quedan &lt;10 GB (~84% usado, por debajo del 85% de alarma).</li>
+                        <li>Reserva ext4 bajada de 4% a 1% (<code>tune2fs -m 1</code>) — recupera ~2 GB de espacio útil.</li>
+                    </ul>
+                </div>
+
+                <h3>Troubleshooting: error 500 / sqlite malformed</h3>
+                <pre><code># 1. Reiniciar (suele bastar — reconecta shards auto-recuperados)
+sudo systemctl restart kolibri
+
+# 2. Si persiste: verificar integridad del diskcache
+for f in /home/akasicom/.kolibri/process_cache/*/cache.db; do
+    echo "$f"
+    sudo -u akasicom sqlite3 "$f" "PRAGMA integrity_check;" | head -1
+done
+
+# 3. Si algún shard está malformed: borrar cache entero (NO se pierde contenido)
+sudo systemctl stop kolibri
+sudo -u akasicom rm -rf /home/akasicom/.kolibri/process_cache/*
+sudo systemctl start kolibri</code></pre>
+
+                <h3>Acceso y configuración</h3>
+                <p>Configurado con <code>landing_page=learn</code> y <code>allow_guest_access=True</code>
+                   — los usuarios ven el contenido directamente sin login.</p>
+                <pre><code># Listar canales instalados
+KOLIBRI_HOME=/home/akasicom/.kolibri \
+    sudo -u akasicom kolibri manage listchannels
+
+# Importar canal desde red
+KOLIBRI_HOME=/home/akasicom/.kolibri \
+    sudo -u akasicom kolibri manage importchannel network &lt;ID&gt;
+KOLIBRI_HOME=/home/akasicom/.kolibri \
+    sudo -u akasicom kolibri manage importcontent network &lt;ID&gt;
+
+# Ver estado del servicio
+systemctl status kolibri
+ss -tlnp | grep 8090</code></pre>
+            </div>
+
+            <!-- ── JELLYFIN ──────────────────────────────────────────────── -->
+            <div class="tech-section" id="jellyfin">
+                <h2>Jellyfin — Servidor de Video</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> jellyfin.service · :8096</span>
+                    <span>Rol: <code>raspberry/rpi-setup/roles/jellyfin/</code></span>
+                </div>
+
+                <h3>Bibliotecas configuradas</h3>
+                <table class="t">
+                    <thead><tr><th>Biblioteca</th><th>Directorio</th></tr></thead>
+                    <tbody>
+                        <tr><td>Comunitarios</td><td>/var/lib/biblioteca/videos/comunitarios</td></tr>
+                        <tr><td>Educativos</td><td>/var/lib/biblioteca/videos/educativos</td></tr>
+                        <tr><td>Culturales</td><td>/var/lib/biblioteca/videos/culturales</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Videos actuales (snapshot 2026-05-30)</h3>
+                <table class="t">
+                    <thead><tr><th>Video</th><th>Tamaño</th></tr></thead>
+                    <tbody>
+                        <tr><td>Tierra Frágil</td><td>293 MB</td></tr>
+                        <tr><td>WOW-Discovery</td><td>290 MB</td></tr>
+                        <tr><td>Cueva de los Tallos</td><td>107 MB</td></tr>
+                        <tr><td>Tiburones-Discovery</td><td>133 MB</td></tr>
+                        <tr><td><strong>Total</strong></td><td><strong>~823 MB</strong></td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Credenciales</h3>
+                <table class="t">
+                    <thead><tr><th>Usuario</th><th>Password</th><th>Rol</th></tr></thead>
+                    <tbody>
+                        <tr><td>admin</td><td>admin2026</td><td>Administrador (oculto en la pantalla de login)</td></tr>
+                        <tr><td>Invitado</td><td>(sin password)</td><td>Acceso a todo el contenido</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Agregar contenido</h3>
+                <pre><code># Copiar video a un directorio de media
+sudo cp video.mp4 /var/lib/biblioteca/videos/educativos/
+sudo chown jellyfin:jellyfin /var/lib/biblioteca/videos/educativos/video.mp4
+
+# Forzar re-escaneo (o esperar al cron diario a las 04:30)
+sudo /usr/local/sbin/scan-jellyfin-library</code></pre>
+
+                <h3>Verificación</h3>
+                <pre><code>systemctl status jellyfin
+ss -tlnp | grep 8096
+curl -I http://192.168.20.10/videos/
+journalctl -u jellyfin -f</code></pre>
+            </div>
+
+            <!-- ── DNS SECUNDARIO ────────────────────────────────────────── -->
+            <div class="tech-section" id="dns-sec">
+                <h2>DNS Secundario — Bind9 (RPi)</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> named.service · Bind9 v9.18.39 · slave</span>
+                    <span>Rol: <code>raspberry/rpi-setup/roles/dns_secondary/</code></span>
+                </div>
+
+                <p>La RPi replica la zona <code>biblioteca.tel</code> desde el primario del Mini PC.
+                   Los clientes nunca la consultan directamente (nftables los fuerza al primario).
+                   Existe como redundancia operativa.</p>
+
+                <pre class="diag">
+[Mini PC — master 192.168.20.1]          [RPi — slave 192.168.20.10]
+  Bind9 master                              Bind9 slave
+  zona: biblioteca.tel (firmada) ──AXFR──▶  copia firmada
+  zonas inversas VLAN10/20/30  ─────────▶  copias
+
+  Autenticado con TSIG (clave ns1-ns2., hmac-sha256)
+  La RPi transfiere desde 192.168.20.1 (IP del Mini PC en VLAN20)</pre>
+
+                <h3>Configuración slave</h3>
+                <pre><code>zone "biblioteca.tel" {
+    type slave;
+    masters { 192.168.20.1 key "ns1-ns2."; };   # IP VLAN20 del Mini PC
+    file "/var/cache/bind/db.biblioteca.tel";
+};</code></pre>
+
+                <div class="info">
+                    <strong>DNSSEC:</strong> la zona llega ya firmada por el master. El slave solo sirve la copia
+                    firmada — no tiene las claves privadas.<br>
+                    <strong>TSIG secret:</strong> debe ser <em>idéntico</em> en ambos lados:
+                    <code>minipc/router-setup/roles/dns/vars/main.yml</code> y
+                    <code>raspberry/rpi-setup/group_vars/all.yml</code>.
+                </div>
+
+                <h3>Zonas replicadas</h3>
+                <table class="t">
+                    <thead><tr><th>Zona</th><th>Tipo</th></tr></thead>
+                    <tbody>
+                        <tr><td>biblioteca.tel</td><td>Forward (A + CNAME)</td></tr>
+                        <tr><td>10.168.192.in-addr.arpa</td><td>Reverse VLAN10</td></tr>
+                        <tr><td>20.168.192.in-addr.arpa</td><td>Reverse VLAN20</td></tr>
+                        <tr><td>30.168.192.in-addr.arpa</td><td>Reverse VLAN30</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Verificación</h3>
+                <pre><code># DNS secundario responde
+dig @192.168.20.10 biblioteca.tel     # → 192.168.20.10
+
+# Forzar re-transferencia (desde RPi)
+sudo rndc retransfer biblioteca.tel
+sudo rndc zonestatus biblioteca.tel   # serial debe coincidir con el master
+
+# Verificar zona transferida
+ls -la /var/cache/bind/db.biblioteca.tel
+
+# Demostrar que TSIG funciona:
+dig @192.168.20.1 biblioteca.tel AXFR -y hmac-sha256:ns1-ns2.:&lt;secret&gt;   # OK
+dig @192.168.20.1 biblioteca.tel AXFR                                      # REFUSED</code></pre>
+            </div>
+
+            <!-- ── HEALTH CHECK ──────────────────────────────────────────── -->
+            <div class="tech-section" id="health">
+                <h2>Health Check — Panel de estado</h2>
+                <div class="sec-meta">
+                    <span><span class="badge bg">Activo</span> biblioteca-health.timer + biblioteca-health.service</span>
+                    <span>Rol: <code>raspberry/rpi-setup/roles/health_check/</code></span>
+                </div>
+
+                <p>Timer systemd que ejecuta el health check cada 30 segundos. Escribe
+                   <code>/var/www/html/status.json</code>, servido en
+                   <code>http://biblioteca.tel/status</code>. El frontend (<code>js/status.js</code>)
+                   hace fetch cada 30s y muestra el indicador de color en el panel.</p>
+
+                <h3>Métricas que mide</h3>
+                <table class="t">
+                    <thead><tr><th>Métrica</th><th>Fuente</th></tr></thead>
+                    <tbody>
+                        <tr><td>Estado de nginx, Kiwix, Squid, Jellyfin, Kolibri</td><td><code>systemctl is-active</code> / probe TCP a puertos</td></tr>
+                        <tr><td>Temperatura CPU</td><td><code>/sys/class/thermal/thermal_zone*/temp</code></td></tr>
+                        <tr><td>Uso de disco</td><td><code>df --output=pcent /var/lib/biblioteca</code></td></tr>
+                        <tr><td>Uso de memoria</td><td><code>free -m</code></td></tr>
+                        <tr><td>Conexiones HTTP activas</td><td><code>ss</code> a :80</td></tr>
+                        <tr><td>ZIMs disponibles (count y tamaño)</td><td><code>find</code> + <code>du</code> en /var/lib/biblioteca/zim</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Lógica del indicador</h3>
+                <table class="t">
+                    <thead><tr><th>Condición</th><th>Color</th><th>Texto mostrado</th></tr></thead>
+                    <tbody>
+                        <tr><td>Algún servicio != OK</td><td>🔴</td><td>Servicios con problema: …</td></tr>
+                        <tr><td>Disco ≥ 85% o temperatura ≥ 75°C</td><td>🔴</td><td>Sistema sobrecargado · avisar al encargado</td></tr>
+                        <tr><td>Disco ≥ 80% o temperatura ≥ 70°C</td><td>🟡</td><td>Sistema funcionando · revisar pronto</td></tr>
+                        <tr><td>Todo OK</td><td>🟢</td><td>Funcionando · N fuentes cargadas</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="warn">
+                    <strong>Gotcha — umbrales duplicados:</strong> <code>js/status.js</code> tiene
+                    sus propias constantes hardcodeadas (<code>TEMP_WARN=70</code>, <code>TEMP_FAIL=75</code>,
+                    <code>DISK_WARN=80</code>, <code>DISK_FAIL=85</code>), independientes de
+                    los <code>thresholds</code> que publica <code>status.json</code>.
+                    Si cambias los umbrales en <code>group_vars/all.yml</code>,
+                    <strong>actualiza también</strong> <code>/var/www/html/js/status.js</code>.
+                </div>
+
+                <h3>Verificación</h3>
+                <pre><code># Timer activo
+systemctl status biblioteca-health.timer
+
+# Forzar una corrida y ver el JSON
+sudo systemctl start biblioteca-health.service
+curl -s http://biblioteca.tel/status | python3 -m json.tool
+
+# Disco de la RPi
+df -h /</code></pre>
+            </div>
+
+            <!-- ── SWITCH ────────────────────────────────────────────────── -->
+            <div class="tech-section" id="switch">
+                <h2>Switch Cisco L2</h2>
+                <p>Switch capa 2 que interconecta todos los dispositivos de la red.
+                   Modelos: <strong>SG350X-24</strong> o <strong>Catalyst 2960</strong>.</p>
+
+                <table class="t">
+                    <thead><tr><th>VLAN</th><th>Nombre</th><th>Puertos de acceso</th></tr></thead>
+                    <tbody>
+                        <tr><td>10</td><td>Management</td><td>—</td></tr>
+                        <tr><td>20</td><td>Servidores</td><td>Puerto 1 (RPi)</td></tr>
+                        <tr><td>30</td><td>Clientes WiFi</td><td>Puerto 4 (Linksys E2500)</td></tr>
+                    </tbody>
+                </table>
+                <p>Puerto 24 (Mini PC) en modo <strong>trunk</strong> con las tres VLANs.<br>
+                   <strong>Documentación:</strong> <code>networkDevices/SwitchCerritoBongo/</code></p>
+            </div>
+
+            <!-- ── LINKSYS ───────────────────────────────────────────────── -->
+            <div class="tech-section" id="ap">
+                <h2>Linksys E2500 — Access Point</h2>
+                <p>Opera en <strong>modo bridge</strong>, conectado al puerto 4 del switch (VLAN 30).
+                   No hace routing ni DHCP. Los clientes WiFi reciben IP del Kea DHCP del Mini PC
+                   vía VLAN 30 y pasan por el portal cautivo.</p>
+                <div class="info">
+                    <strong>Historial:</strong> anteriormente se usaba un TVWS AP (Innonet) en este puerto.
+                    La documentación histórica se conserva en <code>networkDevices/tvws_AP/</code>.
+                </div>
+            </div>
+
+            <!-- ── SSH ───────────────────────────────────────────────────── -->
+            <div class="tech-section" id="ssh">
+                <h2>Accesos SSH</h2>
+                <table class="t">
+                    <thead><tr><th>Dispositivo</th><th>Alias</th><th>Comando completo</th></tr></thead>
+                    <tbody>
+                        <tr><td>Mini PC</td><td><code>ssh minipc</code></td><td><code>ssh -i ~/.ssh/id_ed25519_ladrilleros user@100.90.95.134</code></td></tr>
+                        <tr><td>Raspberry Pi</td><td><code>ssh raspberry</code></td><td><code>ssh -i ~/.ssh/id_ed25519_ladrilleros akasicom@100.90.81.168</code></td></tr>
+                    </tbody>
+                </table>
+                <div class="info">
+                    Accesos vía overlay <strong>NetBird</strong> (<code>wt0</code>). Ambos dispositivos
+                    deben tener NetBird activo para ser alcanzables remotamente.<br>
+                    Detalles completos: <code>DOCS/red/CREDENCIALES-SSH.md</code>
+                </div>
+            </div>
+
+            <!-- ── ANSIBLE ───────────────────────────────────────────────── -->
+            <div class="tech-section" id="ansible">
+                <h2>Ansible</h2>
+                <div class="info">
+                    Ejecutar siempre desde <code>minipc/</code> o <code>raspberry/</code>
+                    (no desde la raíz del repo) para que <code>ansible.cfg</code> establezca
+                    el <code>roles_path</code> correcto.
+                </div>
+
+                <h3>Mini PC — <code>minipc/router-setup/</code></h3>
+                <pre><code># Playbook completo
+cd minipc/
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml
+
+# Solo un rol por tag
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags router
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags firewall
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags dns
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags dhcp
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags captive_portal
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags ntp
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags monitoring
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags docs
+
+# Servicios individuales (equivalente a tags, más explícito)
+ansible-playbook -i router-setup/inventory.ini services/dns.yml
+ansible-playbook -i router-setup/inventory.ini services/dhcp.yml
+ansible-playbook -i router-setup/inventory.ini services/captive_portal.yml</code></pre>
+
+                <h3>Raspberry Pi — <code>raspberry/rpi-setup/</code></h3>
+                <pre><code>cd raspberry/
+ansible-playbook -i rpi-setup/inventory.ini rpi-setup/playbook.yml
+
+# Servicios individuales
+ansible-playbook -i rpi-setup/inventory.ini services/nginx.yml
+ansible-playbook -i rpi-setup/inventory.ini services/squid.yml
+ansible-playbook -i rpi-setup/inventory.ini services/kiwix.yml
+ansible-playbook -i rpi-setup/inventory.ini services/kolibri.yml
+ansible-playbook -i rpi-setup/inventory.ini services/jellyfin.yml
+ansible-playbook -i rpi-setup/inventory.ini services/dns_secondary.yml
+ansible-playbook -i rpi-setup/inventory.ini services/health_check.yml</code></pre>
+            </div>
+
+            <!-- ── GOTCHAS ───────────────────────────────────────────────── -->
+            <div class="tech-section" id="gotchas">
+                <h2>Gotchas y soluciones conocidas</h2>
+                <p>Incidentes reales documentados durante la operación de la red.</p>
+
+                <h3>Página en blanco o con link a ZIM viejo</h3>
+                <p><strong>Síntoma:</strong> "Page not found — /content/wikipedia_es_all_mini_2026-02/" aunque el ZIM actual sea más reciente.<br>
+                   <strong>Causa:</strong> objeto envenenado en la caché de Squid.<br>
+                   <strong>Solución (en la RPi):</strong></p>
+                <pre><code>sudo /usr/local/sbin/clear-squid-cache</code></pre>
+                <p><strong>NO usar</strong> <code>rm -rf .../squid-cache/*</code> (glob falla silenciosamente). <code>systemctl restart squid</code> tampoco purga el disco.</p>
+
+                <hr class="sep">
+
+                <h3>Kolibri devuelve 500 / database disk image is malformed</h3>
+                <p><strong>Causa habitual:</strong> el disco se llenó y corrompió el diskcache de Kolibri.</p>
+                <pre><code># Diagnóstico
+df -h /   # ¿al 85%+?
+du -sh /home/akasicom/.kolibri/content
+
+# Recuperación
+sudo systemctl restart kolibri   # 90% de los casos resuelve
+
+# Si persiste: borrar diskcache
+sudo systemctl stop kolibri
+sudo -u akasicom rm -rf /home/akasicom/.kolibri/process_cache/*
+sudo systemctl start kolibri</code></pre>
+
+                <hr class="sep">
+
+                <h3>Cliente VLAN30 navega sin aceptar el portal</h3>
+                <p><strong>Causa:</strong> bypass IPv6/NAT64 — el cliente usa DNS64+NAT64 sin pasar por el DNAT del portal.<br>
+                   <strong>Verificar que el fix de <code>captive_mangle</code> está activo:</strong></p>
+                <pre><code>sudo nft list chain inet filter captive_mangle
+# Debe incluir la regla "ip6 daddr 64:ff9b::/96 meta mark != 0x1 drop"
+
+# Ver si hay clientes filtrándose
+sudo journalctl -kf | grep "CAPTIVE-V6-NAT64"
+
+# Si la regla no está: re-desplegar firewall
+cd minipc/
+ansible-playbook -i router-setup/inventory.ini router-setup/playbook.yml --tags firewall</code></pre>
+
+                <hr class="sep">
+
+                <h3>Portal cautivo no redirige / splash no aparece</h3>
+                <pre><code># Mini PC: verificar DNAT activo
+sudo nft list ruleset | grep -A5 prerouting
+systemctl status nginx captive-accept
+
+# Smoke test del portal
+curl -s -o /dev/null -w '%{http_code}\n' \
+     -H 'Host: biblioteca.tel' http://192.168.30.1/
+# Esperado: 200
+
+# Ver logs del portal
+sudo journalctl -u captive-accept -f
+sudo journalctl -u nginx -f</code></pre>
+
+                <hr class="sep">
+
+                <h3>DNS no resuelve biblioteca.tel</h3>
+                <pre><code># Verificar en el Mini PC
+dig @192.168.10.1 biblioteca.tel +short   # → 192.168.20.10
+systemctl status named
+named-checkconf
+
+# Verificar estado de la zona
+sudo rndc zonestatus biblioteca.tel
+
+# Ver si DNAT de DNS está activo
+sudo nft list ruleset | grep 53</code></pre>
+
+                <hr class="sep">
+
+                <h3>IP forward deshabilitado (el Mini PC deja de rutear)</h3>
+                <pre><code># Verificar
+cat /proc/sys/net/ipv4/ip_forward   # debe ser 1
+
+# Si es 0: re-aplicar
+cd minipc/
+ansible-playbook -i router-setup/inventory.ini services/router.yml</code></pre>
+
+                <hr class="sep">
+
+                <h3>Recarga de nftables desautentica a todos los usuarios</h3>
+                <p>Recargar nftables hace <code>flush ruleset</code>, lo que vacía el set
+                   <code>captive_allowed_mac</code>. Las sesiones TCP ya establecidas siguen
+                   vivas por <code>ct state established</code>, pero al abrir el browser
+                   de nuevo los clientes verán el splash otra vez.</p>
+
+            </div>
+
+            <div id="page-nav" class="page-nav"></div>
+        </div><!-- /tech-content -->
+        </div><!-- /tech-body -->
+    </div><!-- /tech-layout -->
+</div><!-- /tab-tech -->
+
+<script>
+    /* ── Tab switching ──────────────────────────────────────────────────── */
+    function switchTab(name, btn) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    /* ── FAQ accordion ─────────────────────────────────────────────────── */
+    function toggleFaq(el) { el.parentElement.classList.toggle('open'); }
+
+    /* ── Sidebar group collapse ─────────────────────────────────────────── */
+    function toggleGroup(sg) {
+        sg.classList.toggle('collapsed');
+        const items = sg.nextElementSibling;
+        if (items && items.classList.contains('sg-items')) {
+            items.classList.toggle('hidden');
+        }
+    }
+
+    /* ── Tech navigation (page-per-section) ────────────────────────────── */
+    const sidebarLinks = [...document.querySelectorAll('.sidebar a[href^="#"]')];
+    const sections     = [...document.querySelectorAll('.tech-section')];
+    const order        = sidebarLinks.map(a => a.getAttribute('href').slice(1));
+
+    // Map section id → group label (read from .sg text)
+    const groupOf = {};
+    document.querySelectorAll('.sg').forEach(sg => {
+        const items = sg.nextElementSibling;
+        if (items && items.classList.contains('sg-items')) {
+            items.querySelectorAll('a').forEach(a => {
+                // sg.childNodes[0] is a text node with the label
+                groupOf[a.getAttribute('href').slice(1)] =
+                    sg.childNodes[0].textContent.trim();
+            });
+        }
+    });
+
+    function showSection(id) {
+        if (!order.includes(id)) id = order[0];
+
+        // Show/hide sections
+        sections.forEach(s => s.classList.toggle('active', s.id === id));
+
+        // Sidebar highlight + auto-expand the group that contains this item
+        sidebarLinks.forEach(a => {
+            const isActive = a.getAttribute('href') === '#' + id;
+            a.classList.toggle('active', isActive);
+            if (isActive) {
+                // Ensure the parent sg-items is visible
+                const items = a.closest('.sg-items');
+                if (items && items.classList.contains('hidden')) {
+                    const sg = items.previousElementSibling;
+                    if (sg) {
+                        sg.classList.remove('collapsed');
+                        items.classList.remove('hidden');
+                    }
+                }
+            }
+        });
+
+        // Scroll content to top
+        const scroll = document.getElementById('tech-scroll');
+        if (scroll) scroll.scrollTop = 0;
+
+        // Breadcrumb bar
+        const idx = order.indexOf(id);
+        const h2  = document.querySelector('.tech-section#' + id + ' h2');
+        document.getElementById('pg-group').textContent = groupOf[id] || '';
+        document.getElementById('pg-sep').style.visibility = groupOf[id] ? 'visible' : 'hidden';
+        document.getElementById('pg-title').textContent = h2 ? h2.textContent : id;
+        document.getElementById('pg-count').textContent = `${idx + 1} / ${order.length}`;
+
+        // Prev / Next buttons
+        buildPageNav(idx);
+
+        // Update hash without triggering scroll
+        history.replaceState(null, '', location.pathname + '#' + id);
+    }
+
+    function buildPageNav(idx) {
+        const nav    = document.getElementById('page-nav');
+        const prevId = order[idx - 1];
+        const nextId = order[idx + 1];
+
+        const label = id => {
+            const h2 = document.querySelector('.tech-section#' + id + ' h2');
+            return h2 ? h2.textContent : id;
+        };
+
+        let html = '';
+        if (prevId) {
+            html += `<a class="pnav-btn" href="#${prevId}" data-nav="${prevId}">
+                        <span class="pnav-dir">← Anterior</span>
+                        <span class="pnav-name">${label(prevId)}</span>
+                     </a>`;
+        } else {
+            html += '<span></span>';
+        }
+        if (nextId) {
+            html += `<a class="pnav-btn right" href="#${nextId}" data-nav="${nextId}">
+                        <span class="pnav-dir">Siguiente →</span>
+                        <span class="pnav-name">${label(nextId)}</span>
+                     </a>`;
+        }
+        nav.innerHTML = html;
+
+        // Attach click handlers to new buttons
+        nav.querySelectorAll('[data-nav]').forEach(btn => {
+            btn.addEventListener('click', e => {
+                e.preventDefault();
+                showSection(btn.getAttribute('data-nav'));
+            });
+        });
+    }
+
+    // Sidebar link clicks
+    sidebarLinks.forEach(a => {
+        a.addEventListener('click', e => {
+            e.preventDefault();
+            showSection(a.getAttribute('href').slice(1));
+        });
+    });
+
+    // Init: show section from URL hash, or first section
+    const initId = location.hash ? location.hash.slice(1) : order[0];
+    showSection(initId);
+</script>
+
+</body>
+</html>

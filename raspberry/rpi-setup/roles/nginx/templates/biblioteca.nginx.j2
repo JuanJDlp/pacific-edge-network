@@ -98,7 +98,13 @@ server {
     location /content/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
                            proxy_hide_header Cache-Control; proxy_hide_header Expires;
                            add_header Cache-Control "public, max-age=31536000, immutable" always; }
-    location /catalog/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    # Catalogo OPDS: metadata pequena y dinamica (cambia al actualizar ZIMs).
+    # library.js lo consulta para reescribir los href de las tarjetas; si Squid
+    # (cache en :443) sirve una copia rancia o un objeto de 0 bytes, rewriteCards
+    # no corre y las tarjetas quedan en su fallback /viewer (incidente 2026-06-03).
+    # no-store -> Squid NUNCA lo cachea, siempre lo pide fresco a nginx.
+    location /catalog/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
+                           proxy_hide_header Cache-Control; add_header Cache-Control "no-store" always; }
     location /viewer     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
     location /skin/      { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
                            proxy_hide_header Cache-Control; proxy_hide_header Expires;
@@ -139,6 +145,13 @@ server {
         alias /var/www/html/status.json;
         default_type application/json;
         add_header Cache-Control "no-store";
+    }
+
+    # ---- Wiki del proyecto (single-page en /var/www/html/docs) ------------
+    # root ya es /var/www/html, asi que /docs mapea a /var/www/html/docs sin alias.
+    location /docs {
+        try_files $uri $uri/ /docs/index.html;
+        add_header Cache-Control "no-cache" always;
     }
 
     # ---- Kolibri -----------------------------------------------------------
@@ -249,7 +262,10 @@ server {
     location /content/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
                            proxy_hide_header Cache-Control; proxy_hide_header Expires;
                            add_header Cache-Control "public, max-age=31536000, immutable" always; }
-    location /catalog/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
+    # Catalogo OPDS: ver nota en el server :80 — no-store para que Squid no
+    # envenene la copia que library.js usa para reescribir los href (-> /viewer).
+    location /catalog/   { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
+                           proxy_hide_header Cache-Control; add_header Cache-Control "no-store" always; }
     location /viewer     { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf; }
     location /skin/      { proxy_pass http://kiwix_backend; include /etc/nginx/snippets/kiwix-proxy.conf;
                            proxy_hide_header Cache-Control; proxy_hide_header Expires;
@@ -290,6 +306,12 @@ server {
         alias /var/www/html/status.json;
         default_type application/json;
         add_header Cache-Control "no-store";
+    }
+
+    # ---- Wiki del proyecto (single-page en /var/www/html/docs) ------------
+    location /docs {
+        try_files $uri $uri/ /docs/index.html;
+        add_header Cache-Control "no-cache" always;
     }
 
     # ---- Kolibri -----------------------------------------------------------
