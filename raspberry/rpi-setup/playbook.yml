@@ -12,4 +12,5 @@
     - jellyfin
     - node_exporter
     - dns_secondary
+    - matrix          # Conduit homeserver (Matrix) + vhost nginx :8448
     - health_check    # panel de estado (/status) + tune2fs headroom de disco

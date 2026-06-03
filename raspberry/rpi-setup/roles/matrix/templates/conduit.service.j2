@@ -1,0 +1,14 @@
+# Managed by Ansible (role: matrix) — NO editar a mano
+[Unit]
+Description=Conduit Matrix Server
+After=network.target
+
+[Service]
+Environment="CONDUIT_CONFIG={{ matrix_conduit_config_dir }}/conduit.toml"
+User={{ matrix_conduit_user }}
+Group={{ matrix_conduit_user }}
+Restart=always
+ExecStart={{ matrix_conduit_binary }}
+
+[Install]
+WantedBy=multi-user.target

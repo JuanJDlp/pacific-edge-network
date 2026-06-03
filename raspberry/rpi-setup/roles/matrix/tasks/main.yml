@@ -1,0 +1,121 @@
+---
+# ============================================================
+# Matrix — Conduit homeserver (mensajería del proyecto)
+# Conduit en 127.0.0.1:6167, expuesto por nginx con TLS en :8448.
+# Server: praticasaws.dev (server_name grabado en RocksDB).
+#
+# Este rol gestiona configuración + systemd + vhost nginx.
+# NO instala el binario ni toca la base de datos existente.
+# ============================================================
+
+- name: Crear grupo de sistema para Conduit
+  group:
+    name: "{{ matrix_conduit_user }}"
+    system: true
+  become: true
+
+- name: Crear usuario de sistema para Conduit
+  user:
+    name: "{{ matrix_conduit_user }}"
+    group: "{{ matrix_conduit_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ matrix_conduit_data_dir }}"
+    create_home: false
+  become: true
+
+- name: Verificar que el binario de Conduit está instalado
+  stat:
+    path: "{{ matrix_conduit_binary }}"
+  register: conduit_bin
+  become: true
+
+- name: Asegurar binario de Conduit presente (instalación manual previa)
+  assert:
+    that: conduit_bin.stat.exists
+    fail_msg: >-
+      Falta {{ matrix_conduit_binary }}. El binario de Conduit se instala
+      manualmente (release de conduit.rs). Este rol gestiona configuración,
+      systemd y nginx — no el binario.
+    success_msg: "Binario de Conduit presente."
+
+- name: Crear directorio de configuración de Conduit
+  file:
+    path: "{{ matrix_conduit_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Asegurar directorio de datos de Conduit (RocksDB)
+  file:
+    path: "{{ matrix_conduit_data_dir }}"
+    state: directory
+    owner: "{{ matrix_conduit_user }}"
+    group: "{{ matrix_conduit_user }}"
+    mode: "0700"
+  become: true
+
+- name: Desplegar conduit.toml
+  template:
+    src: conduit.toml.j2
+    dest: "{{ matrix_conduit_config_dir }}/conduit.toml"
+    owner: root
+    group: "{{ matrix_conduit_user }}"
+    mode: "0640"
+  become: true
+  notify: restart conduit
+
+- name: Desplegar unidad systemd de Conduit
+  template:
+    src: conduit.service.j2
+    dest: /etc/systemd/system/conduit.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify:
+    - daemon-reload matrix
+    - restart conduit
+
+- name: Habilitar e iniciar Conduit
+  systemd:
+    name: conduit
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+
+# ── Exposición TLS vía nginx (:8448) ─────────────────────────────────────────
+- name: Desplegar vhost nginx conduit-matrix (federación/well-known)
+  template:
+    src: conduit-matrix.nginx.j2
+    dest: /etc/nginx/sites-available/conduit-matrix
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: reload nginx matrix
+
+- name: Habilitar vhost conduit-matrix
+  file:
+    src: /etc/nginx/sites-available/conduit-matrix
+    dest: /etc/nginx/sites-enabled/conduit-matrix
+    state: link
+  become: true
+  notify: reload nginx matrix
+
+- name: Validar configuración nginx
+  command: nginx -t
+  become: true
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Verificar que Conduit responde en {{ matrix_conduit_address }}:{{ matrix_conduit_port }}
+  wait_for:
+    host: "{{ matrix_conduit_address }}"
+    port: "{{ matrix_conduit_port }}"
+    timeout: 15
+  become: true
+  ignore_errors: "{{ ansible_check_mode }}"

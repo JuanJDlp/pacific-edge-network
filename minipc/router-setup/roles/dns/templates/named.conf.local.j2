@@ -53,6 +53,19 @@ zone "{{ rz }}.in-addr.arpa" {
 {% endfor %}
 
 //
+// Matrix (Conduit) — zona master local de {{ matrix_domain }}
+// El homeserver Matrix vive en la RPi ({{ matrix_host_ip }}); el Mini PC es
+// autoritativo de esta zona para que los clientes la resuelvan internamente
+// (su :53 va forzado a este master por nftables). Zona aislada: SIN DNSSEC ni
+// TSIG, NO se transfiere al slave — no interfiere con {{ dns_domain }}.
+//
+zone "{{ matrix_domain }}" {
+    type master;
+    file "{{ matrix_zone_file }}";
+    allow-transfer { none; };
+};
+
+//
 // RPZ offline zone
 //
 zone "rpz.offline" {

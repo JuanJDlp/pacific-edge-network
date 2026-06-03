@@ -1,0 +1,15 @@
+; Managed by Ansible (role: dns) — NO editar a mano
+; Zona master local de {{ matrix_domain }} (homeserver Matrix/Conduit en la RPi).
+; El Mini PC es autoritativo para que los clientes resuelvan el homeserver por
+; nombre dentro de la red (su :53 va forzado a este master por nftables).
+; Zona aislada: sin DNSSEC ni TSIG — no afecta a {{ dns_domain }}.
+$TTL 300
+@   IN  SOA ns1.{{ dns_domain }}. admin.{{ dns_domain }}. (
+        {{ matrix_zone_serial }} ; serial
+        3600       ; refresh
+        900        ; retry
+        604800     ; expire
+        300 )      ; minimum
+@   IN  NS    ns1.{{ dns_domain }}.
+@   IN  A     {{ matrix_host_ip }}
+@   IN  AAAA  {{ matrix_host_ipv6 }}

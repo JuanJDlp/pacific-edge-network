@@ -1,0 +1,37 @@
+---
+# ============================================================
+# Matrix — Conduit homeserver (mensajería del proyecto)
+# Server: praticasaws.dev · Conduit escucha en 127.0.0.1:6167
+# Expuesto por nginx con TLS en :8448 (federación / delegación well-known)
+#
+# NOTA: el binario /usr/local/bin/matrix-conduit se instala manualmente
+# (release de conduit.rs). Este rol gestiona configuración, systemd y nginx,
+# NO el binario ni la base de datos RocksDB existente.
+# ============================================================
+
+# Identidad del homeserver (grabada en la BD RocksDB — no cambiar a la ligera)
+matrix_server_name: "praticasaws.dev"
+
+# Usuario/grupo de sistema bajo el que corre Conduit
+matrix_conduit_user: "conduit"
+
+# Conduit (proceso local)
+matrix_conduit_address: "127.0.0.1"
+matrix_conduit_port: 6167
+matrix_conduit_binary: "/usr/local/bin/matrix-conduit"
+matrix_conduit_config_dir: "/etc/matrix-conduit"
+matrix_conduit_data_dir: "/var/lib/matrix-conduit/"
+
+# Registro de usuarios
+matrix_allow_registration: true
+matrix_registration_token: "matrix2026"
+
+# Federación: deshabilitada (red comunitaria aislada)
+matrix_allow_federation: false
+
+# Puerto público TLS (nginx) para /_matrix/ y /.well-known/matrix/
+matrix_federation_port: 8448
+
+# Certificado TLS (Let's Encrypt, válido para praticasaws.dev)
+matrix_tls_cert: "/etc/letsencrypt/live/praticasaws.dev/fullchain.pem"
+matrix_tls_key: "/etc/letsencrypt/live/praticasaws.dev/privkey.pem"

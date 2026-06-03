@@ -110,6 +110,25 @@
   become: true
   notify: reload bind9
 
+# ── Matrix (Conduit) — zona master local de praticasaws.dev ──────────────────
+# Zona aislada (sin DNSSEC/TSIG): resuelve el homeserver Matrix de la RPi por
+# nombre para los clientes. No interfiere con biblioteca.tel ni las inversas.
+- name: Desplegar zona master praticasaws.dev (Matrix/Conduit)
+  template:
+    src: db.praticasaws.dev.j2
+    dest: "{{ matrix_zone_file }}"
+    owner: bind
+    group: bind
+    mode: "0644"
+  become: true
+  notify: reload bind9
+
+- name: Validar zona praticasaws.dev con named-checkzone
+  command: "named-checkzone {{ matrix_domain }} {{ matrix_zone_file }}"
+  become: true
+  changed_when: false
+  ignore_errors: "{{ ansible_check_mode }}"
+
 # ── TSIG ─────────────────────────────────────────────────────────────────────
 # Se despliega ANTES de DNSSEC: el firmado fuerza un reload, y named.conf.local
 # incluye named.conf.tsig — debe existir antes de recargar.

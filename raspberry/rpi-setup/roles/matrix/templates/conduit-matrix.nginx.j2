@@ -1,0 +1,28 @@
+# Managed by Ansible (role: matrix) — NO editar a mano
+# Federación / delegación Matrix sobre TLS en :{{ matrix_federation_port }}
+# Termina TLS y hace proxy a Conduit ({{ matrix_conduit_address }}:{{ matrix_conduit_port }}).
+server {
+    listen {{ matrix_federation_port }} ssl http2;
+    listen [::]:{{ matrix_federation_port }} ssl http2;
+    server_name {{ matrix_server_name }};
+
+    ssl_certificate     {{ matrix_tls_cert }};
+    ssl_certificate_key {{ matrix_tls_key }};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    client_max_body_size 20M;
+    merge_slashes off;
+
+    location /_matrix/ {
+        proxy_pass http://{{ matrix_conduit_address }}:{{ matrix_conduit_port }};
+        proxy_set_header Host $host;
+        proxy_buffering off;
+        proxy_read_timeout 5m;
+    }
+
+    location /.well-known/matrix/ {
+        proxy_pass http://{{ matrix_conduit_address }}:{{ matrix_conduit_port }};
+        proxy_set_header Host $host;
+    }
+}

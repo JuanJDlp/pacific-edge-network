@@ -1,0 +1,17 @@
+---
+- name: daemon-reload matrix
+  systemd:
+    daemon_reload: true
+  become: true
+
+- name: restart conduit
+  systemd:
+    name: conduit
+    state: restarted
+  become: true
+
+- name: reload nginx matrix
+  systemd:
+    name: nginx
+    state: reloaded
+  become: true

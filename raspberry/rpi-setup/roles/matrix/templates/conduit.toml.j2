@@ -1,0 +1,24 @@
+# Managed by Ansible (role: matrix) — NO editar a mano
+# Conduit homeserver — Matrix · server_name = {{ matrix_server_name }}
+[global]
+server_name = "{{ matrix_server_name }}"
+database_backend = "rocksdb"
+database_path = "{{ matrix_conduit_data_dir }}"
+port = {{ matrix_conduit_port }}
+address = "{{ matrix_conduit_address }}"
+
+max_request_size = 20_000_000
+allow_registration = {{ matrix_allow_registration | lower }}
+registration_token = "{{ matrix_registration_token }}"
+allow_federation = {{ matrix_allow_federation | lower }}
+allow_encryption = true
+allow_room_creation = true
+enable_lightning_bolt = true
+allow_check_for_updates = true
+trusted_servers = ["matrix.org"]
+max_concurrent_requests = 100
+log = "warn"
+
+[global.well_known]
+client = "https://{{ matrix_server_name }}:{{ matrix_federation_port }}"
+server = "{{ matrix_server_name }}:{{ matrix_federation_port }}"
