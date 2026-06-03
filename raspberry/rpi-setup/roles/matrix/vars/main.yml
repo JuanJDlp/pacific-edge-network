@@ -9,8 +9,8 @@
 # NO el binario ni la base de datos RocksDB existente.
 # ============================================================
 
-# Identidad del homeserver (grabada en la BD RocksDB — no cambiar a la ligera)
-matrix_server_name: "praticasaws.dev"
+# Identidad del homeserver (grabada en la BD RocksDB)
+matrix_server_name: "biblioteca.tel"
 
 # Usuario/grupo de sistema bajo el que corre Conduit
 matrix_conduit_user: "conduit"
@@ -32,6 +32,6 @@ matrix_allow_federation: false
 # Puerto público TLS (nginx) para /_matrix/ y /.well-known/matrix/
 matrix_federation_port: 8448
 
-# Certificado TLS (Let's Encrypt, válido para praticasaws.dev)
-matrix_tls_cert: "/etc/letsencrypt/live/praticasaws.dev/fullchain.pem"
-matrix_tls_key: "/etc/letsencrypt/live/praticasaws.dev/privkey.pem"
+# Certificado TLS (Certificado local de la biblioteca)
+matrix_tls_cert: "/var/www/html/biblioteca-segura.crt"
+matrix_tls_key: "/etc/ssl/private/biblioteca.key"

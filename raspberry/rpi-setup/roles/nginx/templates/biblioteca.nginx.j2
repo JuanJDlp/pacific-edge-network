@@ -47,6 +47,18 @@ server {
     location = /success.txt          { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
     location = /canonical.html       { return 302 http://{{ minipc_captive_ip }}:{{ minipc_captive_port }}/; }
 
+    # ---- Matrix Discovery -------------------------------------------------
+    location /.well-known/matrix/client {
+        return 200 "{\"m.homeserver\": {\"base_url\": \"https://{{ dns_domain }}:8448\"}}";
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+    }
+    location /.well-known/matrix/server {
+        return 200 "{\"m.server\": \"{{ dns_domain }}:8448\"}";
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+    }
+
     # ---- Splash + accept (legacy, portal está en Mini PC) -----------------
     location = /splash {
         alias /var/www/html/splash.html;
