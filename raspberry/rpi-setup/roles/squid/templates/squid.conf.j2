@@ -116,7 +116,17 @@ maximum_object_size 128 MB
 maximum_object_size_in_memory 4 MB
 
 {% if squid_enable_biblioteca_accel | default(false) %}
-# Solo cachear biblioteca.tel; el resto de internet NO se cachea.
+# Solo cachear biblioteca.tel (Wikipedia, Kolibri, etc.); el resto de internet NO se cachea.
+# Matrix (chat) se EXCLUYE explícitamente para evitar que Squid cachee errores (502/503)
+# o interfiera con el tráfico en tiempo real (long-polling).
+acl matrix_dom dstdomain matrix.biblioteca.tel
+acl matrix_api urlpath_regex ^/_matrix/
+acl matrix_discovery urlpath_regex ^/.well-known/matrix/
+
+cache deny matrix_dom
+cache deny matrix_api
+cache deny matrix_discovery
+
 acl cache_allowed dstdomain biblioteca.tel
 cache deny !cache_allowed
 {% endif %}
@@ -144,5 +154,6 @@ connect_timeout 15 seconds
 
 # La RPi no tiene conectividad IPv6 vía NAT del Mini PC. Sin esto, Squid
 # intenta primero el AAAA que devuelve DNS (ej. YouTube/Google) y espera el
-# timeout completo antes de probar IPv4 → 503 espurio. dns_v4_first prioriza A.
-dns_v4_first on
+# timeout completo antes de probar IPv4 → 503 espurio.
+# Nota: dns_v4_first es obsoleta en versiones recientes, se recomienda configurar
+# el stack de red para preferir IPv4 o dejar que Squid maneje el Happy Eyeballs.
