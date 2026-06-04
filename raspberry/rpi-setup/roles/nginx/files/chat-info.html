@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Chat - Biblioteca Digital</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .step { background: var(--crema-suave, #f4f4f4); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid var(--verde-selva, #1f6f43); }
+        .code { background: #e0e0e0; padding: 2px 5px; font-family: monospace; font-weight: bold; border-radius: 3px; }
+        .warning { color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        
+        /* Estilos para el formulario de registro */
+        .register-box { background: white; border: 2px solid var(--verde-selva, #1f6f43); padding: 20px; border-radius: 12px; margin-top: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: var(--verde-oscuro, #18553a); }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
+        .btn-register { width: 100%; background: var(--verde-selva, #1f6f43); color: white; border: none; padding: 12px; border-radius: 6px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+        .btn-register:hover { background: var(--verde-oscuro, #18553a); }
+        .btn-register:disabled { background: #ccc; cursor: not-allowed; }
+        
+        #reg-status { margin-top: 15px; padding: 10px; border-radius: 6px; display: none; }
+        .status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block !important; }
+        .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block !important; }
+        .loading-spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-right: 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body style="padding: 20px; font-family: sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto; background-color: var(--crema, #f7f3e8);">
+    <h1 style="color: var(--verde-selva, #1f6f43); text-align: center;">💬 Chat Comunitario</h1>
+    
+    <div class="register-box">
+        <h2 style="margin-top: 0; color: var(--verde-selva, #1f6f43);">Crear cuenta rápida</h2>
+        <p style="font-size: 0.9rem; color: #666;">Crea tu usuario aquí y úsalo luego en la app Element.</p>
+        
+        <form id="matrix-reg-form">
+            <div class="form-group">
+                <label for="reg-user">Nombre de usuario:</label>
+                <input type="text" id="reg-user" placeholder="ej: juan_perez" required pattern="[a-z0-9._=-]+">
+                <small style="color: #888;">Solo minúsculas, números y puntos/guiones.</small>
+            </div>
+            <div class="form-group">
+                <label for="reg-pass">Contraseña:</label>
+                <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" required minlength="6">
+            </div>
+            <button type="submit" id="btn-submit" class="btn-register">Registrarme ahora</button>
+        </form>
+        <div id="reg-status"></div>
+    </div>
+
+    <hr style="margin: 40px 0; border: 0; border-top: 1px solid #ccc;">
+
+    <h2 style="color: var(--verde-selva, #1f6f43);">¿Cómo conectarse desde el celular?</h2>
+    
+    <div class="step">
+        <h3>1. Instala Element</h3>
+        <p>Descarga la aplicación <strong>Element</strong> (no Element X) desde la tienda de apps.</p>
+    </div>
+
+    <div class="step">
+        <h3>2. Configura el Servidor</h3>
+        <p>Al abrir la app, pulsa <strong>"Iniciar sesión"</strong> y luego en el botón <strong>"Editar"</strong> o <strong>"Cambiar"</strong> junto al servidor.</p>
+        <p>Escribe la dirección: <span class="code">https://biblioteca.tel</span></p>
+    </div>
+
+    <div class="step">
+        <h3>3. Aviso de Seguridad</h3>
+        <p class="warning">⚠️ Es probable que tu teléfono diga que la conexión no es segura. Es normal por ser una red local. Pulsa en <strong>CONFIAR</strong> o "Aceptar de todos modos".</p>
+    </div>
+
+    <div class="step">
+        <h3>4. ¡Listo!</h3>
+        <p>Ingresa el usuario y contraseña que creaste arriba y empieza a chatear.</p>
+    </div>
+
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="/" style="color: var(--verde-selva, #1f6f43); text-decoration: none; font-weight: bold;">&larr; Volver al panel principal</a>
+    </div>
+
+    <script>
+        const form = document.getElementById('matrix-reg-form');
+        const status = document.getElementById('reg-status');
+        const btn = document.getElementById('btn-submit');
+        
+        // Token configurado en el servidor
+        const REG_TOKEN = "matrix2026";
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('reg-user').value.toLowerCase();
+            const password = document.getElementById('reg-pass').value;
+            
+            // UI Loading
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Registrando...';
+            status.className = '';
+            status.style.display = 'none';
+
+            try {
+                // 1. Obtener la sesión de registro (flujo de Matrix)
+                const response = await fetch('/_matrix/client/v3/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        auth: {
+                            type: "m.login.registration_token",
+                            token: REG_TOKEN
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    status.innerHTML = "<strong>✅ ¡Éxito!</strong> Tu cuenta <b>" + username + "</b> ha sido creada. Ahora abre la app Element e inicia sesión.";
+                    status.className = 'status-success';
+                    form.reset();
+                    btn.innerHTML = '¡Cuenta Creada!';
+                } else {
+                    let errorMsg = data.error || "Error desconocido";
+                    if (data.errcode === "M_USER_IN_USE") errorMsg = "Ese nombre de usuario ya existe. Prueba con otro.";
+                    
+                    status.innerHTML = "<strong>❌ Error:</strong> " + errorMsg;
+                    status.className = 'status-error';
+                    btn.disabled = false;
+                    btn.innerHTML = 'Intentar de nuevo';
+                }
+            } catch (err) {
+                status.innerHTML = "<strong>❌ Error de conexión:</strong> No se pudo contactar al servidor. Asegúrate de estar conectado a la red local.";
+                status.className = 'status-error';
+                btn.disabled = false;
+                btn.innerHTML = 'Intentar de nuevo';
+            }
+        });
+    </script>
+</body>
+</html>
