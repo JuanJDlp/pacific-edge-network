@@ -258,6 +258,47 @@
   changed_when: false
   ignore_errors: "{{ ansible_check_mode }}"
 
+# ── DNS Failover ─────────────────────────────────────────────────────────────
+- name: DNS Failover | Desplegar script dns-failover
+  copy:
+    src: dns-failover
+    dest: /usr/local/sbin/dns-failover
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: DNS Failover | Desplegar dns-failover.service
+  copy:
+    src: dns-failover.service
+    dest: /etc/systemd/system/dns-failover.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: daemon-reload
+
+- name: DNS Failover | Crear directorio override named.service.d
+  file:
+    path: /etc/systemd/system/named.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: DNS Failover | Desplegar override named (restart + OnFailure)
+  copy:
+    src: named-failover.conf
+    dest: /etc/systemd/system/named.service.d/failover.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify:
+    - daemon-reload
+    - reload bind9
+
 - name: Habilitar e iniciar bind9
   systemd:
     name: named

@@ -228,11 +228,11 @@ table ip nat {
     chain prerouting {
         type nat hook prerouting priority dstnat; policy accept;
 
-        # ── DNS forzado → Pi-hole ─────────────────────────────────────────────
-        # Todo el tráfico DNS de las VLANs se redirige a Pi-hole en 192.168.10.1
-        # Esto evita que los clientes usen DNS externos (bypass de Pi-hole)
-        iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 dnat to {{ dns_redirect_ip }}:53
-        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 dnat to {{ dns_redirect_ip }}:53
+        # ── DNS forzado → Bind9 (con failover al slave via cadena dns_redirect) ──
+        # La cadena dns_redirect apunta al master normalmente; el script
+        # dns-failover la vacía y repobla al slave si named.service falla.
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 jump dns_redirect
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 jump dns_redirect
 
         # ── Portal cautivo: interceptar HTTP de VLAN30 no autenticados ────────
         # HTTP va al puerto 80 del Mini PC (NO al :2050 SSL). Allá nginx tiene un
@@ -264,6 +264,13 @@ table ip nat {
 {% endif %}
     }
 
+    # Cadena sin hook — saltada desde prerouting para el DNS DNAT.
+    # El script /usr/local/sbin/dns-failover la vacía y repobla
+    # para conmutar entre master ({{ dns_redirect_ip }}) y slave.
+    chain dns_redirect {
+        dnat to {{ dns_redirect_ip }}
+    }
+
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
         # NAT masquerade hacia internet
@@ -284,9 +291,13 @@ table ip6 nat {
     chain prerouting {
         type nat hook prerouting priority dstnat; policy accept;
 
-        # DNS de todas las VLANs → Bind9 en Mini PC (VLAN10 ULA)
-        iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 dnat to [{{ dns_redirect_ipv6 }}]:53
-        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 dnat to [{{ dns_redirect_ipv6 }}]:53
+        # DNS de todas las VLANs → Bind9 en Mini PC; failover via cadena dns_redirect6
+        iif { {{ vlan_ifaces | join(', ') }} } udp dport 53 jump dns_redirect6
+        iif { {{ vlan_ifaces | join(', ') }} } tcp dport 53 jump dns_redirect6
+    }
+
+    chain dns_redirect6 {
+        dnat to {{ dns_redirect_ipv6 }}
     }
 
     chain postrouting {

@@ -1,0 +1,47 @@
+#!/bin/bash
+# Conmuta el destino del DNAT DNS entre master (Mini PC) y slave (RPi).
+# Uso: dns-failover {activate|restore|status}
+#   activate → redirige queries al slave (cuando named falla)
+#   restore  → vuelve al master (cuando named se recupera)
+#   status   → imprime el estado actual
+
+MASTER_IP="192.168.10.1"
+SLAVE_IP="192.168.20.10"
+MASTER_IP6="fd00:0:0:10::1"
+SLAVE_IP6="fd00:0:0:20::10"
+STATE_FILE="/run/dns-failover.active"
+
+activate() {
+    nft flush chain ip  nat dns_redirect
+    nft add   rule ip  nat dns_redirect "dnat to ${SLAVE_IP}"
+    nft flush chain ip6 nat dns_redirect6
+    nft add   rule ip6 nat dns_redirect6 "dnat to ${SLAVE_IP6}"
+    touch "$STATE_FILE"
+    logger -t dns-failover "ACTIVADO — DNS redirigido al slave ${SLAVE_IP}"
+}
+
+restore() {
+    nft flush chain ip  nat dns_redirect
+    nft add   rule ip  nat dns_redirect "dnat to ${MASTER_IP}"
+    nft flush chain ip6 nat dns_redirect6
+    nft add   rule ip6 nat dns_redirect6 "dnat to ${MASTER_IP6}"
+    rm -f "$STATE_FILE"
+    logger -t dns-failover "RESTAURADO — DNS redirigido al master ${MASTER_IP}"
+}
+
+status() {
+    if [ -f "$STATE_FILE" ]; then
+        echo "FAILOVER ACTIVO → slave ${SLAVE_IP}"
+        nft list chain ip nat dns_redirect
+    else
+        echo "Normal → master ${MASTER_IP}"
+        nft list chain ip nat dns_redirect
+    fi
+}
+
+case "$1" in
+    activate) activate ;;
+    restore)  restore  ;;
+    status)   status   ;;
+    *) echo "Uso: $0 {activate|restore|status}"; exit 1 ;;
+esac

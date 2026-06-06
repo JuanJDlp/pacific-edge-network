@@ -1,0 +1,8 @@
+[Unit]
+Description=DNS Failover — redirige queries al slave (192.168.20.10) cuando named cae
+After=network.target nftables.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dns-failover activate
+RemainAfterExit=yes
