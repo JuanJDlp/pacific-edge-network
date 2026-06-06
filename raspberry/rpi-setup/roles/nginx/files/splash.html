@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1f6f43">
+    <title>Bienvenido a Ladrilleros</title>
+    <style>
+        :root {
+            --verde-selva: #1f6f43;
+            --verde-claro: #4ea375;
+            --crema: #f7f3e8;
+            --tierra: #8b5a2b;
+            --texto: #1a2e1f;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(160deg, var(--verde-selva) 0%, var(--verde-claro) 100%);
+            color: var(--texto);
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
+        .card {
+            background: var(--crema);
+            border-radius: 18px;
+            padding: 2.5rem 2rem;
+            max-width: 440px; width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+            text-align: center;
+        }
+        .badge {
+            display: inline-block;
+            background: var(--verde-selva);
+            color: var(--crema);
+            padding: .35rem .9rem;
+            border-radius: 999px;
+            font-size: .75rem; letter-spacing: .12em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        h1 { font-size: 1.9rem; color: var(--verde-selva); margin-bottom: .5rem; }
+        h2 { font-size: 1rem; color: var(--tierra); font-weight: 500; margin-bottom: 1.5rem; }
+        p  { font-size: .95rem; line-height: 1.55; margin-bottom: 1rem; color: #2a3a2e; }
+        ul {
+            list-style: none; text-align: left;
+            margin: 1rem 0 1.5rem; padding: 1rem 1.25rem;
+            background: rgba(255,255,255,.5); border-radius: 10px;
+        }
+        ul li { padding: .35rem 0; font-size: .9rem; }
+        ul li::before { content: "✓ "; color: var(--verde-selva); font-weight: bold; }
+        button {
+            background: var(--verde-selva);
+            color: var(--crema); border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem; font-weight: 600;
+            border-radius: 10px; cursor: pointer;
+            width: 100%;
+            transition: transform .1s, background .2s;
+        }
+        button:hover  { background: #18553a; }
+        button:active { transform: scale(.98); }
+        .footer { margin-top: 1.5rem; font-size: .75rem; color: var(--tierra); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">Red comunitaria · sin internet</span>
+        <h1>Biblioteca Digital Ladrilleros</h1>
+        <h2>Cocalito · Buenaventura</h2>
+
+        <p>Estás a punto de entrar a la red local de la comunidad. Aquí puedes consultar contenido educativo y cultural <strong>sin necesidad de internet</strong>.</p>
+
+        <ul>
+            <li>Wikipedia en español</li>
+            <li>Videos educativos y comunitarios</li>
+            <li>Libros y material escolar</li>
+            <li>Información de salud (WikiMed)</li>
+        </ul>
+
+        <!--
+            Click sends GET /accept which is proxied by nginx to the local
+            accept-daemon. The daemon adds an iptables ACCEPT rule for the
+            client's source IP, then 302s the browser to "/".
+        -->
+        <a href="/accept" style="text-decoration:none">
+            <button type="button">Entrar a la biblioteca</button>
+        </a>
+
+        <p class="footer">Operada por la comunidad · Universidad ICESI</p>
+    </div>
+</body>
+</html>

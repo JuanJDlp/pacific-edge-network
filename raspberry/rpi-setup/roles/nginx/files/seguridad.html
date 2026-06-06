@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1f6f43">
+    <title>Seguridad - Biblioteca Digital Ladrilleros</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f6f9; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 600px; background: white; margin: 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #1f6f43; text-align: center; font-size: 24px; margin-bottom: 20px; }
+        p { line-height: 1.5; color: #555; }
+        .btn-download { display: block; background-color: #1f6f43; color: white; text-align: center; padding: 14px; margin: 20px 0; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; }
+        .btn-download:hover { background-color: #165231; }
+        .instructions { background: #f8fafc; border-left: 4px solid #1f6f43; padding: 15px; border-radius: 4px; margin-top: 20px; }
+        .tab-title { font-weight: bold; color: #1f6f43; margin-top: 15px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        ol { padding-left: 20px; margin: 5px 0; }
+        li { margin-bottom: 8px; font-size: 14px; }
+        .alert { background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 12px; border-radius: 6px; font-size: 14px; margin-bottom: 15px; line-height: 1.4; }
+        .btn-back { display: inline-block; margin-top: 15px; color: #1f6f43; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Configuración de Seguridad</h1>
+    
+    <div class="alert">
+        <strong>¿Por qué es necesario?</strong> Para conectarte de forma privada a servicios como Kolibri o Jellyfin sin que tu navegador muestre advertencias de "Sitio no seguro", debes instalar nuestro certificado local en tu dispositivo.
+    </div>
+
+    <p><strong>Paso 1:</strong> Descarga el archivo de seguridad comunitaria:</p>
+    
+    <a href="/biblioteca-segura.crt" class="btn-download" download>Descargar Certificado de Seguridad</a>
+
+    <div class="instructions">
+        <h3>Paso 2: Instrucciones de instalación</h3>
+        
+        <div class="tab-title">📱 Android (Samsung, Xiaomi, Motorola, Huawei...)</div>
+        <ol>
+            <li>Oprime el botón de descarga de arriba.</li>
+            <li>Abre los <strong>Ajustes</strong> o <strong>Configuración</strong> de tu teléfono.</li>
+            <li>En la barra de búsqueda de los ajustes escribe: <strong>Certificados</strong> o <strong>Credenciales</strong>.</li>
+            <li>Selecciona <strong>Instalar desde almacenamiento</strong> y luego elige <strong>Certificado de CA</strong>.</li>
+            <li>Si aparece un aviso de peligro, selecciona <em>"Instalar de todos modos"</em>.</li>
+            <li>Busca en tu carpeta de Descargas el archivo <code>biblioteca-segura.crt</code> y dale aceptar.</li>
+        </ol>
+
+        <div class="tab-title">🍏 iPhone / iPad (iOS)</div>
+        <ol>
+            <li>Descarga el archivo desde el botón de arriba y dale "Permitir" al aviso emergente.</li>
+            <li>Abre la aplicación de <strong>Ajustes</strong> de tu dispositivo.</li>
+            <li>En la parte superior, presiona la nueva opción **Perfil descargado** e instálalo.</li>
+            <li>Luego ve a: <strong>Ajustes > General > Información > Ajustes de confianza de certificados</strong>.</li>
+            <li>Bajo la sección "Confiar plenamente en los certificados raíz", activa el interruptor de nuestro certificado.</li>
+        </ol>
+
+        <div class="tab-title">💻 Computadores (Windows)</div>
+        <ol>
+            <li>Dale doble clic al archivo <code>biblioteca-segura.crt</code> que acabas de descargar.</li>
+            <li>Haz clic en el botón <strong>Instalar certificado...</strong></li>
+            <li>Elige "Equipo local" y presiona Siguiente.</li>
+            <li>Selecciona la opción <em>"Colocar todos los certificados en el siguiente almacén"</em>.</li>
+            <li>Haz clic en Examinar y escoge **Entidades de certificación de raíz de confianza**. Dale Aceptar y Finalizar.</li>
+        </ol>
+    </div>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+    <div style="text-align: center;">
+        <a href="/" class="btn-back">← Volver al Inicio de la Biblioteca</a>
+    </div>
+</div>
+
+</body>
+</html>

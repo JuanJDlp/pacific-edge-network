@@ -1,0 +1,190 @@
+/* ============================================================================
+   Ladrilleros Portal - style.css  (LAN deployment build)
+   ============================================================================ */
+:root {
+    --verde-selva:   #1f6f43;
+    --verde-oscuro:  #18553a;
+    --verde-claro:   #4ea375;
+    --crema:         #f7f3e8;
+    --crema-suave:   #fbf9f1;
+    --tierra:        #8b5a2b;
+    --naranja:       #d97a3c;
+    --azul:          #2d6e9a;
+    --rojo:          #b6422f;
+    --morado:        #7a4a8a;
+    --texto:         #1a2e1f;
+    --texto-suave:   #4a5a4f;
+    --borde:         rgba(31,111,67,.18);
+    --sombra-sm:     0 2px 6px rgba(0,0,0,.08);
+    --sombra-md:     0 8px 24px rgba(0,0,0,.12);
+    --radio:         14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    background: var(--crema);
+    color: var(--texto);
+    line-height: 1.55;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+a { color: var(--verde-selva); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ----- Hero ---------------------------------------------------------------- */
+.hero {
+    background: linear-gradient(160deg, var(--verde-selva) 0%, var(--verde-claro) 100%);
+    color: var(--crema);
+    padding: 2.5rem 1.25rem 2rem;
+    text-align: center;
+    box-shadow: var(--sombra-md);
+}
+.hero__inner { max-width: 720px; margin: 0 auto; }
+.hero__badge {
+    display: inline-block;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    padding: .35rem .9rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+.hero__title {
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    line-height: 1.15;
+    font-weight: 700;
+    margin-bottom: .5rem;
+}
+.hero__title em { font-style: normal; color: #ffe7b8; }
+.hero__lead {
+    font-size: 1.05rem;
+    opacity: .92;
+    margin-bottom: 1.25rem;
+}
+.hero__status {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    background: rgba(0,0,0,.18);
+    padding: .5rem 1rem;
+    border-radius: 999px;
+    font-size: .85rem;
+}
+.status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #ccc;
+    box-shadow: 0 0 0 3px rgba(255,255,255,.18);
+}
+.status-dot--ok      { background: #6ed197; }
+.status-dot--warn    { background: #f4c25b; }
+.status-dot--fail    { background: #ee6b5e; }
+.status-dot--unknown { background: #aaa; }
+
+/* ----- Container ----------------------------------------------------------- */
+.container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 1rem;
+    flex: 1;
+    width: 100%;
+}
+.section__title {
+    font-size: 1.25rem;
+    color: var(--verde-oscuro);
+    margin-bottom: 1.25rem;
+    border-left: 4px solid var(--verde-claro);
+    padding-left: .75rem;
+}
+.hint {
+    text-align: center;
+    margin-top: -1rem;
+    margin-bottom: 2.5rem;
+    font-size: .85rem;
+    color: var(--texto-suave);
+    font-style: italic;
+}
+
+/* ----- Card grid ----------------------------------------------------------- */
+.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+@media (min-width: 560px) { .grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 880px) { .grid { grid-template-columns: 1fr 1fr; gap: 1.25rem; } }
+
+.card {
+    display: block;
+    background: var(--crema-suave);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 1.5rem 1.25rem;
+    color: var(--texto);
+    box-shadow: var(--sombra-sm);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+}
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--sombra-md);
+    border-color: var(--verde-claro);
+    text-decoration: none;
+}
+.card:active { transform: translateY(-1px); }
+.card__icon { font-size: 2.4rem; margin-bottom: .5rem; line-height: 1; }
+.card__title { font-size: 1.15rem; color: var(--verde-oscuro); margin-bottom: .35rem; }
+.card__desc { font-size: .92rem; color: var(--texto-suave); margin-bottom: .9rem; }
+.card__cta { display: inline-block; font-weight: 600; color: var(--verde-selva); font-size: .95rem; }
+
+.card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+}
+.card--wiki::before    { background: var(--verde-selva); }
+.card--books::before   { background: var(--azul); }
+.card--travel::before  { background: var(--naranja); }
+.card--kids::before    { background: var(--morado); }
+
+/* ----- Info section -------------------------------------------------------- */
+.info { margin-top: 1rem; }
+.info__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    background: var(--crema-suave);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 1.5rem;
+}
+@media (min-width: 720px) { .info__grid { grid-template-columns: 1fr 1fr 1fr; } }
+.info__grid h3 { font-size: 1rem; color: var(--verde-oscuro); margin-bottom: .35rem; }
+.info__grid p  { font-size: .9rem;  color: var(--texto-suave); }
+
+/* ----- Footer -------------------------------------------------------------- */
+.footer {
+    text-align: center;
+    padding: 2rem 1.25rem;
+    color: var(--texto-suave);
+    font-size: .82rem;
+    border-top: 1px solid var(--borde);
+    margin-top: 2rem;
+    background: var(--crema-suave);
+}
+.footer__tech { margin-top: .25rem; opacity: .75; }
+.footer__diag { margin-top: .5rem; }
+.footer__diag a { font-size: .75rem; color: var(--texto-suave); }
+/* Append to /var/www/html/css/style.css */
+.card--news::before  { background: var(--rojo);    }
+.card--learn::before { background: var(--verde-claro); }
+.card--kolibri::before { background: var(--tierra); }

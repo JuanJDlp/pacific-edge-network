@@ -69,6 +69,7 @@ dns_hosts:
   - { name: "switch",      ip: "192.168.10.2",                            vlan_octet: "10" }
   - { name: "biblioteca",  ip: "192.168.20.10", ipv6: "fd00:0:0:20::10", vlan_octet: "20" }
   - { name: "rpi",         ip: "192.168.20.10", ipv6: "fd00:0:0:20::10", vlan_octet: "20" }
+  - { name: "matrix",      ip: "192.168.20.10", ipv6: "fd00:0:0:20::10", vlan_octet: "20" }
 
 # IP del DNS secundario (RPi) para zone transfers
 dns_slave_ip: "192.168.20.10"
@@ -99,19 +100,10 @@ dnssec_trust_anchor_file: "/etc/bind/named.conf.trust-anchors"
 # Las zonas inversas (master estático, sin firmar) siguen en /etc/bind/zones.
 dns_forward_zone_path: "/var/lib/bind/db.{{ dns_domain }}"
 
-# ── Matrix (Conduit) — zona master local de praticasaws.dev ───────────────────
-# El homeserver Matrix corre en la RPi (matrix_host_ip) con server_name
-# praticasaws.dev. El Mini PC es autoritativo de esta zona para que los clientes
-# la resuelvan dentro de la red (su :53 está forzado por nftables a este master).
-# Zona AISLADA: sin DNSSEC ni TSIG, sin transferencia al slave → no toca
-# biblioteca.tel ni las inversas. Reproduce la zona ya viva en el Mini PC.
-# NOTA: en la red universitaria el Palo Alto NGFW sinkholea praticasaws.dev en
-# DNS público; esta zona local lo resuelve internamente.
-matrix_domain: "praticasaws.dev"
-matrix_zone_file: "/etc/bind/zones/db.praticasaws.dev"
-matrix_host_ip: "192.168.20.10"
-matrix_host_ipv6: "fd00:0:0:20::10"
-matrix_zone_serial: "2026060201"
+# ── Matrix (Conduit) ──────────────────────────────────────────────────────────
+# El homeserver Matrix corre en la RPi con server_name biblioteca.tel.
+# Se eliminó praticasaws.dev para unificar la identidad local.
+# ──────────────────────────────────────────────────────────────────────────────
 
 # CNAME: servicios educativos → biblioteca (RPi)
 dns_aliases:

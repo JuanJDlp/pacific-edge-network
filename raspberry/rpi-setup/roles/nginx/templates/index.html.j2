@@ -115,6 +115,24 @@
                     <span class="card__cta">Abrir →</span>
                 </a>
 
+                <div class="card card--chat">
+                    <div class="card__icon" aria-hidden="true">💬</div>
+                    <h3 class="card__title">Chat Comunitario</h3>
+                    <p class="card__desc">Mensajería privada local. Habla con otros sin internet.</p>
+                    
+                    <div class="card__help" style="background: rgba(31,111,67,0.06); padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 0.85rem; text-align: left; border-left: 3px solid var(--verde-selva);">
+                        <strong style="display: block; margin-bottom: 5px; color: var(--verde-oscuro);">Guía rápida:</strong>
+                        <ul style="margin: 0; padding-left: 18px; list-style-type: disc;">
+                            <li>Descarga <b>Element</b> (no usar Element X).</li>
+                            <li>Servidor: <code>https://biblioteca.tel</code></li>
+                            <li>Si avisa de seguridad, pulsa <b>"Confiar"</b>.</li>
+                            <li>Usa tu usuario y contraseña de siempre.</li>
+                        </ul>
+                    </div>
+
+                    <a href="/chat-info.html" class="card__cta" style="display: block; margin-top: 10px;">Registro y guía detallada &rarr;</a>
+                </div>
+
             </div>
             <p class="hint">Catálogo completo: <a href="/wikipedia/">/wikipedia/</a> &middot; OPDS: <a href="/catalog/v2/root.xml">/catalog/v2/root.xml</a></p>
         </section>
@@ -145,6 +163,6 @@
     </footer>
 
     <script src="/js/status.js" defer></script>
-    <script src="/js/library.js?v={{ library_js_version | default('dev') }}" defer></script>
+    <script src="/js/library.js?v={{ library_css_version | default('dev') }}" defer></script>
 </body>
 </html>

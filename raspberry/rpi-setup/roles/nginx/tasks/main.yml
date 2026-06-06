@@ -89,10 +89,55 @@
     mode: "0644"
   become: true
 
+- name: Desplegar status.js (actualización estado sistema)
+  copy:
+    src: status.js
+    dest: /var/www/html/js/status.js
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+
 - name: Desplegar library.css (estilos buscador + Descubre)
   copy:
     src: library.css
     dest: /var/www/html/css/library.css
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+
+- name: Desplegar style.css (estilos base del portal)
+  copy:
+    src: style.css
+    dest: /var/www/html/css/style.css
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+
+- name: Desplegar splash.html
+  copy:
+    src: splash.html
+    dest: /var/www/html/splash.html
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+
+- name: Desplegar seguridad.html
+  copy:
+    src: seguridad.html
+    dest: /var/www/html/seguridad.html
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  become: true
+
+- name: Desplegar guia de chat (chat-info.html)
+  copy:
+    src: chat-info.html
+    dest: /var/www/html/chat-info.html
     owner: www-data
     group: www-data
     mode: "0644"
