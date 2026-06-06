@@ -1,1 +1,7 @@
 CLAUDE.md
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*~
